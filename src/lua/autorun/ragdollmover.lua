@@ -40,15 +40,6 @@ function GrabData(axis, axisOffset)
 	return data;
 end
 
-local function SkeletonNode(id, type, boneId, pos, ang)
-
-	local node = {};
-	
-	node.id = id;
-	node.type = type;
-	
-end
-
 --	Line-Plane intersection, and return the result vector
 --	I honestly cannot explain this at all. I just followed this tutorial:
 --	http:--www.wiremod.com/forum/expression-2-discussion-help/19008-line-plane-intersection-tutorial.html
@@ -217,6 +208,10 @@ function BoneToPhysBone(ent,bone)
 	return false
 end
 
+---
+-- Translate the given physbone to bone, move up in it's hierarchy until we find
+-- a bone that can be converted to a physbone, and return that physbone.
+---
 function GetPhysBoneParent(ent,bone)
 	local b = ent:TranslatePhysBoneToBone(bone)
 	local pb

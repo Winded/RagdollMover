@@ -65,7 +65,7 @@ function ENT:GetTrace()
 	end
 	
 	local resp;
-	local lowestLen = 2147483647;
+	local lowestLen = 2147483647; -- int max
 	for i, tr in ipairs(traces) do
 		if tr.position:Length() < lowestLen then
 			resp = tr;
