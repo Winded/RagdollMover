@@ -31,20 +31,14 @@ function SK.Create(entity)
 		--Physical bones
 		for i = 0, entity:GetPhysicsObjectCount() - 1 do
 			local p = rgm.GetPhysBoneParent(entity, i);
-			local phys = entity:GetPhysicsObjectNum(i);
-			
-			local pos, ang = phys:GetPos(), phys:GetAngles();
 			
 			local b = entity:TranslatePhysBoneToBone(i);
 			local pb = entity:TranslatePhysBoneToBone(p);
 			
 			if p then
-				local parentphys = entity:GetPhysicsObjectNum(p);
-				local ppos, pang = parentphys:GetPos(), parentphys:GetAngles();
-				local lpos, lang = WorldToLocal(pos, ang, ppos, pang);
-				sk:CreateNode(b, pb, NodeType.Physbone, i, lpos, lang);
+				sk:CreateNode(b, pb, NodeType.Physbone, i);
 			else
-				sk:CreateNode(b, -1, NodeType.Physbone, i, pos, ang);
+				sk:CreateNode(b, -1, NodeType.Physbone, i);
 			end
 		end
 		
@@ -52,14 +46,16 @@ function SK.Create(entity)
 		
 	else
 		--Create only root node when not a ragdoll.
-		sk:CreateNode(0, -1, NodeType.Origin, 0, entity:GetPos(), entity:GetAngles());
+		sk:CreateNode(0, -1, NodeType.Origin, 0);
 	end
+	
+	sk:Initialize();
 	
 end
 
 function SK:Initialize()
-	self.m_Entity = entity;
-	self.m_Nodes = {};
+	self.m_Locked = false;
+	self.m_Constraints = {};
 end
 
 function SK:GetEntity()
@@ -70,47 +66,181 @@ function SK:SetEntity(entity)
 	self.m_Entity = entity;
 end
 
-function SK:CreateNode(id, parentId, type, boneId, pos, ang)
+---
+-- Create a new node for this skeleton. The node ID must be unique.
+---
+function SK:CreateNode(id, parentId, type, boneId)
 
 	if self.m_Nodes[id] ~= nil then
 		error("Bone with id " .. id .. " already exists on skeleton of " .. self:GetEntity());
 	end
+	if parentId > -1 and self.m_Nodes[parentId] == nil then
+		error("Bone parent id " .. id .. " was not found on entity " .. self:GetEntity());
+	end
 	
-	local node = SKNODE.Create(self, id, parentId, type, boneId, pos, ang);
+	local parent = self.m_Nodes[parentId];
+	
+	local node = SKNODE.Create(self, id, parent, type, boneId, pos, ang);
 	self.m_Nodes[id] = node;
+	
+	node:Initialize();
 	
 	return node;
 	
 end
 
-_G["Skeleton"] = SK;
+---
+-- Create and attach a constraint to this skeleton,
+-- affecting the given nodes of this skeleton.
+---
+function SK:CreateConstraint(nodes)
+	
+	for k, v in pairs(nodes) do
+		if not table.HasValue(self.m_Nodes, nodes) then
+			error("CreateConstraint: Skeleton of entity " .. self:GetEntity()
+				.. " does not contain given node");
+		end
+	end
+	
+	local c = RgmConstraint.Create(self, nodes);
+	return c;
+	
+end
+
+---
+-- True if locked, false if unlocked
+---
+function SK:IsLocked()
+	return self.m_Locked;
+end
+
+---
+-- Lock the positions of the actual entity into the skeleton's positions.
+---
+function SK:Lock()
+	
+	
+	
+	self.m_Locked = true;
+	
+end
+
+---
+-- Unlock the positions of the actual entity; makes the skeleton follow the entity.
+---
+function SK:Unlock()
+	
+	self.m_Locked = false;
+	
+end
+
+_G["RgmSkeleton"] = SK;
 
 ---------------
 -- SKELETON NODE
 ---------------
 
-function SKNODE.Create(skeleton, id, parentId, type, boneId, pos, ang)
+function SKNODE.Create(skeleton, id, parent, type, boneId)
 	
 	local node = {};
 	setmetatable(node, SKNODE);
 	
+	node.m_Skeleton = skeleton;
 	node.m_Id = id;
-	node.m_ParentId = parentId;
+	node.m_Parent = parent;
 	node.m_Type = type;
 	node.m_BoneId = boneId;
-	node.m_Pos = pos;
-	node.m_Ang = ang;
 	
 	return node;
 	
 end
 
 function SKNODE:Initialize()
+	self.m_LockPos = Vector();
+	self.m_LockAng = Angle();
+end
+
+---
+-- Get the global position and angles of the node
+---
+function SKNODE:GetPosAng()
+	
+	local type = self:GetType();
+	
+	local e = self:GetSkeleton():GetEntity();
+	
+	if type == NodeType.Bone then
+		
+		local pos, ang = e:GetBonePosition(self.m_BoneId);
+		--TODO null check
+		
+		return pos, ang;
+		
+	elseif type == NodeType.Physbone then
+		
+		local b = e:GetPhysicsObjectNum(self.m_BoneId);
+		if b == nil then
+			return nil; --Physbone not found, something's wrong
+		end
+		
+		local pos, ang = b:GetPos(), b:GetAngles();
+		return pos, ang;
+		
+	elseif type == NodeType.Origin then
+		
+		local pos, ang = e:GetPos(), e:GetAngles();
+		return pos, ang;
+		
+	else
+		return nil; --Invalid node type, something's wrong
+	end
 	
 end
 
-function SKNODE:GetPos()
+---
+-- Get the node's parent node.
+---
+function SKNODE:GetParent()
+	return self.m_Parent;
+end
+
+---
+-- Get the node's skeleton
+---
+function SKNODE:GetSkeleton()
+	return self.m_Skeleton;
+end
+
+---
+-- True if locked, false if unlocked
+---
+function SKNODE:IsLocked()
+	return self:GetSkeleton():IsLocked();
+end
+
+---
+-- Lock the target's position to the node's position
+---
+function SKNODE:Lock()
+	
+	-- Get the local position of this node relative to it's parent, and we have a solid lock position
+	
+	local ppos, pang = self:GetParent():GetPosAng();
+	local pos, ang = self:GetPosAng();
+	
+	local lpos, lang = WorldToLocal(pos, ang, ppos, pang);
+	self.m_LockPos = lpos;
+	self.m_LockAng = lang;
 	
 end
 
-_G["SkeletonNode"] = SKNODE;
+---
+-- Unlock the target's position; node will follow target.
+---
+function SKNODE:Unlock()
+	
+	-- No action required for now
+	
+end
+
+_G["RgmSkeletonNode"] = SKNODE;
