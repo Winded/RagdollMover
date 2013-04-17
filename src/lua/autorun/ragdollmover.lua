@@ -40,16 +40,17 @@ function GrabData(axis, axisOffset)
 	return data;
 end
 
---	Line-Plane intersection, and return the result vector
---	I honestly cannot explain this at all. I just followed this tutorial:
---	http:--www.wiremod.com/forum/expression-2-discussion-help/19008-line-plane-intersection-tutorial.html
---	Lots of cookies for the guy who made it.
-function IntersectRayWithPlane(planepoint,norm,line,linenormal)
-	local linepoint = line*1
-	local linepoint2 = linepoint+linenormal
-	local x = (norm:Dot(planepoint-linepoint)) / (norm:Dot(linepoint2-linepoint))
-	local vec = linepoint + x * (linepoint2-linepoint)
-	return vec
+---
+-- Line-Plane intersection, and return the result vector
+-- I honestly cannot explain this at all. I just followed this tutorial:
+-- http://www.wiremod.com/forum/expression-2-discussion-help/19008-line-plane-intersection-tutorial.html
+-- Lots of cookies for the guy who made it.
+---
+function IntersectRayWithPlane(planepoint, planenormal, linepoint, linenormal)
+	local linepoint2 = linepoint + linenormal;
+	local x = (planenormal:Dot(planepoint - linepoint)) / (planenormal:Dot(linepoint2 - linepoint));
+	local vec = linepoint + x * (linepoint2 - linepoint);
+	return vec;
 end
 
 --We need to receive from client-side if the middle mouse button is pressed.
@@ -358,17 +359,17 @@ end
 --	Only that the arguments in order are: hip position, ankle position, thigh length, shin length, knee vector direction.
 --	
 --	Got the math from this thread:
---	http:--forum.unity3d.com/threads/40431-IK-Chain
+--	http://forum.unity3d.com/threads/40431-IK-Chain
 ---
-function FindKnee(pHip,pAnkle,fThigh,fShin,vKneeDir)
-	local vB = pAnkle-pHip
-    local LB = vB:Length()
-    local aa = (LB*LB+fThigh*fThigh-fShin*fShin)/2/LB
-    local bb = math.sqrt(fThigh*fThigh-aa*aa)
-    local vF = vB:Cross(vKneeDir:Cross(vB))
-	vB:Normalize()
-	vF:Normalize()
-    return pHip+(aa*vB)+(bb*vF)
+function FindKnee(pHip, pAnkle, fThigh, fShin, vKneeDir)
+	local vB = pAnkle - pHip;
+    local LB = vB:Length();
+    local aa = (LB * LB + fThigh * fThigh - fShin * fShin) / 2 / LB;
+    local bb = math.sqrt(fThigh * fThigh - aa * aa);
+    local vF = vB:Cross(vKneeDir:Cross(vB));
+	vB:Normalize();
+	vF:Normalize();
+    return pHip + (aa * vB) + (bb * vF);
 end
 
 --Process one IK chain, and set it's positions.
