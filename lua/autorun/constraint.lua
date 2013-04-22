@@ -6,6 +6,7 @@ function C.Create(skeleton, targetNodes)
 	
 	local c = setmetatable({}, C);
 	
+	c.m_Skeleton = skeleton;
 	c.m_Nodes = targetNodes;
 	
 	c:Initialize();
@@ -23,8 +24,24 @@ end
 ---
 function C:GetPosAngs()
 	
-	--Abstract, inherited constraints should override.
+	local posangs = {};
+
+	for _, node in pairs(self.m_Nodes) do
+		local pos, ang = node:GetPosAng();
+		table.insert(posangs, {pos = pos, ang = ang});
+	end
+
+	return posangs;
 	
+end
+
+---
+-- Position the nodes, and thus the target entity, with the constraint logic.
+---
+function C:PositionTarget()
+	
+	--Abstract
+
 end
 
 _G["RgmConstraint"] = C;

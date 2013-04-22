@@ -33,10 +33,13 @@ function IK:GetFoot()
 	return self.m_Foot;
 end
 
-function IK:GetPosAngs()
-	
-	--TODO
-	
+---
+-- Position the nodes, and thus the target entity, with the constraint logic.
+---
+function IK:PositionTarget()
+
+	-- TODO
+
 end
 
 _G["RgmIKConstraint"] = IK;

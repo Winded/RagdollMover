@@ -134,6 +134,24 @@ function SK:Unlock()
 	
 end
 
+---
+-- Position the target entity to the skeleton's nodes.
+-- This does nothing if the skeleton is unlocked.
+---
+function SK:PositionTarget()
+	
+	for _, node in pairs(self.m_Nodes) do
+		node:PositionTarget();
+	end
+
+	if not self:IsLocked() then return; end
+
+	for _, c in pairs(self.m_Constraints) do
+		c:PositionTarget();
+	end
+
+end
+
 _G["RgmSkeleton"] = SK;
 
 ---------------
@@ -165,6 +183,10 @@ end
 ---
 function SKNODE:GetPosAng()
 	
+	if self:IsLocked() then
+		local pos, ang = LocalToWorld(self.m_LockPos, self.m_LockAng, self:GetParent():GetPosAng());
+	end
+
 	local type = self:GetType();
 	
 	local e = self:GetSkeleton():GetEntity();
@@ -211,6 +233,17 @@ function SKNODE:GetSkeleton()
 	return self.m_Skeleton;
 end
 
+function SKNODE:GetType()
+	return self.m_Type;
+end
+
+function SKNODE:SetType(type)
+	if not table.HasValue(NodeType, type) then
+		error("Invalid type");
+	end
+	self.m_Type = type;
+end
+
 ---
 -- True if locked, false if unlocked
 ---
@@ -241,6 +274,39 @@ function SKNODE:Unlock()
 	
 	-- No action required for now
 	
+end
+
+---
+-- Position the node's target to the node's position.
+-- This does nothing if the skeleton is unlocked.
+---
+function SKNODE:PositionTarget()
+	
+	local type = self:GetType();
+	local e = self:GetSkeleton():GetEntity();
+	local pos, ang = self:GetPosAng();
+
+	if type == NodeType.Bone then
+
+		-- TODO
+
+	elseif type == NodeType.Physbone then
+
+		local b = e:GetPhysicsObjectNum(self.m_BoneId);
+		if b == nil then
+			return; --Physbone not found, something's wrong
+		end
+		
+		b:SetPos(pos);
+		b:SetAngles(ang);
+
+	elseif type == NodeType.Origin then
+
+		e:SetPos(pos);
+		e:SetAngles(ang);
+
+	end
+
 end
 
 _G["RgmSkeletonNode"] = SKNODE;
