@@ -2,14 +2,9 @@
 ENT.Type = "anim";
 ENT.Base = "rgm_base_entity";
 
-function ENT:Initialize()
+function ENT:InitializeShared()
 
 	self.BaseClass.Initialize(self);
-	
-	self.m_AllowedFuncs = {"SetLines"};
-	
-	self.m_Lines = {};
-	self.m_Yellow = false;
 	
 end
 
@@ -27,12 +22,6 @@ end
 
 function ENT:GetScale()
 	return self:GetManipulator():GetScale();
-end
-
-function ENT:SetLines(lines)
-	self.m_Lines = lines;
-	
-	if SERVER then self:SendMessage("SetLines", lines); end
 end
 
 ---
