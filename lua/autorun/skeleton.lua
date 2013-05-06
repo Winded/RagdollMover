@@ -119,7 +119,9 @@ end
 ---
 function SK:Lock()
 	
-	
+	for _, node in pairs(self.m_Nodes) do
+		node:Lock();
+	end
 	
 	self.m_Locked = true;
 	
@@ -130,6 +132,10 @@ end
 ---
 function SK:Unlock()
 	
+	for _, node in pairs(self.m_Nodes) do
+		node:Unlock();
+	end
+
 	self.m_Locked = false;
 	
 end

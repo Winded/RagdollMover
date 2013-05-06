@@ -44,7 +44,7 @@ function ENT:Render()
 	
 	for i,v in ipairs(ToScreen) do
 		surface.SetDrawColor(color.r, color.g, color.b, color.a);
-		surface.DrawLine(v[1].x,v[1].y,v[2].x,v[2].y);
+		surface.DrawLine(v[1].x, v[1].y, v[2].x, v[2].y);
 	end
 	
 end

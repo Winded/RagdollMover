@@ -2,9 +2,9 @@
 local C = {};
 C.__index = C;
 
-function C.Create(skeleton, targetNodes)
+function C.Create(class, skeleton, targetNodes)
 	
-	local c = setmetatable({}, C);
+	local c = setmetatable({}, class);
 	
 	c.m_Skeleton = skeleton;
 	c.m_Nodes = targetNodes;
@@ -33,6 +33,24 @@ function C:GetPosAngs()
 
 	return posangs;
 	
+end
+
+---
+-- Called from skeleton when the skeleton is locked
+---
+function C:Lock()
+	
+	--Abstract
+
+end
+
+---
+-- Called from skeleton when the skeleton is unlocked
+---
+function C:Unlock()
+	
+	--Abstract
+
 end
 
 ---

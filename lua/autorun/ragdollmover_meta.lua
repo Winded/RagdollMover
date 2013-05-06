@@ -3,6 +3,34 @@
 --	Other functionality that isn't part of the rgm module.
 --
 
+local PL = FindMetaTable("Player");
+
+function PL:CreateRgmManipulator()
+	
+	-- TODO
+
+end
+
+function PL:GetRgmManipulator()
+
+	return self.m_RgmManipulator;
+
+end
+
+local ENT = FindMetaTable("Entity");
+
+function ENT:CreateRgmSkeleton()
+
+	-- TODO
+
+end
+
+function ENT:GetRgmSkeleton()
+
+	return self.m_RgmSkeleton;
+
+end
+
 local TYPE_ENTITY	 = 1;
 local TYPE_NUMBER	 = 2;
 local TYPE_VECTOR	 = 3;
