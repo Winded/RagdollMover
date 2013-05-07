@@ -351,11 +351,6 @@ function TOOL:DrawHUD()
 
 	m:Render();
 
-	local t = m:GetTarget();
-	if not IsValid(t) then return; end
-
-	t:Render(); -- TODO wtf should this do
-
 	-- OLD CODE
 
 	local pl = LocalPlayer()

@@ -1,11 +1,11 @@
 
-include("shared.lua")
+include("shared.lua");
 
 function ENT:Initialize()
-
-	self:SetNoDraw(true);
 	
 	self:InitializeShared();
+
+	self:SetNoDraw(true);
 	
 end
 
@@ -23,13 +23,13 @@ function ENT:SetupGizmos(move, rotate, scale)
 		self.MoveGizmo,
 		self.RotateGizmo,
 		self.ScaleGizmo
-	}
+	};
 	
 end
 
 function ENT:DrawLines(scale)
 	local pl = LocalPlayer();
-	if not self.Axes then return end
+	if not self.Axes then return; end
 	
 end
 
@@ -46,6 +46,8 @@ end
 -- Draw the currently active gizmo
 ---
 function ENT:Render()
+
+	if not self:IsEnabled() then return; end
 
 	local pl = self:GetPlayer();
 	if pl ~= LocalPlayer() then return; end --Don't render for other players

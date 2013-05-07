@@ -8,3 +8,12 @@ function ENT:Initialize()
 	self:SharedInitialize();
 	
 end
+
+---
+-- Updates the skeleton position
+---
+function ENT:Update()
+	
+	-- Abstract
+
+end

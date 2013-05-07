@@ -12,7 +12,6 @@ local GREY = Color(175,175,175,255);
 
 function ENT:MakeArrow(color, angle)
 	local axis = self:MakeAxis("rgm_axis_arrow", color, angle);
-	
 	return axis;
 end
 
@@ -20,7 +19,6 @@ function ENT:MakeSide(color1, color2, angle)
 	local axis = self:MakeAxis("rgm_axis_side", GREY, angle);
 	axis:SetColor1(color1);
 	axis:SetColor2(color2);
-	
 	return axis;
 end
 
@@ -38,6 +36,7 @@ function ENT:Initialize()
 	axes.ArrowXZ =		self:MakeSide(	RED, 	BLUE, 	Vector(0, -1, 0):Angle());
 	axes.ArrowYZ = 		self:MakeSide(	GREEN, 	BLUE,	Vector(1, 0, 0):Angle());
 	
-	self:SetAxes(axes);
+	self.m_Axes = axes;
+	self:SendMessage("SetAxes", axes);
 	
 end

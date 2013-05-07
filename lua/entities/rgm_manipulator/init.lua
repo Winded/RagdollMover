@@ -64,6 +64,14 @@ function ENT:Initialize()
 	
 end
 
+function ENT:Enable()
+	self:SetNWBool("Enabled", true);
+end
+
+function ENT:Disable()
+	self:SetNWBool("Enabled", false);
+end
+
 function ENT:SetPlayer(player)
 	self:SetNWEntity("Player", player);
 end
@@ -106,7 +114,12 @@ end
 ---
 function ENT:Update()
 
-	-- TODO
+	if not self:IsGrabbed() then return; end
+
+	local gizmo = self:GetActiveGizmo();
+	if not IsValid(gizmo) then return; end --Shouldn't happen
+
+	gizmo:Update();
 
 end
 

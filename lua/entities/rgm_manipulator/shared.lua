@@ -21,6 +21,10 @@ function ENT:InitializeShared()
 	
 end
 
+function ENT:IsEnabled()
+	return self:GetNWBool("Enabled", false);
+end
+
 function ENT:GetGizmos()
 	return self.m_Gizmos;
 end

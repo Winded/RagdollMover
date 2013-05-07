@@ -17,3 +17,10 @@ function ENT:Render()
 	end
 	
 end
+
+---
+-- Called from server to setup the axis table
+---
+function ENT:SetAxes(axes)
+	self.m_Axes = axes;
+end

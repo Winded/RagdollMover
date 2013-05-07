@@ -30,12 +30,6 @@ function ENT:GetAxes()
 	return self.m_Axes;
 end
 
-function ENT:SetAxes(axes)
-	self.m_Axes = axes;
-	
-	if SERVER then self:SendMessage("SetAxes", axes); end
-end
-
 ---
 -- Get the axis of this gizmo that is grabbed.
 -- If no axis is grabbed, or not from this gizmo, returns NULL.
