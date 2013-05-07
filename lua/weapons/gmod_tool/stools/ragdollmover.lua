@@ -29,6 +29,25 @@ local TransTable = {
 
 function TOOL:LeftClick(tr)
 
+	-- NEW CODE
+
+	if CLIENT then return false; end
+
+	local pl = self:GetOwner();
+
+	local m = pl:GetRgmManipulator();
+	if not IsValid(m) then
+		m = pl:CreateRgmManipulator();
+	end
+
+	if m:IsGrabbed() then
+		m:Release();
+	end
+
+	m:Grab();
+
+	-- OLD CODE
+
 	if CLIENT then return false end
 	
 	local pl = self:GetOwner();
@@ -118,6 +137,17 @@ end
 if SERVER then
 
 function TOOL:Think()
+
+	-- NEW CODE
+
+	local m = self:GetOwner():GetRgmManipulator();
+	if not IsValid(m) then return; end
+
+	if not m:IsGrabbed() then return; end
+
+
+
+	-- OLD CODE
 
 	if not self.LastThink then self.LastThink = CurTime() end
 	if CurTime() < self.LastThink + self:GetClientNumber("updaterate",0.01) then return end
@@ -240,7 +270,7 @@ end
 if CLIENT then
 
 language.Add("tool.ragdollmover.name","Ragdoll Mover")
-language.Add("tool.ragdollmover.desc","Allows advanced movement of ragdollsnot ")
+language.Add("tool.ragdollmover.desc","Allows advanced movement of ragdolls.")
 language.Add("tool.ragdollmover.0","Left click to select and move bones. Click with mid mouse button to toggle between move/rotate.")
 
 local function CCheckBox(cpanel,text,cvar)
@@ -311,6 +341,22 @@ function TOOL.BuildCPanel(CPanel)
 end
 
 function TOOL:DrawHUD()
+
+	-- NEW CODE
+
+	local pl = LocalPlayer();
+
+	local m = pl:GetRgmManipulator();
+	if not IsValid(m) then return; end
+
+	m:Render();
+
+	local t = m:GetTarget();
+	if not IsValid(t) then return; end
+
+	t:Render(); -- TODO wtf should this do
+
+	-- OLD CODE
 
 	local pl = LocalPlayer()
 	if not pl.rgm then pl.rgm = {}; end

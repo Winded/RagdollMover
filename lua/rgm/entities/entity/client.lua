@@ -1,4 +1,0 @@
-
-function ENT:Draw()
-	
-end

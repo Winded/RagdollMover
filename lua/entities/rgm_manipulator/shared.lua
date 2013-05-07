@@ -4,10 +4,10 @@ ENT.Base = "base_entity"
 
 --TODO Separate gizmos to entities
 
---Gizmo mode definitions.
-GIZMO_MODE_MOVE = 1;
-GIZMO_MODE_ROTATE = 2;
-GIZMO_MODE_SCALE = 3;
+--Gizmo mode constants.
+ENT.GIZMO_MODE_MOVE = 1;
+ENT.GIZMO_MODE_ROTATE = 2;
+ENT.GIZMO_MODE_SCALE = 3;
 
 function ENT:InitializeShared()
 
@@ -42,7 +42,7 @@ end
 -- Should be 1, 2 or 3, meaning move, rotate or scale.
 ---
 function ENT:GetMode()
-	return self:GetNWInt("Mode", GIZMO_MODE_MOVE);
+	return self:GetNWInt("Mode", self.GIZMO_MODE_MOVE);
 end
 
 function ENT:GetMoveGizmo()
@@ -60,11 +60,11 @@ end
 ---
 function ENT:GetActiveGizmo()
 	local mode = self:GetMode();
-	if mode == GIZMO_MODE_MOVE then
+	if mode == self.GIZMO_MODE_MOVE then
 		return self:GetMoveGizmo();
-	elseif mode == GIZMO_MODE_ROTATE then
+	elseif mode == self.GIZMO_MODE_ROTATE then
 		return self:GetRotateGizmo();
-	elseif mode == GIZMO_MODE_SCALE then
+	elseif mode == self.GIZMO_MODE_SCALE then
 		return self:GetScaleGizmo();
 	else
 		return self:GetMoveGizmo();

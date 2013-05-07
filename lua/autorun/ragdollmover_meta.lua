@@ -7,7 +7,12 @@ local PL = FindMetaTable("Player");
 
 function PL:CreateRgmManipulator()
 	
-	-- TODO
+	local ent = ents.Create("rgm_manipulator");
+	ent:SetPlayer(self);
+	ent:Spawn();
+
+	self.m_RgmManipulator = ent;
+	return ent;
 
 end
 
@@ -21,7 +26,10 @@ local ENT = FindMetaTable("Entity");
 
 function ENT:CreateRgmSkeleton()
 
-	-- TODO
+	local sk = RgmSkeleton.Create(self);
+
+	self.m_RgmSkeleton = sk;
+	return sk;
 
 end
 

@@ -1,11 +1,11 @@
 
-include("shared.lua")
-AddCSLuaFile("cl_init.lua")
-AddCSLuaFile("shared.lua")
+include("shared.lua");
+AddCSLuaFile("cl_init.lua");
+AddCSLuaFile("shared.lua");
 
-local TYPE_ARROW = 1
-local TYPE_ARROWSIDE = 2
-local TYPE_DISC = 3
+local TYPE_ARROW = 1;
+local TYPE_ARROWSIDE = 2;
+local TYPE_DISC = 3;
 
 local RED = Color(255, 0, 0, 255);
 local GREEN = Color(0, 255, 0, 255);
@@ -60,14 +60,20 @@ function ENT:Initialize()
 		self.ScaleGizmo,
 	};
 	
-	self.m_Skeleton = {};
-	
 	self:SendMessage("SetupGizmos", self.MoveGizmo, self.RotateGizmo, self.ScaleGizmo);
 	
 end
 
+function ENT:SetPlayer(player)
+	self:SetNWEntity("Player", player);
+end
+
 function ENT:SetTarget(target)
 	self:SetNWEntity("Target", target);
+end
+
+function ENT:SetMode(mode)
+	self:SetNWInt("Mode", mode);
 end
 
 ---
@@ -94,29 +100,21 @@ function ENT:Release()
 	self.m_GrabData = nil;
 end
 
-function ENT:SetMode(mode)
-	self:SetNWInt("Mode", mode);
+---
+-- If grabbed, updates the skeleton position.
+-- If not grabbed, doesn't really do anything
+---
+function ENT:Update()
+
+	-- TODO
+
 end
 
+---
+-- "Quiet" functionality to keep the manipulator on the target skeleton node.
+---
 function ENT:Think()
-	local pl = self:GetThread():GetPlayer();
-	if not IsValid(pl) then return end
-	
-	local ent = self:GetThread():GetEntity();
-	local bone = self:GetThread():GetBone();
-	if not IsValid(ent) then return end
-	
-	local physobj = ent:GetPhysicsObjectNum(bone)
-	local pos,ang = physobj:GetPos(),physobj:GetAngles()
-	
-	self:SetPos(pos)
-	
-	if self:GetThread():IsLocalized() then
-		self:SetAngles(ang)
-	else
-		self:SetAngles(Angle(0,0,0))
-	end
-	
-	self:NextThink(CurTime() + 0.001);
-	return true;
+
+	-- TODO
+
 end
