@@ -12,7 +12,7 @@ local GREEN = Color(0, 255, 0, 255);
 local BLUE = Color(0, 0, 255, 255);
 local GREY = Color(175,175,175,255);
 
-local function MakeGizmo(self, name)
+function ENT:MakeGizmo(name)
 	
 	local gizmo = ents.Create(name);
 	gizmo:SetParent(self);
@@ -22,52 +22,35 @@ local function MakeGizmo(self, name)
 	
 end
 
-local function MakeAxis(self, name, type, color, angle)
-
-	local axis = ents.Create(name);
-	axis:SetParent(self);
-	axis:Spawn();
-	axis:SetNWInt("Type", type);
-	axis:SetColor(color);
-	axis:SetLocalPos(Vector(0,0,0));
-	axis:SetLocalAngles(angle);
-	axis:SetScale(self:GetScale());
-	
-	return axis;
-		
-end
-
-local function MakeSide(self, color1, color2, angle)
-	local axis = MakeAxis(self, "rgm_axis_side", TYPE_ARROWSIDE, GREY, angle);
-	axis:SetColor1(color1);
-	axis:SetColor2(color2);
-	
-	return axis;
-end
-
 function ENT:Initialize()
 
 	self:InitializeShared();
 	
-	self.MoveGizmo = MakeGizmo("rgm_gizmo_move");
-	self.RotateGizmo = MakeGizmo("rgm_gizmo_rotate");
-	self.ScaleGizmo = MakeGizmo("rgm_gizmo_scale");
+	self.m_MoveGizmo = self:MakeGizmo("rgm_gizmo_move");
+	self.m_RotateGizmo = self:MakeGizmo("rgm_gizmo_rotate");
+	self.m_ScaleGizmo = self:MakeGizmo("rgm_gizmo_scale");
 	
 	self.m_Gizmos = 
 	{
-		self.MoveGizmo,
-		self.RotateGizmo,
-		self.ScaleGizmo,
+		self.m_MoveGizmo,
+		self.m_RotateGizmo,
+		self.m_ScaleGizmo,
 	};
 	
 	self:SendMessage("SetupGizmos", self.MoveGizmo, self.RotateGizmo, self.ScaleGizmo);
 	
 end
 
+---
+-- Enable the manipulator. (See IsEnabled)
+---
 function ENT:Enable()
 	self:SetNWBool("Enabled", true);
 end
 
+---
+-- Disable the manipulator. (See IsEnabled)
+---
 function ENT:Disable()
 	self:SetNWBool("Enabled", false);
 end
@@ -95,7 +78,10 @@ function ENT:Grab()
 	if not trace.success then return false; end
 	
 	local gdata = rgm.GrabData(trace.axis, trace.axisOffset);
-	self.m_GrabData = gdata;
+
+	self:SetNWEntity("GrabData_Axis", gdata.axis);
+	self:SetNWVector("GrabData_AxisOffset", gdata.axisOffset);
+	self:SetNWBool("Grabbed", true);
 	
 	return true;
 	

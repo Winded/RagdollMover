@@ -26,7 +26,10 @@ local ENT = FindMetaTable("Entity");
 
 function ENT:CreateRgmSkeleton()
 
-	local sk = RgmSkeleton.Create(self);
+	local sk = ents.Create("rgm_skeleton");
+	sk:Spawn();
+	sk:SetEntity(self);
+	sk:BuildNodes();
 
 	self.m_RgmSkeleton = sk;
 	return sk;
