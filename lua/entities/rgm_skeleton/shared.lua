@@ -44,3 +44,36 @@ function ENT:GetConstraints()
 	return self.m_Constraints;
 end
 
+function ENT:GetNodeFor(type, bone)
+
+	local ent = self:GetEntity();
+
+	for i, node in ipairs(self.m_Nodes) do
+
+		if node:GetType() == type and node:GetBone() == bone then
+			return node;
+		end
+
+	end
+
+	return NULL;
+
+end
+
+function ENT:GetNodeForBone(bone)
+
+	return self:GetNodeFor(NodeType.Bone, bone);
+
+end
+
+function ENT:GetNodeForPhysBone(bone)
+
+	return self:GetNodeFor(NodeType.Physbone, bone);
+
+end
+
+function ENT:GetRootNode()
+
+	return self.m_Nodes[1];
+
+end
