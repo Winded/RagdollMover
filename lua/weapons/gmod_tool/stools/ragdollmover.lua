@@ -44,7 +44,25 @@ function TOOL:LeftClick(tr)
 		m:Release();
 	end
 
-	m:Grab();
+	local grabbed = m:Grab();
+
+	if not grabbed then
+
+		local ent = tr.Entity;
+		if not IsValid(ent) then return false; end
+		local bone = tr.PhysicsBone;
+		if not bone or bone < 0 then return false; end
+
+		local s = ent:GetRgmSkeleton();
+		if not IsValid(s) then return false; end
+		local n = s:GetNodeForPhysBone(bone);
+		if not n then return false; end
+
+		m:SetTarget(n);
+
+	end
+
+	return false;
 
 	-- OLD CODE
 

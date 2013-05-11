@@ -60,7 +60,15 @@ function ENT:SetPlayer(player)
 end
 
 function ENT:SetTarget(target)
+
+	if target:GetClassName() ~= "rgm_skeleton" then
+		target = target:GetRgmManipulator();
+		if not IsValid(target) then return false; end
+	end
+
 	self:SetNWEntity("Target", target);
+	return true;
+
 end
 
 function ENT:SetMode(mode)
