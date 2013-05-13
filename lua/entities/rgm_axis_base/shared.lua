@@ -2,7 +2,7 @@
 ENT.Type = "anim";
 ENT.Base = "rgm_base_entity";
 
-function ENT:InitializeShared()
+function ENT:SharedInitialize()
 
 	self.BaseClass.Initialize(self);
 	
@@ -12,16 +12,21 @@ function ENT:GetGizmo()
 	return self:GetParent();
 end
 
-function ENT:GetManipulator()
-	return self:GetGizmo():GetManipulator();
-end
-
 function ENT:GetType() --TODO purpose?
 	return self:GetNWInt("Type", 1);
 end
 
 function ENT:GetScale()
-	return self:GetManipulator():GetScale();
+	return self:GetGizmo():GetScale();
+end
+
+function ENT:GetGrabOffset()
+
+	local go = self:GetGizmo():GetManipulator():GetGrabOffset();
+	if not go then return nil; end
+
+	return go;
+
 end
 
 ---
@@ -34,16 +39,9 @@ function ENT:GetTrace()
 end
 
 ---
--- Calculate target's position and angle during grab, when this axis is selected.
----
-function ENT:CalculateTarget(is3D, startPos, curPos)
-	--TODO
-end
-
----
 -- Returns if the axis is currently grabbed or not.
 ---
 function ENT:IsGrabbed()
-	local ga = self:GetGizmo():GetGrabbedAxis();
+	local ga = self:GetGizmo():GetGrabAxis();
 	return IsValid(ga) and ga == self;
 end

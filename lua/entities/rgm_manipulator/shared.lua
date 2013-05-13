@@ -45,7 +45,7 @@ function ENT:GetPlayer()
 end
 
 ---
--- Get the current target to be manipulated. (This should be rgm_skeleton)
+-- Get the current target to be manipulated. (This should be rgm_skeleton_node)
 ---
 function ENT:GetTarget()
 	return self:GetNWEntity("Target", NULL);
@@ -108,17 +108,17 @@ function ENT:GetTrace()
 end
 
 ---
--- Returns the manipulator's rgm grab data.
--- If no grab data is present (either not grabbed, not synced when clientside), returns nil
+-- Returns the currently grabbed axis, if one is grabbed.
 ---
-function ENT:GetGrabData()
+function ENT:GetGrabAxis()
+	return self:GetNWEntity("GrabData_Axis", NULL);
+end
 
-	local gd = rgm.GrabData(self:GetNWEntity("GrabData_Axis", NULL), self:GetNWVector("GrabData_AxisOffset", nil));
-
-	if not IsValid(gd.axis) or not gd.axisOffset then return nil; end
-
-	return gd;
-
+---
+-- Returns the grab point offset from the grabbed axis, if one is grabbed.
+---
+function ENT:GetGrabOffset()
+	return self:GetNWVector("GrabData_AxisOffset", NULL);
 end
 
 function ENT:ThinkShared()

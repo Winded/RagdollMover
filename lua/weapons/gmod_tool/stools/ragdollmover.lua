@@ -163,7 +163,7 @@ function TOOL:Think()
 
 	if not m:IsGrabbed() then return; end
 
-
+	m:Update();
 
 	-- OLD CODE
 

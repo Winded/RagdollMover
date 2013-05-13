@@ -26,6 +26,10 @@ function ENT:SharedInitialize()
 	
 end
 
+function ENT:GetManipulator()
+	return self:GetParent();
+end
+
 function ENT:GetAxes()
 	return self.m_Axes;
 end
@@ -34,15 +38,12 @@ end
 -- Get the axis of this gizmo that is grabbed.
 -- If no axis is grabbed, or not from this gizmo, returns NULL.
 ---
-function ENT:GetGrabbedAxis()
+function ENT:GetGrabAxis()
 	
-	local gdata = self:GetManipulator():GetGrabData();
-	if not gdata then return NULL; end --No axis is currently grabbed
-	
-	local gg = gdata.axis:GetGizmo();
-	if gg ~= self then return NULL; end --An axis is grabbed, but not from this gizmo
-	
-	return gdata.axis;
+	local axis = self:GetManipulator():GetGrabAxis();
+	if not IsValid(axis) then return NULL; end
+
+	return axis;
 	
 end
 

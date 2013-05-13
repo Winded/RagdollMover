@@ -11,3 +11,12 @@ function ENT:Initialize()
 	self:SetNetworkedBool("ShouldDrawYellow", false);
 
 end
+
+---
+-- Updates the skeleton position
+---
+function ENT:Update()
+
+	-- Abstract
+
+end

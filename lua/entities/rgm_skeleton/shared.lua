@@ -12,16 +12,6 @@ what kind of bone it is manipulating; bone, physbone, or origin.
 ENT.Type = "anim";
 ENT.Base = "rgm_base_entity";
 
-local NodeType =
-{
-	-- A model bone
-	Bone = 1,
-	-- A physbone of a ragdoll
-	Physbone = 2,
-	-- Simple GetPos() and GetAngles() of the entity
-	Origin = 3
-};
-
 function ENT:SharedInitialize()
 
 	self.BaseClass.Initialize(self);
@@ -62,13 +52,13 @@ end
 
 function ENT:GetNodeForBone(bone)
 
-	return self:GetNodeFor(NodeType.Bone, bone);
+	return self:GetNodeFor(RgmNodeType.Bone, bone);
 
 end
 
 function ENT:GetNodeForPhysBone(bone)
 
-	return self:GetNodeFor(NodeType.Physbone, bone);
+	return self:GetNodeFor(RgmNodeType.Physbone, bone);
 
 end
 

@@ -22,7 +22,7 @@ function ENT:MakeSide(color1, color2, angle)
 	return axis;
 end
 
-function ENT:Initialize()
+function ENT:SharedInitialize()
 	
 	self.BaseClass.Initialize(self);
 	

@@ -14,6 +14,9 @@ end
 ---
 function ENT:Update()
 	
-	-- Abstract
+	local axis = self:GetGrabAxis();
+	if not IsValid(axis) then return; end --Shouldn't happen
+
+	axis:Update();
 
 end
