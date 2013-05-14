@@ -16,9 +16,10 @@ function ENT:SharedInitialize()
 
 	self.BaseClass.Initialize(self);
 
-	self.m_AllowedFuncs = {"NodeUpdate"};
+	self.m_AllowedFuncs = {"Sync"};
 
 	self.m_Nodes = {};
+	self.m_Constraints = {};
 
 end
 
@@ -66,4 +67,11 @@ function ENT:GetRootNode()
 
 	return self.m_Nodes[1];
 
+end
+
+---
+-- True if locked, false if unlocked
+---
+function SK:IsLocked()
+	return self:GetNWBool("Locked", false);
 end

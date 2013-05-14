@@ -282,37 +282,4 @@ function SKNODE:Unlock()
 	
 end
 
----
--- Position the node's target to the node's position.
--- This does nothing if the skeleton is unlocked.
----
-function SKNODE:PositionTarget()
-	
-	local type = self:GetType();
-	local e = self:GetSkeleton():GetEntity();
-	local pos, ang = self:GetPosAng();
-
-	if type == NodeType.Bone then
-
-		-- TODO
-
-	elseif type == NodeType.Physbone then
-
-		local b = e:GetPhysicsObjectNum(self.m_BoneId);
-		if b == nil then
-			return; --Physbone not found, something's wrong
-		end
-		
-		b:SetPos(pos);
-		b:SetAngles(ang);
-
-	elseif type == NodeType.Origin then
-
-		e:SetPos(pos);
-		e:SetAngles(ang);
-
-	end
-
-end
-
 _G["RgmSkeletonNode"] = SKNODE;

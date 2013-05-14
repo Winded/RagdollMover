@@ -29,3 +29,21 @@ end
 function ENT:GetType()
 	return self:GetNWInt("Type", RgmNodeType.Bone);
 end
+
+---
+-- Get the target bone ID of the node
+---
+function ENT:GetBoneID()
+	self:SetNWInt("BoneID", -1);
+end
+
+---
+-- True if locked, false if unlocked
+---
+function ENT:IsLocked()
+	return self:GetSkeleton():IsLocked();
+end
+
+function ENT:GetPosAng()
+	return self:GetPos(), self:GetAngles();
+end

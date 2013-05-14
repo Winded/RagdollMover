@@ -7,11 +7,11 @@ function ENT:Initialize()
 end
 
 ---
--- Called from the server to update clientside nodes.
+-- Called from the server to update clientside nodes and constraints.
 -- The nodes table should be an array of new/updated nodes, with tables of their data.
 -- The table contains only a 'deleted' boolean if the node was deleted.
 ---
-function ENT:NodeUpdate(nodes)
+function ENT:Sync(nodes)
 
 	for i, node in ipairs(nodes) do
 		

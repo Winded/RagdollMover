@@ -39,7 +39,7 @@ function ENT:BuildNodes()
 		self:CreateNode(0, -1, NodeType.Origin, 0);
 	end
 
-	self:SendMessage("NodeUpdate", self.m_Nodes);
+	self:SendMessage("Sync", self.m_Nodes, {});
 
 end
 
@@ -64,4 +64,71 @@ function ENT:CreateNode(id, parentId, type, boneId)
 	
 	return node;
 	
+end
+
+---
+-- Create and attach a constraint to this skeleton,
+-- affecting the given nodes of this skeleton.
+---
+function ENT:CreateConstraint(nodes)
+
+	for _, node in pairs(nodes) do
+		if not table.HasValue(self.m_Nodes, node) then
+			error("CreateConstraint: Skeleton of entity " .. self:GetEntity()
+				.. " does not contain given node");
+		end
+	end
+
+	local c = ents.Create("rgm_constraint");
+	c:Spawn();
+	c:Setup(nodes);
+
+	table.insert(self.m_Constraints, c);
+
+	self:SendMessage("Sync", self.m_Nodes, self.m_Constraints);
+
+end
+
+---
+-- Lock the positions of the actual entity into the skeleton's positions.
+---
+function ENT:Lock()
+	
+	for _, node in pairs(self.m_Nodes) do
+		node:Lock();
+	end
+	
+	self:SetNWBool("Locked", true);
+	
+end
+
+---
+-- Unlock the positions of the actual entity; makes the skeleton follow the entity.
+---
+function ENT:Unlock()
+	
+	for _, node in pairs(self.m_Nodes) do
+		node:Unlock();
+	end
+	
+	self:SetNWBool("Locked", false);
+	
+end
+
+---
+-- Position the target entity to the skeleton's nodes.
+-- This does nothing if the skeleton is unlocked.
+---
+function ENT:PositionTarget()
+	
+	for _, node in pairs(self.m_Nodes) do
+		node:PositionTarget();
+	end
+
+	if not self:IsLocked() then return; end
+
+	for _, c in pairs(self.m_Constraints) do
+		c:PositionTarget();
+	end
+
 end
