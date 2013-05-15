@@ -44,6 +44,9 @@ function ENT:IsLocked()
 	return self:GetSkeleton():IsLocked();
 end
 
+---
+-- Wrapper for getting position and angle
+---
 function ENT:GetPosAng()
 	return self:GetPos(), self:GetAngles();
 end

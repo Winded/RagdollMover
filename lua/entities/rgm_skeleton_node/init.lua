@@ -39,6 +39,14 @@ function ENT:SetBoneID(id)
 end
 
 ---
+-- Wrapper for setting position and angle
+---
+function ENT:SetPosAng(pos, ang)
+	self:SetPos(pos);
+	self:SetAngles(ang);
+end
+
+---
 -- Lock the target's position to the node's position
 ---
 function ENT:Lock()

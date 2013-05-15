@@ -116,6 +116,42 @@ function ENT:Unlock()
 end
 
 ---
+-- Restore node positions from previously stored data
+---
+function ENT:Restore()
+
+	if not self.m_RestoreData then return false; end
+
+	for i, node in pairs(self.m_Nodes) do
+
+		local data = self.m_RestoreData[i];
+
+		node:SetPosAng(data.pos, data.ang);
+
+	end
+
+	return true;
+
+end
+
+---
+-- Store node positions and angles for later restoration
+---
+function ENT:SetRestorePoint()
+	
+	self.m_RestoreData = {};
+
+	for i, node in pairs(self.m_Nodes) do
+
+		local pos, ang = node:GetPosAng();
+
+		self.m_RestoreData[i] = { pos = pos, ang = ang };
+
+	end
+
+end
+
+---
 -- Position the target entity to the skeleton's nodes.
 -- This does nothing if the skeleton is unlocked.
 ---
