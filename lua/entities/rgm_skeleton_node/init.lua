@@ -47,28 +47,17 @@ function ENT:SetPosAng(pos, ang)
 end
 
 ---
--- Lock the target's position to the node's position
+-- Called by rgm_manipulator when this node is grabbed
 ---
-function ENT:Lock()
-	
-	-- Get the local position of this node relative to it's parent, and we have a solid lock position
-	
-	local ppos, pang = self:GetParent():GetPosAng();
-	local pos, ang = self:GetPosAng();
-	
-	local lpos, lang = WorldToLocal(pos, ang, ppos, pang);
-	self.m_LockPos = lpos;
-	self.m_LockAng = lang;
-	
+function ENT:OnGrab()
+
 end
 
 ---
--- Unlock the target's position; node will follow target.
+-- Called by rgm_manipulator when this node is released
 ---
-function ENT:Unlock()
-	
-	-- No action required for now
-	
+function ENT:OnRelease()
+
 end
 
 ---

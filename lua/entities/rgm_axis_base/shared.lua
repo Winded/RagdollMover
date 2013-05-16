@@ -12,6 +12,14 @@ function ENT:GetGizmo()
 	return self:GetParent();
 end
 
+function ENT:GetPlayer()
+	return self:GetGizmo():GetPlayer();
+end
+
+function ENT:GetTarget()
+	return self:GetGizmo():GetTarget();
+end
+
 function ENT:GetType() --TODO purpose?
 	return self:GetNWInt("Type", 1);
 end

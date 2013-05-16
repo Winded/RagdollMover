@@ -28,7 +28,7 @@ end
 ---
 function ENT:GetTrace()
 	
-	local eyepos, eyeang = rgm.EyePosAng(self:GetPlayer());
+	local eyepos, eyeang = rgm.EyePosAng(self:GetGizmo():GetManipulator():GetPlayer());
 	
 	local intersect = rgm.IntersectRayWithPlane(self:GetPos(), self:GetAngles():Forward(), eyepos, eyeang:Forward());
 	

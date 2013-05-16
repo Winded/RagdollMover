@@ -30,6 +30,14 @@ function ENT:GetManipulator()
 	return self:GetParent();
 end
 
+function ENT:GetPlayer()
+	return self:GetManipulator():GetPlayer();
+end
+
+function ENT:GetTarget()
+	return self:GetManipulator():GetTarget();
+end
+
 function ENT:GetAxes()
 	return self.m_Axes;
 end

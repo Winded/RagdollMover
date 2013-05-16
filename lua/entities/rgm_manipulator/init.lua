@@ -59,11 +59,13 @@ function ENT:SetPlayer(player)
 	self:SetNWEntity("Player", player);
 end
 
+---
+-- Set the target skeleton node of the manipulator
+---
 function ENT:SetTarget(target)
 
-	if target:GetClassName() ~= "rgm_skeleton" then
-		target = target:GetRgmManipulator();
-		if not IsValid(target) then return false; end
+	if target:GetClassName() ~= "rgm_skeleton_node" then
+		error("rgm_manipulator SetTarget - target not node type");
 	end
 
 	self:SetNWEntity("Target", target);
@@ -82,6 +84,8 @@ end
 ---
 function ENT:Grab()
 	
+	if not self:IsEnabled() then return false; end
+
 	local trace = self:GetTrace();
 	if not trace.success then return false; end
 	
@@ -90,6 +94,10 @@ function ENT:Grab()
 	self:SetNWEntity("GrabData_Axis", gdata.axis);
 	self:SetNWVector("GrabData_AxisOffset", gdata.axisOffset);
 	self:SetNWBool("Grabbed", true);
+
+	-- Call callbacks
+	self:GetTarget():GetSkeleton():OnGrab();
+	self:GetTarget():OnGrab();
 	
 	return true;
 	
@@ -99,7 +107,17 @@ end
 -- If an axis is grabbed, it is released. This removes rgm grab data.
 ---
 function ENT:Release()
+
+	if not self:IsEnabled() then return false; end
+
 	self.m_GrabData = nil;
+
+	-- Call callbacks
+	self:GetTarget():GetSkeleton():OnRelease();
+	self:GetTarget():OnRelease();
+
+	return true;
+
 end
 
 ---
@@ -107,6 +125,8 @@ end
 -- If not grabbed, doesn't really do anything
 ---
 function ENT:Update()
+
+	if not self:IsEnabled() then return; end
 
 	if not self:IsGrabbed() then return; end
 

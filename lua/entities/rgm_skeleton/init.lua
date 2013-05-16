@@ -90,29 +90,19 @@ function ENT:CreateConstraint(nodes)
 end
 
 ---
--- Lock the positions of the actual entity into the skeleton's positions.
+-- Called by rgm_manipulator when this skeleton is grabbed
+-- No need to call OnGrab on nodes, manipulator calls the grabbed node's OnGrab
 ---
-function ENT:Lock()
-	
-	for _, node in pairs(self.m_Nodes) do
-		node:Lock();
-	end
-	
-	self:SetNWBool("Locked", true);
-	
+function ENT:OnGrab()
+
 end
 
 ---
--- Unlock the positions of the actual entity; makes the skeleton follow the entity.
+-- Called by rgm_manipulator when this skeleton is released
+-- No need to call OnRelease on nodes, manipulator calls the released node's OnRelease
 ---
-function ENT:Unlock()
-	
-	for _, node in pairs(self.m_Nodes) do
-		node:Unlock();
-	end
-	
-	self:SetNWBool("Locked", false);
-	
+function ENT:OnRelease()
+
 end
 
 ---
