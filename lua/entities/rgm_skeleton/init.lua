@@ -142,19 +142,19 @@ function ENT:SetRestorePoint()
 end
 
 ---
--- Position the target entity to the skeleton's nodes.
+-- Update position of the target entity to the skeleton's nodes.
 -- This does nothing if the skeleton is unlocked.
 ---
-function ENT:PositionTarget()
-	
-	for _, node in pairs(self.m_Nodes) do
-		node:PositionTarget();
-	end
+function ENT:Update()
 
 	if not self:IsLocked() then return; end
+	
+	for _, node in pairs(self.m_Nodes) do
+		node:Update();
+	end
 
 	for _, c in pairs(self.m_Constraints) do
-		c:PositionTarget();
+		c:Update();
 	end
 
 end

@@ -45,6 +45,13 @@ function ENT:IsLocked()
 end
 
 ---
+-- Returns true if the node is grabbed
+---
+function ENT:IsGrabbed()
+	return self:GetNWBool("Grabbed", false);
+end
+
+---
 -- Wrapper for getting position and angle
 ---
 function ENT:GetPosAng()

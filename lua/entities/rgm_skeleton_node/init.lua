@@ -50,22 +50,24 @@ end
 -- Called by rgm_manipulator when this node is grabbed
 ---
 function ENT:OnGrab()
-
+	self:SetNWBool("Grabbed", true);
 end
 
 ---
 -- Called by rgm_manipulator when this node is released
 ---
 function ENT:OnRelease()
-
+	self:SetNWBool("Grabbed", false);
 end
 
 ---
--- Position the node's target to the node's position.
+-- Update the node's target position to the node's position.
 -- This does nothing if the skeleton is unlocked.
 ---
-function ENT:PositionTarget()
+function ENT:Update()
 	
+	if not self:IsLocked() then return; end
+
 	local type = self:GetType();
 	local e = self:GetSkeleton():GetEntity();
 	local pos, ang = self:GetPosAng();
