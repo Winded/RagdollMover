@@ -12,16 +12,6 @@ local GREEN = Color(0, 255, 0, 255);
 local BLUE = Color(0, 0, 255, 255);
 local GREY = Color(175,175,175,255);
 
-function ENT:MakeGizmo(name)
-	
-	local gizmo = ents.Create(name);
-	gizmo:SetParent(self);
-	gizmo:Spawn();
-	gizmo:SetLocalPos(Vector(0, 0, 0));
-	gizmo:SetLocalAngles(Angle(0, 0, 0));
-	
-end
-
 function ENT:Initialize()
 
 	self:InitializeShared();
@@ -38,6 +28,16 @@ function ENT:Initialize()
 	};
 	
 	self:SendMessage("SetupGizmos", self.MoveGizmo, self.RotateGizmo, self.ScaleGizmo);
+	
+end
+
+function ENT:MakeGizmo(name)
+	
+	local gizmo = ents.Create(name);
+	gizmo:SetParent(self);
+	gizmo:Spawn();
+	gizmo:SetLocalPos(Vector(0, 0, 0));
+	gizmo:SetLocalAngles(Angle(0, 0, 0));
 	
 end
 
@@ -65,11 +65,23 @@ end
 function ENT:SetTarget(target)
 
 	if target:GetClassName() ~= "rgm_skeleton_node" then
-		error("rgm_manipulator SetTarget - target not node type");
+		error("rgm_manipulator SetTarget - target not of type rgm_skeleton_node");
 	end
 
 	self:SetNWEntity("Target", target);
 	return true;
+
+end
+---
+-- Clear the target of the manipulator. This will release the node if it is grabbed.
+---
+function ENT:ClearTarget()
+	
+	if self:IsGrabbed() then
+		self:Release();
+	end
+
+	self:SetNWEntity("Target", NULL);
 
 end
 
@@ -110,7 +122,9 @@ function ENT:Release()
 
 	if not self:IsEnabled() then return false; end
 
-	self.m_GrabData = nil;
+	self:SetNWEntity("GrabData_Axis", NULL);
+	self:SetNWVector("GrabData_AxisOffset", Vector());
+	self:SetNWBool("Grabbed", false);
 
 	-- Call callbacks
 	self:GetTarget():GetSkeleton():OnRelease();

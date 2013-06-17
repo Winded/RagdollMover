@@ -79,9 +79,7 @@ function ENT:Update()
 	elseif type == RgmNodeType.Physbone then
 
 		local b = e:GetPhysicsObjectNum(self:GetBoneID());
-		if b == nil then
-			return; --Physbone not found, something's wrong
-		end
+		if b == nil then return; end --Physbone not found, something's wrong
 		
 		b:SetPos(pos);
 		b:SetAngles(ang);

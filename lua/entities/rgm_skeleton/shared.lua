@@ -43,7 +43,7 @@ function ENT:GetNodeFor(type, bone)
 
 	local ent = self:GetEntity();
 
-	for i, node in ipairs(self.m_Nodes) do
+	for _, node in pairs(self.m_Nodes) do
 
 		if node:GetType() == type and node:GetBone() == bone then
 			return node;

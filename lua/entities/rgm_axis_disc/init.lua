@@ -32,9 +32,11 @@ function ENT:Update()
 	local intersect = rgm.IntersectRayWithPlane(planepos, planenorm, linepos, lineang);
 
 	local localized = self:WorldToLocal(intersect);
-	localized.z = 0;
-	localang = localized:Angle();
 
-	-- TODO
+	local iAng = localized:Angle();
+	local gAng = offset:Angle();
+	local ang = iAng - gAng;
+
+	target:SetAngles(ang);
 
 end

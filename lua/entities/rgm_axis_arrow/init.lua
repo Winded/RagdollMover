@@ -25,3 +25,25 @@ function ENT:ProcessMovement(offpos, offang, eyepos,
 	return pos,ang
 	
 end
+
+---
+-- Updates the skeleton position
+---
+function ENT:Update()
+
+	local offset = self:GetGrabOffset();
+
+	local pl = self:GetPlayer();
+	local eyepos, eyeang = rgm.EyePosAng(pl);
+
+	local target = self:GetTarget();
+
+	local planepos = self:GetPos();
+	local planenorm = self:GetAngles():Forward();
+	local linepos, lineang = eyepos, eyeang:Forward();
+
+	local intersect = rgm.IntersectRayWithPlane(planepos, planenorm, linepos, lineang);
+
+	
+
+end

@@ -8,3 +8,12 @@ function ENT:Initialize()
 	self:SharedInitialize();
 
 end
+
+---
+-- Update the ..
+---
+function ENT:Update()
+
+	-- Abstract
+
+end

@@ -36,9 +36,6 @@ function TOOL:LeftClick(tr)
 	local pl = self:GetOwner();
 
 	local m = pl:GetRgmManipulator();
-	if not IsValid(m) then
-		m = pl:CreateRgmManipulator();
-	end
 
 	if m:IsGrabbed() then
 		m:Release();
@@ -150,6 +147,20 @@ function TOOL:Reload()
 	pl:rgmSync();
 	
 	return false
+end
+
+function TOOL:Deploy()
+
+	if CLIENT then return true; end
+
+	local p = self:GetOwner();
+	local m = p:GetRgmManipulator();
+	if not IsValid(m) then
+		p:CreateRgmManipulator();
+	end
+
+	return true;
+
 end
 
 if SERVER then
