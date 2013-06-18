@@ -12,6 +12,10 @@ function ENT:GetGizmo()
 	return self:GetParent();
 end
 
+function ENT:GetManipulator()
+	return self:GetGizmo():GetManipulator();
+end
+
 function ENT:GetPlayer()
 	return self:GetGizmo():GetPlayer();
 end

@@ -1,7 +1,13 @@
 
-include("shared.lua")
-AddCSLuaFile("cl_init.lua")
-AddCSLuaFile("shared.lua")
+include("shared.lua");
+AddCSLuaFile("cl_init.lua");
+AddCSLuaFile("shared.lua");
+
+function ENT:Initialize()
+
+	self:SharedInitialize();
+
+end
 
 function ENT:SetColor1(color)
 	self:SetNWVector("Color1", Vector(color.r, color.g, color.b));

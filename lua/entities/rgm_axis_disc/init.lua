@@ -1,7 +1,13 @@
 
-include("shared.lua")
-AddCSLuaFile("cl_init.lua")
-AddCSLuaFile("shared.lua")
+include("shared.lua");
+AddCSLuaFile("cl_init.lua");
+AddCSLuaFile("shared.lua");
+
+function ENT:Initialize()
+
+	self:SharedInitialize();
+
+end
 
 function ENT:ProcessMovement(offpos,offang,eyepos,eyeang,ent,bone,ppos,pnorm)
 	local intersect = self:GetGrabPos(eyepos,eyeang,ppos,pnorm)

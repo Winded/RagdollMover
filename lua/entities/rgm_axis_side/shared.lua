@@ -1,16 +1,11 @@
 
-ENT.Type = "anim"
-ENT.Base = "rgm_axis_part"
+ENT.Type = "anim";
+ENT.Base = "rgm_axis_part";
 
-local sideLines = {
-	{Vector(0,0.25,0), Vector(0,0.25,0.25)},
-	{Vector(0,0,0.25) ,Vector(0,0.25,0.25)},
-};
+function ENT:SharedInitialize()
 
-function ENT:Initialize()
 	self.BaseClass.Initialize(self);
-	
-	--TODO
+
 end
 
 function ENT:GetColor1()

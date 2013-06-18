@@ -39,11 +39,16 @@ function ENT:Update()
 	local target = self:GetTarget();
 
 	local planepos = self:GetPos();
-	local planenorm = self:GetAngles():Forward();
+	local planenorm = self:GetAngles():Up();
 	local linepos, lineang = eyepos, eyeang:Forward();
 
 	local intersect = rgm.IntersectRayWithPlane(planepos, planenorm, linepos, lineang);
 
-	
+	local pos = self:WorldToLocal(intersect);
+	pos.x = pos.x - offset.x;
+	pos.y = 0;
+	pos.z = 0;
+
+	target:SetPos(pos);
 
 end

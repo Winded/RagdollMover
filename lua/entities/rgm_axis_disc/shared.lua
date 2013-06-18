@@ -1,26 +1,11 @@
 
-ENT.Type = "anim"
-ENT.Base = "rgm_axis_part"
+ENT.Type = "anim";
+ENT.Base = "rgm_axis_part";
 
-local function MakeLines()
-	local RTable = {}
-	local ang = Angle(0,0,11.25)
-	local startpos = Vector(0, 0, 1)
-	for i=1,32 do
-		local pos1 = startpos*1
-		local pos2 = startpos*1
-		pos1:Rotate(ang*(i-1))
-		pos2:Rotate(ang*(i))
-		RTable[i] = {pos1, pos2}
-	end
-	return RTable
-end
-local discLines = MakeLines();
+function ENT:SharedInitialize()
 
-function ENT:Initialize()
 	self.BaseClass.Initialize(self);
-	
-	self:SetLines(discLines);
+
 end
 
 ---
@@ -37,7 +22,7 @@ function ENT:GetTrace()
 	local dist = intersect:Distance(self:GetPos());
 	
 	if dist >= distmin and dist <= distmax then
-		local lpos, lang = WorldToLocal(intersect, self:GetAngles(), self:GetPos(), self:GetAngles());
+		local lpos = self:WorldToLocal(intersect);
 		return rgm.Trace(true, self:GetManipulator(), self:GetGizmo(), self, intersect, lpos);
 	end
 	
