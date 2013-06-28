@@ -15,6 +15,10 @@ ENT.GIZMO_MODE_MOVE = 1;
 ENT.GIZMO_MODE_ROTATE = 2;
 ENT.GIZMO_MODE_SCALE = 3;
 
+-- Alignment constants.
+ENT.ALIGNMENT_LOCAL = 1;
+ENT.ALIGNMENT_WORLD = 2;
+
 function ENT:InitializeShared()
 
 	self.BaseClass.Initialize(self);
@@ -29,7 +33,7 @@ end
 
 ---
 -- Returns if the manipulator is enabled or not.
--- When the manipulator is disabled, grabbing, updating positions and rendering
+-- When the manipulator is disabled, grabbing, updating and rendering
 -- functions do nothing.
 ---
 function ENT:IsEnabled()
@@ -51,8 +55,18 @@ function ENT:GetTarget()
 	return self:GetNWEntity("Target", NULL);
 end
 
+---
+-- Get the gizmo scale.
+---
 function ENT:GetScale()
 	return self:GetNWFloat("Scale", 1);
+end
+
+---
+-- Get the manipulator's alignment. This is the relative rotation of the gizmo.
+---
+function ENT:GetAlignment()
+	return self:GetNWInt("Alignment", ENT.ALIGNMENT_LOCAL);
 end
 
 ---

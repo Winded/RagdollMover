@@ -90,6 +90,14 @@ function ENT:SetMode(mode)
 end
 
 ---
+-- Set the manipulator's alignment. This is the relative rotation of the gizmo.
+-- Should be 1 or 2, meaning world or local.
+---
+function ENT:SetAlignment(align)
+	self:SetNWInt("Alignment", align);
+end
+
+---
 -- Attempt to grab an axis from the player's eye trace.
 -- If no axis is traced, returns false,
 -- If an axis is traced, creates grab data for this axis and returns true.
@@ -135,12 +143,22 @@ function ENT:Release()
 end
 
 ---
+-- Keeps the manipulator positioned on the target skeleton node.
 -- If grabbed, updates the skeleton position.
--- If not grabbed, doesn't really do anything
 ---
 function ENT:Update()
 
 	if not self:IsEnabled() then return; end
+
+	local t = self:GetTarget();
+	if not IsValid(t) then return; end
+
+	self:SetPos(t:GetPos());
+	if self:GetAlignment() == self.ALIGNMENT_LOCAL then
+		self:SetAngles(t:GetAngles());
+	else
+		self:SetAngles(Angle(0, 0, 0));
+	end
 
 	if not self:IsGrabbed() then return; end
 
@@ -148,14 +166,5 @@ function ENT:Update()
 	if not IsValid(gizmo) then return; end --Shouldn't happen
 
 	gizmo:Update();
-
-end
-
----
--- "Quiet" functionality to keep the manipulator on the target skeleton node.
----
-function ENT:Think()
-
-	-- TODO
 
 end
