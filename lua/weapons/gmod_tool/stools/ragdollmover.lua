@@ -4,28 +4,12 @@ TOOL.Category = "Poser"
 TOOL.Command = nil
 TOOL.ConfigName = ""
 
-TOOL.ClientConVar["localpos"] = 0
-TOOL.ClientConVar["localang"] = 1
-TOOL.ClientConVar["scale"] = 10
-TOOL.ClientConVar["fulldisc"] = 0
+TOOL.ClientConVar["scale"] = 10;
 
-TOOL.ClientConVar["ik_leg_L"] = 0
-TOOL.ClientConVar["ik_leg_R"] = 0
-TOOL.ClientConVar["ik_hand_L"] = 0
-TOOL.ClientConVar["ik_hand_R"] = 0
-TOOL.ClientConVar["hipkneeroll"] = 3
-TOOL.ClientConVar["ignoredaxis"] = 3
+TOOL.ClientConVar["unfreeze"] = 1;
+TOOL.ClientConVar["updaterate"] = 0.01;
 
-TOOL.ClientConVar["unfreeze"] = 1
-TOOL.ClientConVar["updaterate"] = 0.01
-
-TOOL.ClientConVar["rotatebutton"] = MOUSE_MIDDLE
-
-local TransTable = {
-	"ArrowX", "ArrowY", "ArrowZ",
-	"ArrowXY", "ArrowXZ", "ArrowYZ",
-	"DiscP", "DiscY", "DiscR"
-}
+TOOL.ClientConVar["rotatebutton"] = MOUSE_MIDDLE;
 
 function TOOL:LeftClick(tr)
 

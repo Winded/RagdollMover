@@ -76,6 +76,6 @@ end
 ---
 -- True if locked, false if unlocked
 ---
-function SK:IsLocked()
+function ENT:IsLocked()
 	return self:GetNWBool("Locked", false);
 end

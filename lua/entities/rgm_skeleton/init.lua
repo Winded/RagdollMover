@@ -95,6 +95,8 @@ end
 ---
 function ENT:OnGrab()
 
+	self:Lock();
+
 end
 
 ---
@@ -102,6 +104,8 @@ end
 -- No need to call OnRelease on nodes, manipulator calls the released node's OnRelease
 ---
 function ENT:OnRelease()
+
+	self:Unlock();
 
 end
 
@@ -139,6 +143,32 @@ function ENT:SetRestorePoint()
 
 	end
 
+end
+
+---
+-- Lock the positions of the actual entity into the skeleton's positions.
+---
+function ENT:Lock()
+	
+	for _, node in pairs(self.m_Nodes) do
+		node:Lock();
+	end
+	
+	self:SetNWBool("Locked", true);
+	
+end
+
+---
+-- Unlock the positions of the actual entity; makes the skeleton follow the entity.
+---
+function ENT:Unlock()
+	
+	for _, node in pairs(self.m_Nodes) do
+		node:Unlock();
+	end
+
+	self:SetNWBool("Locked", false);
+	
 end
 
 ---

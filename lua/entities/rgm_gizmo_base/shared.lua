@@ -47,12 +47,7 @@ end
 -- If no axis is grabbed, or not from this gizmo, returns NULL.
 ---
 function ENT:GetGrabAxis()
-	
-	local axis = self:GetManipulator():GetGrabAxis();
-	if not IsValid(axis) then return NULL; end
-
-	return axis;
-	
+	return self:GetManipulator():GetGrabAxis();
 end
 
 ---
