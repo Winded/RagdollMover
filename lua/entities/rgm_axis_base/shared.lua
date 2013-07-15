@@ -17,11 +17,11 @@ function ENT:GetManipulator()
 end
 
 function ENT:GetPlayer()
-	return self:GetGizmo():GetPlayer();
+	return self:GetManipulator():GetPlayer();
 end
 
 function ENT:GetTarget()
-	return self:GetGizmo():GetTarget();
+	return self:GetManipulator():GetTarget();
 end
 
 function ENT:GetType() --TODO purpose?
@@ -29,12 +29,12 @@ function ENT:GetType() --TODO purpose?
 end
 
 function ENT:GetScale()
-	return self:GetGizmo():GetScale();
+	return self:GetManipulator():GetScale();
 end
 
 function ENT:GetGrabOffset()
 
-	local go = self:GetGizmo():GetManipulator():GetGrabOffset();
+	local go = self:GetManipulator():GetGrabOffset();
 	if not go then return nil; end
 
 	return go;
@@ -54,6 +54,6 @@ end
 -- Returns if the axis is currently grabbed or not.
 ---
 function ENT:IsGrabbed()
-	local ga = self:GetGizmo():GetGrabAxis();
+	local ga = self:GetManipulator():GetGrabAxis();
 	return IsValid(ga) and ga == self;
 end

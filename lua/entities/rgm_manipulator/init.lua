@@ -16,9 +16,9 @@ function ENT:Initialize()
 
 	self:InitializeShared();
 	
-	self.m_MoveGizmo = self:MakeGizmo("rgm_gizmo_move");
-	self.m_RotateGizmo = self:MakeGizmo("rgm_gizmo_rotate");
-	self.m_ScaleGizmo = self:MakeGizmo("rgm_gizmo_scale");
+	self.m_MoveGizmo = self:CreateMoveGizmo();
+	self.m_RotateGizmo = self:CreateRotateGizmo();
+	self.m_ScaleGizmo = self:CreateScaleGizmo();
 	
 	self.m_Gizmos = 
 	{
@@ -31,14 +31,64 @@ function ENT:Initialize()
 	
 end
 
-function ENT:MakeGizmo(name)
+function ENT:CreateGizmo()
 	
-	local gizmo = ents.Create(name);
+	local gizmo = ents.Create("rgm_gizmo");
 	gizmo:SetParent(self);
 	gizmo:Spawn();
 	gizmo:SetLocalPos(Vector(0, 0, 0));
 	gizmo:SetLocalAngles(Angle(0, 0, 0));
+
+	return gizmo;
 	
+end
+
+function ENT:CreateMoveGizmo()
+
+	local gizmo = self:CreateGizmo();
+
+	gizmo:AddAxis("rgm_axis_arrow", RED, Vector(1, 0, 0):Angle());
+	gizmo:AddAxis("rgm_axis_arrow", GREEN, Vector(0, 1, 0):Angle());
+	gizmo:AddAxis("rgm_axis_arrow", BLUE, Vector(0, 0, 1):Angle());
+
+	gizmo:AddAxis("rgm_axis_side", RED, Vector(0, 0, -1):Angle()):SetColors(RED, GREEN);
+	gizmo:AddAxis("rgm_axis_side", GREEN, Vector(0, -1, 0):Angle()):SetColors(RED, BLUE);
+	gizmo:AddAxis("rgm_axis_side", BLUE, Vector(1, 0, 0):Angle()):SetColors(GREEN, BLUE);
+
+	gizmo:SyncAxes();
+
+	return gizmo;
+
+end
+
+function ENT:CreateRotateGizmo()
+
+	local gizmo = self:CreateGizmo();
+
+	gizmo:AddAxis("rgm_axis_disc", RED, Vector(0, 1, 0):Angle());
+	gizmo:AddAxis("rgm_axis_disc", GREEN, Vector(0, 0, 1):Angle());
+	gizmo:AddAxis("rgm_axis_disc", BLUE, Vector(1, 0, 0):Angle());
+
+	gizmo:AddAxis("rgm_axis_disc_large", GREY, Vector(1, 0, 0):Angle());
+
+	gizmo:AddAxis("rgm_axis_ball", GREY, Vector(1, 0, 0):Angle());
+
+	gizmo:SyncAxes();
+
+	return gizmo;
+
+end
+
+function ENT:CreateScaleGizmo()
+
+	local gizmo = self:CreateGizmo();
+
+	-- TODO
+
+	gizmo:SyncAxes();
+
+	return gizmo;
+
 end
 
 ---

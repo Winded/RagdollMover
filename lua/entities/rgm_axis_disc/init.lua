@@ -20,9 +20,9 @@ function ENT:ProcessMovement(offpos,offang,eyepos,eyeang,ent,bone,ppos,pnorm)
 end
 
 ---
--- Updates the skeleton position
+-- Updates the skeleton node position
 ---
-function ENT:Update()
+function ENT:UpdatePosition()
 
 	local offset = self:GetGrabOffset();
 

@@ -13,9 +13,9 @@ function ENT:Initialize()
 end
 
 ---
--- Updates the skeleton position
+-- Updates the skeleton node position
 ---
-function ENT:Update()
+function ENT:UpdatePosition()
 
 	-- Abstract
 

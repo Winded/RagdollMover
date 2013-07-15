@@ -2,20 +2,6 @@
 ENT.Base = "rgm_base_entity";
 ENT.Type = "anim";
 
-function ENT:MakeAxis(name, color, angle)
-
-	local axis = ents.Create(name);
-	axis:SetParent(self);
-	axis:Spawn();
-	axis:SetColor(color);
-	axis:SetLocalPos(Vector(0,0,0));
-	axis:SetLocalAngles(angle);
-	axis:SetScale(self:GetScale());
-	
-	return axis;
-		
-end
-
 function ENT:SharedInitialize()
 
 	self.BaseClass.Initialize(self);

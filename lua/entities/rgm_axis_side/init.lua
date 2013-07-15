@@ -17,6 +17,11 @@ function ENT:SetColor2(color)
 	self:SetNWVector("Color2", Vector(color.r, color.g, color.b));
 end
 
+function ENT:SetColors(color1, color2)
+	self:SetColor1(color1);
+	self:SetColor2(color2);
+end
+
 function ENT:ProcessMovement(offpos,offang,eyepos,eyeang,ent,bone,ppos,pnorm)
 	local obj = ent:GetPhysicsObjectNum(bone)
 	local intersect = self:GetGrabPos(eyepos,eyeang,ppos,pnorm)
