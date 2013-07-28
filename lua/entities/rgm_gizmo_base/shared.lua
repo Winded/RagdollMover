@@ -4,7 +4,7 @@ ENT.Type = "anim";
 
 function ENT:SharedInitialize()
 
-	self.BaseClass.Initialize(self);
+	self.BaseClass.SharedInitialize(self);
 	
 	self.m_AllowedFuncs = {"SetAxes"};
 	

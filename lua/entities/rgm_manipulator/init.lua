@@ -14,7 +14,7 @@ local GREY = Color(175,175,175,255);
 
 function ENT:Initialize()
 
-	self:InitializeShared();
+	self.BaseClass.Initialize(self);
 	
 	self.m_MoveGizmo = self:CreateMoveGizmo();
 	self.m_RotateGizmo = self:CreateRotateGizmo();

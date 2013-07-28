@@ -4,7 +4,7 @@ ENT.Base = "rgm_axis_part";
 
 function ENT:SharedInitialize()
 
-	self.BaseClass.Initialize(self);
+	self.BaseClass.SharedInitialize(self);
 
 end
 

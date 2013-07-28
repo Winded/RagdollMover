@@ -5,7 +5,7 @@ AddCSLuaFile("shared.lua");
 
 function ENT:Initialize()
 
-	self:SharedInitialize();
+	self.BaseClass.Initialize(self);
 
 	self:SetNetworkedBool("ShouldDraw", false);
 	self:SetNetworkedBool("ShouldDrawYellow", false);

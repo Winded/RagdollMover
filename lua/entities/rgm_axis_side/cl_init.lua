@@ -8,7 +8,7 @@ local sideLines = {
 
 function ENT:Initialize()
 
-	self:SharedInitialize();
+	self.BaseClass.Initialize(self);
 
 	self.m_Lines = sideLines;
 

@@ -21,7 +21,7 @@ ENT.ALIGNMENT_WORLD = 2;
 
 function ENT:InitializeShared()
 
-	self.BaseClass.Initialize(self);
+	self.BaseClass.SharedInitialize(self);
 	
 	self.m_AllowedFuncs = {"SetupGizmos"};
 	

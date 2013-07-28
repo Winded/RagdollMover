@@ -2,7 +2,8 @@
 ENT.Type = "anim";
 ENT.Base = "base_entity";
 
-function ENT:Initialize()
+function ENT:SharedInitialize()
+
 	self:SetNoDraw(true);
 	self:DrawShadow(false);
 	self:SetCollisionBounds(Vector(-0.1,-0.1,-0.1),Vector(0.1,0.1,0.1));
@@ -10,6 +11,7 @@ function ENT:Initialize()
 	self:SetNotSolid(true);
 	
 	self.m_AllowedFuncs = {};
+
 end
 
 ---

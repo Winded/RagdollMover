@@ -4,7 +4,7 @@ include("shared.lua");
 
 function ENT:Initialize()
 
-	self:InitializeShared();
+	self.BaseClass.Initialize(self);
 
 end
 

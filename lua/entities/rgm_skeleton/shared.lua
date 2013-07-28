@@ -14,7 +14,7 @@ ENT.Base = "rgm_base_entity";
 
 function ENT:SharedInitialize()
 
-	self.BaseClass.Initialize(self);
+	self.BaseClass.SharedInitialize(self);
 
 	self.m_AllowedFuncs = {"Sync"};
 

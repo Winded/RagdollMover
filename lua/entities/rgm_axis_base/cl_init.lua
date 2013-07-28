@@ -5,7 +5,7 @@ local YELLOW = Color(255, 255, 0, 255);
 
 function ENT:Initialize()
 	
-	self:SharedInitialize();
+	self.BaseClass.Initialize(self);
 
 	self.m_Lines = {};
 

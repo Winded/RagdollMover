@@ -14,7 +14,7 @@ _G["RgmNodeType"] =
 
 function ENT:SharedInitialize()
 
-	self.BaseClass.Initialize(self);
+	self.BaseClass.SharedInitialize(self);
 
 end
 
