@@ -10,8 +10,16 @@ function ENT:SharedInitialize()
 	self:SetSolid(SOLID_VPHYSICS);
 	self:SetNotSolid(true);
 	
-	self.m_AllowedFuncs = {};
+	self.m_AllowedMessages = {};
 
+end
+
+function ENT:GetAllowewdMessages()
+	return self.m_AllowedMessages;
+end
+
+function ENT:SetAllowedMessages(table)
+	self.m_AllowedMessages = table;
 end
 
 ---
@@ -43,9 +51,9 @@ end
 ---
 function ENT:ReceiveMessage(func, args)
 	
-	--Its essential to have a filter of allowed functions on serverside,
+	--Its essential to have a filter of allowed message functions on serverside,
 	--because you wouldn't want clients to control the entity.
-	if not table.HasValue(self.m_AllowedFuncs, func) then return; end
+	if not table.HasValue(self:GetAllowewdMessages(), func) then return; end
 	
 	if not self[func] then return; end
 	self[func](unpack(args));

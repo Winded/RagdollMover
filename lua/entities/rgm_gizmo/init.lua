@@ -26,11 +26,11 @@ function ENT:AddAxis(name, color, angle)
 end
 
 ---
--- Sends SetAxes function to clients, i.e. syncs the axes table with client or clients
+-- Sends SyncAxes function to clients, i.e. syncs the axes table with client or clients
 ---
 function ENT:SyncAxes()
 
-	self:SendMessage("SetAxes", self.m_Axes);
+	self:SendMessage("SyncAxes", self.m_Axes);
 
 end
 

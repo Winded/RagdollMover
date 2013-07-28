@@ -23,7 +23,7 @@ function ENT:InitializeShared()
 
 	self.BaseClass.SharedInitialize(self);
 	
-	self.m_AllowedFuncs = {"SetupGizmos"};
+	self:SetAllowedMessages({ "SetupGizmos" });
 	
 	self.m_Gizmos = {};
 	

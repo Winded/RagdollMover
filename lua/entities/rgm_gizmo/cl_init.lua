@@ -19,8 +19,8 @@ function ENT:Render()
 end
 
 ---
--- Called from server to setup the axis table
+-- Called from server to sync the axis table
 ---
-function ENT:SetAxes(axes)
+function ENT:SyncAxes(axes)
 	self.m_Axes = axes;
 end
