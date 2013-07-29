@@ -29,7 +29,7 @@ function ENT:GetType() --TODO purpose?
 end
 
 function ENT:GetScale()
-	return self:GetManipulator():GetScale();
+	return self:GetNWFloat("Scale", 1.0);
 end
 
 function ENT:GetGrabOffset()

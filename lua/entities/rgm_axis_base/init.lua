@@ -13,6 +13,13 @@ function ENT:Initialize()
 end
 
 ---
+-- Set the scale of the axis
+---
+function ENT:SetScale(scale)
+	self:SetNWFloat("Scale", scale);
+end
+
+---
 -- Updates the skeleton node position
 ---
 function ENT:UpdatePosition()

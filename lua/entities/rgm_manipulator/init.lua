@@ -140,6 +140,20 @@ function ENT:SetMode(mode)
 end
 
 ---
+-- Set the scale of all axes, and store the value in Scale network var
+function ENT:SetScale(scale)
+
+	for _, g in pairs(self:GetGizmos()) do
+		for __, axis in pairs(g:GetAxes()) do
+			axis:SetScale(scale);
+		end
+	end
+
+	self:SetNWFloat("Scale", scale);
+
+end
+
+---
 -- Set the manipulator's alignment. This is the relative rotation of the gizmo.
 -- Should be 1 or 2, meaning world or local.
 ---
