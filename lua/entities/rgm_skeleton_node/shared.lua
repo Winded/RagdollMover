@@ -18,6 +18,10 @@ function ENT:SharedInitialize()
 
 end
 
+function ENT:GetID()
+	return self:GetNWInt("Id", 0)
+end
+
 function ENT:GetSkeleton()
 	return self:GetNWEntity("Skeleton", NULL);
 end

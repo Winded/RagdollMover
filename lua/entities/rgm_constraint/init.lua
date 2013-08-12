@@ -10,7 +10,7 @@ function ENT:Initialize()
 end
 
 ---
--- Update the ..
+-- ...
 ---
 function ENT:Update()
 
