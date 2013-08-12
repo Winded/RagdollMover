@@ -63,7 +63,7 @@ end
 
 function ENT:GetNodeForPhysBone(bone)
 
-	return self:GetNodeFor(RgmNodeType.Physbone, bone);
+	return self:GetNodeFor(RgmNodeType.PhysBone, bone);
 
 end
 

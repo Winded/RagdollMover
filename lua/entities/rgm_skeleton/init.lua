@@ -16,29 +16,47 @@ function ENT:BuildNodes()
 
 	local ent = self:GetEntity();
 	
-	if ent:GetClassName() == "prop_ragdoll" then
+	if ent:GetClass() == "prop_ragdoll" then
 		
 		--Physical bones
-		for i = 0, ent:GetPhysicsObjectCount() - 1 do
-			local p = rgm.GetPhysBoneParent(ent, i);
-			
-			local b = ent:TranslatePhysBoneToBone(i);
-			local pb = ent:TranslatePhysBoneToBone(p);
+		for p = 0, ent:GetPhysicsObjectCount() - 1 do
 
-			-- TODO update
-			
-			if p then
-				self:CreateNode(b, pb, NodeType.Physbone, i);
-			else
-				self:CreateNode(b, -1, NodeType.Physbone, i);
+			local pp = rgm.GetPhysBoneParent(ent, p);
+
+			local pn = nil;
+			if pp then
+				pn = self:GetNodeForPhysBone(pp);
 			end
+
+			self:CreateNode(pn, RgmNodeType.PhysBone, p);
+
 		end
-		
-		--TODO non-physical bones? fingers? toes?
+
+		for b = 0, ent:GetBoneCount() - 1 do
+
+			local p = rgm.BoneToPhysBone(ent, b);
+
+			if p == -1 then
+
+				local pn = nil;
+				local bp = ent:GetBoneParent(b);
+
+				if bp ~= -1 then
+					local pp = rgm.GetPhysBoneParent(ent, bp);
+					if pp == -1 then
+						pn = self:GetNodeForBone(bp);
+					end
+				end
+
+				self:CreateNode(pn, RgmNodeType.Bone, b);
+
+			end
+
+		end
 		
 	else
 		--Create only root node when not a ragdoll.
-		self:CreateNode(0, -1, NodeType.Origin, 0);
+		self:CreateNode(nil, RgmNodeType.Origin, 0);
 	end
 
 	self:SendMessage("Sync", self.m_Nodes, {});

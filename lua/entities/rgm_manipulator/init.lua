@@ -114,7 +114,7 @@ end
 ---
 function ENT:SetTarget(target)
 
-	if target:GetClassName() ~= "rgm_skeleton_node" then
+	if target:GetClass() ~= "rgm_skeleton_node" then
 		error("rgm_manipulator SetTarget - target not of type rgm_skeleton_node");
 	end
 
