@@ -18,8 +18,16 @@ function ENT:SharedInitialize()
 
 end
 
+function ENT:GetID()
+	return self:GetNWInt("Id", 0)
+end
+
 function ENT:GetSkeleton()
 	return self:GetNWEntity("Skeleton", NULL);
+end
+
+function ENT:GetEntity()
+	return self:GetSkeleton():GetEntity();
 end
 
 function ENT:GetParent()
@@ -31,7 +39,8 @@ function ENT:GetType()
 end
 
 ---
--- Get the target bone ID of the node
+-- Get the target bone ID of the node.
+-- If this returns -1 then either it isn't synced on client or something is wrong.
 ---
 function ENT:GetBoneID()
 	self:SetNWInt("BoneID", -1);
