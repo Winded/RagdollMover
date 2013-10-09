@@ -114,7 +114,7 @@ end
 ---
 function ENT:SetTarget(target)
 
-	if target:GetClassName() ~= "rgm_skeleton_node" then
+	if target:GetClass() ~= "rgm_skeleton_node" then
 		error("rgm_manipulator SetTarget - target not of type rgm_skeleton_node");
 	end
 
@@ -171,7 +171,7 @@ function ENT:Grab()
 	if not self:IsEnabled() then return false; end
 
 	local trace = self:GetTrace();
-	if not trace.success then return false; end
+	if not IsValid(trace) then return false; end
 	
 	local gdata = rgm.GrabData(trace.axis, trace.axisOffset);
 

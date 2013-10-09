@@ -114,11 +114,13 @@ end
 -- Test player's eye trace against the active gizmo, and returns rgm.Trace
 ---
 function ENT:GetTrace()
+
 	local gizmo = self:GetActiveGizmo();
 
 	local resp = gizmo:GetTrace();
 	
 	return resp;
+	
 end
 
 ---

@@ -9,15 +9,13 @@ module("rgm",package.seeall);
 ---
 -- Create an rgm trace table.
 -- Values:
--- 	success - Did the trace hit an axis?
 -- 	axis - The axis that was hit
 -- 	position - The world position where the trace hit
 -- 	axisOffset - The local vector from the axis where the trace hit
 ---
-function Trace(success, axis, position, axisOffset)
+function Trace(axis, position, axisOffset)
 	local tr =
 	{
-		success = success,
 		axis = axis,
 		position = position,
 		axisOffset = axisOffset

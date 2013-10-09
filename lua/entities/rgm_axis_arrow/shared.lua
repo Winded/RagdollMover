@@ -22,6 +22,6 @@ function ENT:GetTrace()
 		return rgm.Trace(true, self:GetManipulator(), self:GetGizmo(), self, intersect, localized);
 	end
 	
-	return rgm.Trace(false);
+	return nil;
 
 end

@@ -26,7 +26,7 @@ function SK.Create(entity)
 	sk.m_Entity = entity;
 	sk.m_Nodes = {};
 	
-	if entity:GetClassName() == "prop_ragdoll" then
+	if entity:GetClass() == "prop_ragdoll" then
 		
 		--Physical bones
 		for i = 0, entity:GetPhysicsObjectCount() - 1 do

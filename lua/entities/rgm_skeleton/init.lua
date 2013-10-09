@@ -16,7 +16,7 @@ function ENT:BuildNodes()
 
 	local ent = self:GetEntity();
 	
-	if ent:GetClassName() == "prop_ragdoll" then
+	if ent:GetClass() == "prop_ragdoll" then
 		
 		--Physical bones
 		for i = 0, ent:GetPhysicsObjectCount() - 1 do

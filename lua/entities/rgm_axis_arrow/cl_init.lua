@@ -1,15 +1,15 @@
 
 include("shared.lua");
 
-function ENT:Initialize(  )
+function ENT:Initialize()
 
 	self.BaseClass.Initialize(self);
 
 	self.m_Lines =
 	{
-		{Vector(0, 0, 0), Vector(1, 0, 0)},
-		{Vector(1, 0, 0), Vector(0.9, 0.1, 0)},
-		{Vector(1, 0, 0), Vector(0.9, -0.1, 0)},
+		{ a = Vector(0, 0, 0), b = Vector(1, 0, 0) },
+		{ a = Vector(1, 0, 0), b = Vector(0.9, 0.1, 0) },
+		{ a = Vector(1, 0, 0), b = Vector(0.9, -0.1, 0) },
 	};
 
 end

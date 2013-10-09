@@ -45,7 +45,7 @@ function ENT:GetTrace()
 	
 	for i, axis in ipairs(self:GetAxes()) do
 		local tr = axis:GetTrace();
-		if tr.success then table.Insert(traces, tr); end
+		if IsValid(tr) then table.Insert(traces, tr); end
 	end
 	
 	local resp;
@@ -57,7 +57,7 @@ function ENT:GetTrace()
 		end
 	end
 	
-	if not resp then return rgm.Trace(false); end
+	if not resp then return nil; end
 	
 	return resp;
 	

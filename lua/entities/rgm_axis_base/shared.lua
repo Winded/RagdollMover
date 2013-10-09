@@ -45,9 +45,8 @@ end
 -- Test player's eye trace against the axis, and returns rgm.Trace
 ---
 function ENT:GetTrace()
-	
 	-- Abstract - inheriting entities should declare.
-	
+	return nil;
 end
 
 ---
