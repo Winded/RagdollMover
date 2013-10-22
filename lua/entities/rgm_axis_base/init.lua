@@ -20,6 +20,31 @@ function ENT:SetScale(scale)
 end
 
 ---
+-- Called when the axis is grabbed.
+---
+function ENT:OnGrab()
+
+	-- Abstract
+
+end
+
+---
+-- Called when the axis is released.
+---
+function ENT:OnRelease()
+
+	-- Abstract
+
+end
+
+---
+-- Gets called every frame.
+---
+function ENT:Update()
+
+end
+
+---
 -- Updates the skeleton node position
 ---
 function ENT:UpdatePosition()

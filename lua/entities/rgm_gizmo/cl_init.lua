@@ -21,6 +21,11 @@ end
 ---
 -- Called from server to sync the axis table
 ---
-function ENT:SyncAxes(axes)
-	self.m_Axes = axes;
+function ENT.SyncAxes(len)
+
+	local self = net.ReadEntity();
+	
+	self.m_Axes = net.ReadTable();
+
 end
+net.Receive("rgm_gizmo_sync", ENT.SyncAxes);

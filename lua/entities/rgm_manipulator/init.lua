@@ -16,18 +16,13 @@ function ENT:Initialize()
 
 	self.BaseClass.Initialize(self);
 	
-	self.m_MoveGizmo = self:CreateMoveGizmo();
-	self.m_RotateGizmo = self:CreateRotateGizmo();
-	self.m_ScaleGizmo = self:CreateScaleGizmo();
-	
-	self.m_Gizmos = 
-	{
-		self.m_MoveGizmo,
-		self.m_RotateGizmo,
-		self.m_ScaleGizmo,
-	};
-	
-	self:SendMessage("SetupGizmos", self.MoveGizmo, self.RotateGizmo, self.ScaleGizmo);
+	local MoveGizmo = self:CreateMoveGizmo();
+	local RotateGizmo = self:CreateRotateGizmo();
+	local ScaleGizmo = self:CreateScaleGizmo();
+
+	self:SetNWEntity("GizmoMove", MoveGizmo);
+	self:SetNWEntity("GizmoRotate", RotateGizmo);
+	self:SetNWEntity("GizmoScale", ScaleGizmo);
 	
 end
 
@@ -171,17 +166,17 @@ function ENT:Grab()
 	if not self:IsEnabled() then return false; end
 
 	local trace = self:GetTrace();
-	if not IsValid(trace) then return false; end
-	
-	local gdata = rgm.GrabData(trace.axis, trace.axisOffset);
+	if not trace then return false; end
 
-	self:SetNWEntity("GrabData_Axis", gdata.axis);
-	self:SetNWVector("GrabData_AxisOffset", gdata.axisOffset);
+	self:SetNWEntity("GrabData_Axis", trace.axis);
+	self:SetNWVector("GrabData_AxisOffset", trace.axisOffset);
 	self:SetNWBool("Grabbed", true);
 
 	-- Call callbacks
-	self:GetTarget():GetSkeleton():OnGrab();
-	self:GetTarget():OnGrab();
+	trace.axis:OnGrab();
+	local t = self:GetTarget();
+	t:GetSkeleton():OnGrab();
+	t:OnGrab();
 	
 	return true;
 	
@@ -207,15 +202,27 @@ function ENT:Release()
 end
 
 ---
+-- Signals update to gizmos.
 -- Keeps the manipulator positioned on the target skeleton node.
--- If grabbed, updates the skeleton position.
+-- If grabbed, updates the skeleton node position.
 ---
 function ENT:Update()
 
 	if not self:IsEnabled() then return; end
 
-	local t = self:GetTarget();
-	if not IsValid(t) then return; end
+	for _, gizmo in pairs(self:GetGizmos()) do
+		gizmo:Update();
+	end
+
+	if self:IsGrabbed() then
+
+		local axis = self:GetGrabAxis();
+
+		if IsValid(axis) then
+			axis:UpdatePosition();
+		end
+
+	end
 
 	self:SetPos(t:GetPos());
 	if self:GetAlignment() == self.ALIGNMENT_LOCAL then
@@ -223,12 +230,5 @@ function ENT:Update()
 	else
 		self:SetAngles(Angle(0, 0, 0));
 	end
-
-	if not self:IsGrabbed() then return; end
-
-	local gizmo = self:GetActiveGizmo();
-	if not IsValid(gizmo) then return; end --Shouldn't happen
-
-	gizmo:Update();
 
 end

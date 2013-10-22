@@ -22,10 +22,30 @@ function ENT:SetColors(color1, color2)
 	self:SetColor2(color2);
 end
 
-function ENT:ProcessMovement(offpos,offang,eyepos,eyeang,ent,bone,ppos,pnorm)
-	local obj = ent:GetPhysicsObjectNum(bone)
-	local intersect = self:GetGrabPos(eyepos,eyeang,ppos,pnorm)
-	local ang = obj:GetAngles()
-	local pos,_a = LocalToWorld(offpos,Angle(0,0,0),intersect,self:GetAngles())
-	return pos,ang
+---
+-- Updates the skeleton node position
+---
+function ENT:UpdatePosition()
+
+	local offset = self:GetGrabOffset();
+
+	local pl = self:GetPlayer();
+	local eyepos, eyeang = rgm.EyePosAng(pl);
+
+	local target = self:GetTarget();
+
+	local planepos = self:GetPos();
+	local planenorm = self:GetAngles():Forward();
+	local linepos, lineang = eyepos, eyeang:Forward();
+
+	local intersect = rgm.IntersectRayWithPlane(planepos, planenorm, linepos, lineang);
+
+	local localized = self:WorldToLocal(intersect);
+	localized.x = localized.x - offset.x;
+	localized.y = localized.y - offset.y;
+
+	local pos = self:LocalToWorld(localized);
+
+	target:SetPos(pos);
+
 end

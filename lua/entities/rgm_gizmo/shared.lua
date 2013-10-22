@@ -6,8 +6,6 @@ function ENT:SharedInitialize()
 
 	self.BaseClass.SharedInitialize(self);
 	
-	self:SetAllowedMessages({ "SyncAxes" });
-	
 	self.m_Axes = {};
 	
 end

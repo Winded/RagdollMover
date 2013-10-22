@@ -16,8 +16,6 @@ function ENT:SharedInitialize()
 
 	self.BaseClass.SharedInitialize(self);
 
-	self:SetAllowedMessages({ "Sync" });
-
 	self.m_Nodes = {};
 	self.m_Constraints = {};
 

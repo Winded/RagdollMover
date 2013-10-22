@@ -1,6 +1,6 @@
 
 ENT.Type = "anim";
-ENT.Base = "rgm_axis_part";
+ENT.Base = "rgm_axis_base";
 
 function ENT:SharedInitialize()
 

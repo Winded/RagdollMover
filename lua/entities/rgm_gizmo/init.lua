@@ -30,7 +30,12 @@ end
 ---
 function ENT:SyncAxes()
 
-	self:SendMessage("SyncAxes", self.m_Axes);
+	net.Start("rgm_gizmo_sync");
+
+	net.WriteEntity(self);
+	net.WriteTable(self.m_Axes);
+
+	net.Send(self:GetPlayer());
 
 end
 
@@ -39,9 +44,8 @@ end
 ---
 function ENT:Update()
 	
-	local axis = self:GetGrabAxis();
-	if not IsValid(axis) then return; end
-
-	axis:UpdatePosition();
+	for _, axis in pairs(self:GetAxes()) do
+		axis:Update();
+	end
 
 end

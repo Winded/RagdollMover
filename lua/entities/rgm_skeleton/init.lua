@@ -2,6 +2,8 @@ AddCSLuaFile("shared.lua");
 AddCSLuaFile("cl_init.lua");
 include("shared.lua");
 
+util.AddNetworkString("rgm_skeleton_sync");
+
 function ENT:Initialize()
 
 	self.BaseClass.Initialize(self);
@@ -17,6 +19,8 @@ function ENT:BuildNodes()
 	local ent = self:GetEntity();
 	
 	if ent:GetClass() == "prop_ragdoll" then
+
+		-- TODO merge physbone and bone creation
 		
 		--Physical bones
 		for p = 0, ent:GetPhysicsObjectCount() - 1 do
@@ -59,7 +63,12 @@ function ENT:BuildNodes()
 		self:CreateNode(nil, RgmNodeType.Origin, 0);
 	end
 
-	self:SendMessage("Sync", self.m_Nodes, {});
+	net.Start("rgm_skeleton_sync");
+
+	net.WriteEntity(self);
+	net.WriteTable(self.m_Nodes);
+
+	net.Send(player.GetAll());
 
 end
 

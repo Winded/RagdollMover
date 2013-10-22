@@ -9,24 +9,6 @@ function ENT:Initialize()
 	
 end
 
----
--- Gizmo setup function called by the server
----
-function ENT:SetupGizmos(move, rotate, scale)
-
-	self.MoveGizmo = move;
-	self.RotateGizmo = rotate;
-	self.ScaleGizmo = scale;
-	
-	self.m_Gizmos =
-	{
-		self.MoveGizmo,
-		self.RotateGizmo,
-		self.ScaleGizmo
-	};
-	
-end
-
 function ENT:DrawDirectionLine(norm,scale,ghost) --TODO: Get rid!
 	local pos1 = self:GetPos():ToScreen()
 	local pos2 = (self:GetPos()+(norm*scale)):ToScreen()

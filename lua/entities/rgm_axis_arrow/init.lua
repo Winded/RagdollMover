@@ -31,8 +31,8 @@ function ENT:UpdatePosition()
 
 	local pos = self:WorldToLocal(intersect);
 	pos.x = pos.x - offset.x;
-	pos.y = 0;
-	pos.z = 0;
+
+	pos = self:LocalToWorld(pos);
 
 	target:SetPos(pos);
 

@@ -11,30 +11,16 @@ end
 -- The nodes table should be an array of new/updated nodes, with tables of their data.
 -- The table contains only a 'deleted' boolean if the node was deleted.
 ---
-function ENT:Sync(nodes)
+function ENT.Sync(len)
 
-	for i, node in ipairs(nodes) do
-		
-		if node.deleted then
-			table.remove(self.m_Nodes, i);
-			continue;
-		end
+	local self = net.ReadEntity();
 
-		local n = self.m_Nodes[i];
+	local nodes = net.ReadTable();
 
-		if not n then
-			n = {};
-		end
-
-		for k, v in pairs(node) do
-			n[k] = v;
-		end
-
-		self.m_Nodes[i] = n;
-
-	end
+	self.m_Nodes = nodes;
 
 end
+net.Receive("rgm_skeleton_sync", ENT.Sync);
 
 ---
 -- Render the skeleton

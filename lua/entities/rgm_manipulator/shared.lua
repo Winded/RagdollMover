@@ -23,10 +23,6 @@ function ENT:InitializeShared()
 
 	self.BaseClass.SharedInitialize(self);
 	
-	self:SetAllowedMessages({ "SetupGizmos" });
-	
-	self.m_Gizmos = {};
-	
 	self.m_GrabData = nil;
 	
 end
@@ -38,10 +34,6 @@ end
 ---
 function ENT:IsEnabled()
 	return self:GetNWBool("Enabled", false);
-end
-
-function ENT:GetGizmos()
-	return self.m_Gizmos;
 end
 
 function ENT:GetPlayer()
@@ -85,13 +77,23 @@ function ENT:GetMode()
 end
 
 function ENT:GetMoveGizmo()
-	return self.m_MoveGizmo;
+	return self:GetNWEntity("GizmoMove", NULL);
 end
 function ENT:GetRotateGizmo()
-	return self.m_RotateGizmo;
+	return self:GetNWEntity("GizmoRotate", NULL);
 end
 function ENT:GetScaleGizmo()
-	return self.m_ScaleGizmo;
+	return self:GetNWEntity("GizmoScale", NULL);
+end
+
+function ENT:GetGizmos()
+
+	return {
+		self:GetMoveGizmo(),
+		self:GetRotateGizmo(),
+		self:GetScaleGizmo(),
+	};
+
 end
 
 ---
