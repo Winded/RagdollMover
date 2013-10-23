@@ -50,6 +50,23 @@ function ENT:GetTrace()
 end
 
 ---
+-- Perform IntersectRayWithPlane. This is more like a DRY function.
+---
+function ENT:GetIntersect(planenorm)
+
+	local pl = self:GetPlayer();
+	local eyepos, eyeang = rgm.EyePosAng(pl);
+
+	local planepos = self:GetPos();
+	local linepos, lineang = eyepos, eyeang:Forward();
+
+	local intersect = rgm.IntersectRayWithPlane(planepos, planenorm, linepos, lineang);
+
+	return intersect
+
+end
+
+---
 -- Returns if the axis is currently grabbed or not.
 ---
 function ENT:IsGrabbed()

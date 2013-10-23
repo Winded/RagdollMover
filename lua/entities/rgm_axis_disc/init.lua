@@ -14,18 +14,10 @@ end
 ---
 function ENT:UpdatePosition()
 
+	local intersect = self:GetIntersect(self:GetAngles():Forward());
+
 	local offset = self:GetGrabOffset();
-
-	local pl = self:GetPlayer();
-	local eyepos, eyeang = rgm.EyePosAng(pl);
-
 	local target = self:GetTarget();
-
-	local planepos = self:GetPos();
-	local planenorm = self:GetAngles():Forward();
-	local linepos, lineang = eyepos, eyeang:Forward();
-
-	local intersect = rgm.IntersectRayWithPlane(planepos, planenorm, linepos, lineang);
 
 	local localized = self:WorldToLocal(intersect);
 

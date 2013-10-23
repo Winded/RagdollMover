@@ -42,6 +42,8 @@ end
 ---
 function ENT:Update()
 
+	-- Abstract
+
 end
 
 ---
