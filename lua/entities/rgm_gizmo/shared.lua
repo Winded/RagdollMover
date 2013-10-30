@@ -22,6 +22,10 @@ function ENT:GetTarget()
 	return self:GetManipulator():GetTarget();
 end
 
+function ENT:GetScale()
+	return self:GetManipulator():GetScale();
+end
+
 function ENT:GetAxes()
 	return self.m_Axes;
 end

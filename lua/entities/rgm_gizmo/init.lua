@@ -19,7 +19,7 @@ function ENT:AddAxis(name, color, angle)
 	axis:SetLocalAngles(angle);
 	axis:SetScale(self:GetScale());
 
-	self.m_Axes:insert(axis);
+	table.insert(self.m_Axes, axis);
 	
 	return axis;
 		

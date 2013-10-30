@@ -3,6 +3,12 @@ include("shared.lua");
 AddCSLuaFile("shared.lua");
 AddCSLuaFile("cl_init.lua");
 
+function ENT:Initialize()
+
+	self.BaseClass.Initialize(self);
+
+end
+
 ---
 -- Lock the square axis; this stops the axis from rotating towards the player.
 ---
@@ -40,8 +46,8 @@ function ENT:UpdatePosition()
 	local target = self:GetTarget();
 
 	local localized = self:WorldToLocal(intersect);
-	localized.y -= offset.y;
-	localized.z -= offset.z;
+	localized.y = localized.y - offset.y;
+	localized.z = localized.z - offset.z;
 
 	local pos = self:LocalToWorld(localized);
 

@@ -1,7 +1,13 @@
 
-include("shared.lua")
-AddCSLuaFile("cl_init.lua")
-AddCSLuaFile("shared.lua")
+include("shared.lua");
+AddCSLuaFile("cl_init.lua");
+AddCSLuaFile("shared.lua");
+
+function ENT:Initialize()
+
+	self.BaseClass.Initialize(self);
+
+end
 
 function ENT:SetPlayer(pl)
 	self:SetNWEntity("Player", pl);

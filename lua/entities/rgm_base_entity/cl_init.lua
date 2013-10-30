@@ -3,6 +3,6 @@ include("shared.lua");
 
 function ENT:Initialize()
 
-	self:SharedInitialize()
+	self:SharedInitialize();
 
 end

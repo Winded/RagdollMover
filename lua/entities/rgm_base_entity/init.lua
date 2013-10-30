@@ -7,6 +7,6 @@ util.AddNetworkString("rgmEntityMessage");
 
 function ENT:Initialize()
 
-	self:SharedInitialize()
+	self:SharedInitialize();
 
 end
