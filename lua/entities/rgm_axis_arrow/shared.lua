@@ -1,10 +1,12 @@
 
-ENT.Type = "anim"
-ENT.Base = "rgm_axis_base"
+ENT.Type = "anim";
+ENT.Base = "rgm_axis_base";
+
+local base = getmetatable(ENT);
 
 function ENT:SharedInitialize()
 	
-	self.BaseClass.SharedInitialize(self);
+	base.SharedInitialize(self);
 
 end
 

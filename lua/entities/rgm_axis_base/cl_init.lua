@@ -3,9 +3,11 @@ include("shared.lua");
 
 local YELLOW = Color(255, 255, 0, 255);
 
+local base = getmetatable(ENT);
+
 function ENT:Initialize()
 	
-	self.BaseClass.Initialize(self);
+	base.Initialize(self);
 
 	self.m_Lines = {};
 

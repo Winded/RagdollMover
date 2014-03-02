@@ -1,9 +1,11 @@
 
 include("shared.lua");
 
+local base = getmetatable(ENT);
+
 function ENT:Initialize()
 
-	self.BaseClass.Initialize(self);
+	base.Initialize(self);
 
 	self.m_Lines =
 	{

@@ -2,9 +2,11 @@
 ENT.Type = "anim";
 ENT.Base = "rgm_base_entity";
 
+local base = getmetatable(ENT);
+
 function ENT:SharedInitialize()
 
-	self.BaseClass.SharedInitialize(self);
+	base.SharedInitialize(self);
 	
 end
 

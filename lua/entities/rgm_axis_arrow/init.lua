@@ -3,9 +3,11 @@ include("shared.lua");
 AddCSLuaFile("cl_init.lua");
 AddCSLuaFile("shared.lua");
 
+local base = getmetatable(ENT);
+
 function ENT:Initialize()
 
-	self.BaseClass.Initialize(self);
+	base.Initialize(self);
 
 end
 
