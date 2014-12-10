@@ -14,15 +14,8 @@ function test:Action(entity)
 end
 
 function test:Receive(length, player)
-
 	local entity = net.ReadEntity();
-	local boneTest = table.First(RGM.Bones, function(item) return item.Entity == entity; end);
-	if boneTest then
-		return;
-	end
-
-	RGM.Bone.BuildBones(entity);
-
+	RGM.SelectEntity(player, entity);
 end
 
 properties.Add("rgm_test", test);
