@@ -1,28 +1,30 @@
 
 ---
--- Skeletons contain all bones and constraints for a certain entity.
+-- Skeletons holds all the bones and constraints of a ragdoll together.
+-- It is also called by axis update to refresh bone positions.
 ---
 
 local SK = {};
 SK.__index = SK;
 
--- Shortcut for getting an entity's skeleton
-function SK.Get(entity)
-	return table.First(RGM.Skeletons, function(item) return item.Entity == entity; end);
+-- Return whether we can make a skeleton for the given entity
+function SK.CanCreate(entity)
+	-- TODO: Is prop_dynamic?
+	return IsValid(entity) and (entity:IsRagdoll() or IsValid(entity:GetPhysicsObject()));
 end
 
 -- Create a skeleton for the given entity and broadcast the creation to all clients
-function SK.New(entity)
+function SK.Create(entity)
 
 	local sk = setmetatable({}, SK);
 	sk.ID = math.random(1, 999999999);
 	sk.Entity = entity;
 	sk:Init();
 
-	table.insert(RGM.Skeletons, sk);
+	entity.RGMSkeleton = sk;
 
 	if SERVER then
-		net.Start("RGMNewSkeleton");
+		net.Start("RGMCreateSkeleton");
 		net.WriteTable(sk);
 		net.Broadcast();
 	end
@@ -31,7 +33,7 @@ function SK.New(entity)
 
 end
 
-function SK.NewClient()
+function SK.CreateClient()
 
 	local sk = setmetatable(net.ReadTable(), SK);
 
@@ -46,18 +48,20 @@ function SK.NewClient()
 		end
 	end
 
-	table.insert(RGM.Skeletons, sk);
+	sk.Entity.RGMSkeleton = sk;
 
 end
 
 -- Remove a skeleton and broadcast the removal to all clients
 function SK.Remove(skeleton)
 
-	table.RemoveByValue(RGM.Skeletons, skeleton);
+	if IsValid(skeleton.Entity) then
+		skeleton.Entity.RGMSkeleton = nil;
+	end
 
 	if SERVER then
 		net.Start("RGMRemoveSkeleton");
-		net.WriteInt(skeleton.ID, 32);
+		net.WriteEntity(skeleton.Entity);
 		net.Broadcast();
 	end
 
@@ -65,21 +69,12 @@ end
 
 function SK.RemoveClient()
 
-	local id = net.ReadInt(32);
-	local skeleton = table.First(RGM.Skeletons, function(item) return item.ID == id; end);
+	local entity = net.ReadEntity();
 
-	if skeleton then
-		table.RemoveByValue(RGM.Skeletons, skeleton);
+	if IsValid(entity) and entity.RGMSkeleton then
+		entity.RGMSkeleton = nil;
 	end
 
-end
-
-if SERVER then
-	util.AddNetworkString("RGMNewSkeleton");
-	util.AddNetworkString("RGMRemoveSkeleton");
-else
-	net.Receive("RGMNewSkeleton", SK.NewClient);
-	net.Receive("RGMRemoveSkeleton", SK.RemoveClient);
 end
 
 -- Initialize skeleton; setup bone hierarchy and constraint table
@@ -87,31 +82,32 @@ function SK:Init()
 
 	self.Bones = {};
 	self.Constraints = {};
+	self.ConstrainedBones = {};
 
-	if self.Entity:GetClass() ~= "prop_ragdoll" then
-		local bone = BONE.New(self, RGM.BoneTypes.Root, 0);
+	if not self.Entity:IsRagdoll() then
+		local bone = RGM.Bone.Create(self.Entity, RGM.BoneTypes.Root, 0);
 		table.insert(self.Bones, bone);
 		return;
 	end
 
 	for b = 0, self.Entity:GetPhysicsObjectCount() - 1 do
-		local bone = BONE.New(self, RGM.BoneTypes.Physbone, b);
+		local bone = RGM.Bone.Create(self.Entity, RGM.BoneTypes.Physbone, b);
 		table.insert(self.Bones, bone);
 	end
 
 	-- TODO: Non-phys bones
 
 	for _, bone in pairs(self.Bones) do
-		bone:SetupParent();
+		bone:SetupParent(self.Bones);
 	end
 
 	-- Finally, sort it so we can hierarchially loop through the bones with a simple for loop
 
 	local bones = {};
 
-	local addBone = function(bone)
+	addBone = function(bone)
 		table.insert(bones, bone);
-		local children = bone:GetChildren();
+		local children = table.Where(self.Bones, function(item) return item.Parent == bone; end);
 		for _, child in pairs(children) do
 			addBone(child);
 		end
@@ -119,22 +115,123 @@ function SK:Init()
 
 	local firstBone = table.First(self.Bones, function(item) return not item.Parent; end);
 	addBone(firstBone);
+	addBone = nil;
 
 	self.Bones = bones;
 
 end
 
-function SK:Draw()
+-- Has the given player selected this skeleton?
+function SK:IsSelected(player)
+	return IsValid(player.RGMSelectedEntity) and player.RGMSelectedEntity.RGMSkeleton == self;
+end
 
-	if RGM.SelectedSkeleton ~= self then
+function SK:AddConstraint(constraint)
+	table.insert(self.Constraints, constraint);
+	for _, bone in pairs(constraint.Bones) do
+		table.insert(self.ConstrainedBones, bone);
+	end
+end
+
+function SK:RemoveConstraint(constraint)
+	table.RemoveByValue(self.Constraints, constraint);
+	for _, bone in pairs(constraint.Bones) do
+		table.RemoveByValue(self.ConstrainedBones, bone);
+	end
+end
+
+-- Used to keep bones up to date when not grabbed
+function SK:Refresh()
+	for _, bone in pairs(self.Bones) do
+		bone:Refresh();
+	end
+	net.Start("RGMRefreshSkeleton");
+	net.WriteEntity(self.Entity);
+	net.Broadcast();
+end
+
+function SK.RefreshClient()
+	local entity = net.ReadEntity();
+	if not entity.RGMSkeleton then
 		return;
 	end
+	for _, bone in pairs(entity.RGMSkeleton.Bones) do
+		bone:Refresh();
+	end
+end
+
+function SK:OnGrab(selectedBone)
 
 	for _, bone in pairs(self.Bones) do
-		bone:Draw();
+		bone:RememberOffset();
+	end
+
+	for _, constraint in pairs(self.Constraints) do
+		constraint:OnGrab(selectedBone);
 	end
 
 end
 
+-- Refresh bone offsets, let constraints do their thing, and commit the new positions to the entity.
+function SK:OnMoveUpdate(selectedBone)
+
+	for _, bone in pairs(self.Bones) do
+		if bone ~= selectedBone and not table.HasValue(self.ConstrainedBones, bone) then
+			bone:RestoreOffset();
+		end
+	end
+
+	for _, constraint in pairs(self.Constraints) do
+		constraint:OnMoveUpdate(selectedBone);
+	end
+
+	for _, bone in pairs(self.Bones) do
+		bone:CommitChanges();
+	end
+
+end
+
+function SK:OnRelease(selectedBone)
+	self:Refresh();
+end
+
+-- Inspect the given trace, and return a bone that was hit, or nil if we didn't hit one
+function SK:Trace(trace)
+
+	if not IsValid(trace.Entity) or trace.Entity ~= self.Entity then
+		return nil;
+	end
+
+	local physBone = trace.PhysicsBone;
+	local bone = table.First(self.Bones, function(item) return item.Type == RGM.BoneTypes.Physbone and item.Index == physBone; end);
+	if bone then
+		return bone;
+	end
+
+	return nil;
+
+end
+
+function SK:Draw()
+
+	local bone = RGM.AimedBone;
+	local hollow = bone and bone:GetSkeleton() == self;
+
+	for _, bone in pairs(self.Bones) do
+		bone:Draw(hollow);
+	end
+
+end
+
+if SERVER then
+	util.AddNetworkString("RGMCreateSkeleton");
+	util.AddNetworkString("RGMRemoveSkeleton");
+	util.AddNetworkString("RGMRefreshSkeleton");
+else
+	net.Receive("RGMCreateSkeleton", SK.CreateClient);
+	net.Receive("RGMRemoveSkeleton", SK.RemoveClient);
+	net.Receive("RGMRefreshSkeleton", SK.RefreshClient);
+
+end
+
 RGM.Skeleton = SK;
-RGM.Skeletons = {};

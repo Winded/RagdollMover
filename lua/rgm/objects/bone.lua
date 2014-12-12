@@ -1,13 +1,8 @@
 --[[
 	Bones are arbitrary objects tied to real entities. They can either be tied to physical bones, manipulatable bones or the entity's root position.
 	We use these to make position manipulation more structured and reliable.
-	On client, bones are also used to render and trace for selection.
+	On client, bones are also used to render that fancy bone icon
 ]]
-
-if SERVER then
-	util.AddNetworkString("RGMBuildBones");
-	util.AddNetworkString("RGMRemoveBones");
-end
 
 RGM.BoneTypes = {
 	Root = 1,
@@ -15,24 +10,27 @@ RGM.BoneTypes = {
 	Bone = 3	
 };
 
+local boneMaterial = Material("widgets/bone.png", "unlitsmooth");
+local boneMaterialSmall = Material("widgets/bone_small.png", "unlitsmooth");
+
 local BONE = {};
 BONE.__index = BONE;
 
-function BONE.New(skeleton, type, boneIndex)
+function BONE.Create(entity, type, boneIndex)
 
 	local bone = setmetatable({}, BONE);
 	bone.ID = math.random(1, 999999);
-	bone.Skeleton = skeleton;
-	bone.Entity = skeleton.Entity;
+	-- We store the owning entity to the bone instead of the skeleton, because that would cause stack overflow when serializing
+	bone.Entity = entity;
 
 	bone.Type = type;
 	bone.Index = boneIndex;
 
 	bone.Parent = nil;
 
-	bone._Position = self:GetRealPos();
-	bone._Angles = self:GetRealAngles();
-	bone._Scale = self:GetRealScale();
+	bone._Position = bone:GetRealPos();
+	bone._Angles = bone:GetRealAngles();
+	bone._Scale = bone:GetRealScale();
 
 	bone.RememberedPos = Vector(0, 0, 0);
 	bone.RememberedAngles = Angle(0, 0, 0);
@@ -42,7 +40,7 @@ function BONE.New(skeleton, type, boneIndex)
 end
 
 -- Find the parent of this bone
-function BONE:SetupParent()
+function BONE:SetupParent(bones)
 
 	if self.Type == RGM.BoneTypes.Root then
 		return;
@@ -51,7 +49,7 @@ function BONE:SetupParent()
 	if self.Type == RGM.BoneTypes.Physbone then
 
 		local physParent = GetPhysBoneParent(self.Entity, self.Index);
-		local phys = table.First(self.Skeleton.Bones, function(item)
+		local phys = table.First(bones, function(item)
 			return item.Entity == self.Entity and item.Type == RGM.BoneTypes.Physbone and item.Index == physParent;
 		end);
 		if physParent >= 0 and phys then
@@ -66,18 +64,21 @@ function BONE:SetupParent()
 
 end
 
+function BONE:GetSkeleton()
+	return self.Entity.RGMSkeleton;
+end
+
 function BONE:GetChildren()
 	if not self.Children then
-		self.Children = table.Where(self.Skeleton.Bones, function(item) return item.Parent == self; end);
+		local skeleton = self:GetSkeleton();
+		self.Children = table.Where(skeleton.Bones, function(item) return item.Parent == self; end);
 	end
 	return self.Children;
 end
 
-function BONE:GetConstraints()
-	if not self.Constraints then
-		self.Constraints = table.Where(self.Skeleton.Constraints, function(item) return table.HasValue(item.Bones, self); end);
-	end
-	return self.Constraints;
+-- Has the given player selected this bone?
+function BONE:IsSelected(player)
+	return player.RGMSelectedBone == self;
 end
 
 ---
@@ -129,23 +130,8 @@ function BONE:GetLocalAngles()
 end
 
 function BONE:SetPosAng(position, angles)
-
-	local myPos, myAng = self:GetPosAng();
-
-	-- Store child relative positions
-	local children = self:GetChildren();
-	for _, child in pairs(children) do
-		child:RememberOffset();
-	end
-
 	self._Position = position;
 	self._Angles = angles;
-
-	-- Restore child relative positions
-	for _, child in pairs(children) do
-		child:RestoreOffset();
-	end
-
 end
 
 function BONE:SetPos(position)
@@ -226,14 +212,19 @@ function BONE:SetRealScale(scale)
 	end
 end
 
+-- Update stored position, angles and scale to real ones
+function BONE:Refresh()
+	self._Position = self:GetRealPos();
+	self._Angles = self:GetRealAngles();
+	self._Scale = self:GetRealScale();
+end
+
 function BONE:CommitChanges()
 
 	self:SetRealPosAng(self._Position, self._Angles);
 	self:SetRealScale(self._Scale);
 
-	self._Position = self:GetRealPos();
-	self._Angles = self:GetRealAngles();
-	self._Scale = self:GetRealScale();
+	self:Refresh();
 
 end
 
@@ -257,21 +248,57 @@ function BONE:RestoreOffset()
 
 end
 
--- Draw stuff (on client)
-function BONE:Draw()
+-- Draw the bone. Should be called between cam.Start3D and cam.End3D
+function BONE:Draw(hollow)
 
-	if not self.Parent then
+	local startPos = self:GetRealPos();
+
+	local children = self:GetChildren();
+
+	local alpha = 255;
+	if hollow and RGM.AimedBone ~= self then
+		alpha = 20;
+	end
+
+	if #children == 0 then
+		local endPos = startPos + self:GetRealAngles():Forward() * 10;
+
+		local length = startPos:Distance(endPos);
+		local width = length * 0.2;
+
+		if length > 10 then
+			render.SetMaterial(boneMaterial);
+		else
+			render.SetMaterial(boneMaterialSmall);
+		end
+
+		cam.IgnoreZ(true);
+		render.DrawBeam(startPos, endPos, width, 0, 1, Color(255, 255, 255, alpha * 0.5));
+		cam.IgnoreZ(false);
+
+		render.DrawBeam(startPos, endPos, width, 0, 1, Color(255, 255, 255, alpha));
+
 		return;
 	end
 
-	local pos1 = self:GetPos():ToScreen();
-	local pos2 = self.Parent:GetPos():ToScreen();
-	if not pos1.visible and not pos2.visible then
-		return;
-	end
+	for _, child in pairs(children) do
+		local endPos = child:GetRealPos();
 
-	surface.SetDrawColor(255, 0, 255);
-	surface.DrawLine(pos1.x, pos1.y, pos2.x, pos2.y);
+		local length = startPos:Distance(endPos);
+		local width = length * 0.2;
+
+		if length > 10 then
+			render.SetMaterial(boneMaterial);
+		else
+			render.SetMaterial(boneMaterialSmall);
+		end
+
+		cam.IgnoreZ(true);
+		render.DrawBeam(startPos, endPos, width, 0, 1, Color(255, 255, 255, alpha * 0.5));
+		cam.IgnoreZ(false);
+
+		render.DrawBeam(startPos, endPos, width, 0, 1, Color(255, 255, 255, alpha));
+	end
 
 end
 

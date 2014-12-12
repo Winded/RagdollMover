@@ -1,21 +1,45 @@
 
-local test = {};
-test.MenuLabel = "RGM Test";
-test.Order = 1000;
+local Move = {};
+Move.MenuLabel = "Move ragdoll";
+Move.Order = 1000;
 
-function test:Filter(entity)
-	return IsValid(entity) and not entity:IsPlayer();
+function Move:Filter(entity)
+	local player = LocalPlayer();
+	return IsValid(entity) and not entity:IsPlayer() and player.RGMSelectedEntity ~= entity;
 end
 
-function test:Action(entity)
+function Move:Action(entity)
 	self:MsgStart();
 	net.WriteEntity(entity);
 	self:MsgEnd();
 end
 
-function test:Receive(length, player)
+function Move:Receive(length, player)
 	local entity = net.ReadEntity();
 	RGM.SelectEntity(player, entity);
 end
 
-properties.Add("rgm_test", test);
+properties.Add("rgm_move", Move);
+
+local Stop = {};
+Stop.MenuLabel = "Stop moving";
+Stop.Order = 1001;
+
+function Stop:Filter(entity)
+	local player = LocalPlayer();
+	return IsValid(entity) and player.RGMSelectedEntity == entity;
+end
+
+function Stop:Action(entity)
+	self:MsgStart();
+	net.WriteEntity(entity);
+	self:MsgEnd();
+end
+
+function Stop:Receive(length, player)
+	if IsValid(player.RGMSelectedEntity) then
+		RGM.SelectEntity(player, nil);
+	end
+end
+
+properties.Add("rgm_stop", Stop);

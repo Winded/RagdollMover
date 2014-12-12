@@ -18,24 +18,6 @@ function IK:Init()
 
 end
 
----
---	Key function for IK chains: finding the knee position (in case of arms, it's elbow position)
---	Arguments in order are: hip position, ankle position, thigh length, shin length, knee vector direction.
---	
---	Got the math from this thread:
---	http://forum.unity3d.com/threads/40431-IK-Chain
----
-local function FindKnee(pHip, pAnkle, fThigh, fShin, vKneeDir)
-	local vB = pAnkle - pHip;
-	local LB = vB:Length();
-	local aa = (LB * LB + fThigh * fThigh - fShin * fShin) / 2 / LB;
-	local bb = math.sqrt(fThigh * fThigh - aa * aa);
-	local vF = vB:Cross(vKneeDir:Cross(vB));
-	vB:Normalize();
-	vF:Normalize();
-	return pHip + (aa * vB) + (bb * vF);
-end
-
 -- Get the directional angle from bone1 to bone2
 local function GetDirectionAngles(bone1, bone2)
 	return (bone2:GetPos() - bone1:GetPos()):Angle();
@@ -44,7 +26,7 @@ end
 -- Used to get the angles of bone1 relative to directional angles
 local function GetRelativeAngles(bone1, bone2)
 	local dirAngle = GetDirectionAngles(bone1, bone2);
-	local _, relativeAngle = WorldToLocal(bone1:GetPosAng(), bone1:GetPos(), dirAngle);
+	local _, relativeAngle = WorldToLocal(bone1:GetPos(), bone1:GetAngles(), bone1:GetPos(), dirAngle);
 	return relativeAngle;
 end
 
@@ -62,16 +44,16 @@ local function GetKneeDir(hipBone, kneeBone, footBone)
 	return dir;
 end
 
-function IK:BeforeChange(selectedBone)
+function IK:OnGrab(selectedBone)
 
 	local data = {};
 
-	data.HipOffsetAngles = GetRelativeAngles(self.HipBone, bone);
-	data.HipKneeDistance = self.HipBone:GetPos():Distance(bone:GetPos());
+	data.HipOffsetAngles = GetRelativeAngles(self.HipBone, self.KneeBone);
+	data.HipKneeDistance = self.HipBone:GetPos():Distance(self.KneeBone:GetPos());
 
-	data.KneeOffsetAngles = GetRelativeAngles(bone, self.FootBone);
-	data.KneeDirection = GetKneeDir(self.HipBone, bone, self.FootBone);
-	data.KneeFootDistance = bone:GetPos():Distance(self.FootBone:GetPos());
+	data.KneeOffsetAngles = GetRelativeAngles(self.KneeBone, self.FootBone);
+	data.KneeDirection = GetKneeDir(self.HipBone, self.KneeBone, self.FootBone);
+	data.KneeFootDistance = self.KneeBone:GetPos():Distance(self.FootBone:GetPos());
 
 	data.FootPosition, data.FootAngles = self.FootBone:GetPosAng();
 
@@ -79,26 +61,30 @@ function IK:BeforeChange(selectedBone)
 
 end
 
-function IK:AfterChange(selectedBone)
+function IK:OnMoveUpdate(selectedBone)
 
 	local data = self.KneeData;
 		
 	local hipPos = self.HipBone:GetPos();
-	local kneePos = FindKnee(hipPos, data.FootPosition, data.HipKneeDistance, data.KneeFootDistance, data.KneeDirection);
-
-	-- Directly manipulate bone variables to skip the default chain reaction
-	local angles = GetAnglesFromDir(self.HipBone, self.KneeBone, data.HipOffsetAngles);
-	self.HipBone._Angles = angles;
-
-	self.KneeBone._Position = kneePos;
-	angles = GetAnglesFromDir(self.KneeBone, self.FootBone, data.KneeFootDistance);
-	self.KneeBone._Angles = angles;
 
 	if selectedBone ~= self.FootBone then
 		self.FootBone:SetPosAng(data.FootPosition, data.FootAngles);
 	end
 
-	self.KneeData = nil;
+	local kneePos = RGM.FindKnee(hipPos, data.FootPosition, data.HipKneeDistance, data.KneeFootDistance, data.KneeDirection);
+	if selectedBone == self.KneeBone then
+		local kneeDir = GetKneeDir(self.HipBone, self.KneeBone, self.FootBone);
+		kneePos = RGM.FindKnee(hipPos, data.FootPosition, data.HipKneeDistance, data.KneeFootDistance, kneeDir);
+	end
+
+	self.KneeBone:SetPos(kneePos);
+	local kneeAngles = GetAnglesFromDir(self.KneeBone, self.FootBone, data.KneeOffsetAngles);
+	self.KneeBone:SetAngles(kneeAngles);
+
+	if selectedBone ~= self.HipBone then
+		local hipAngles = GetAnglesFromDir(self.HipBone, self.KneeBone, data.HipOffsetAngles);
+		self.HipBone:SetAngles(hipAngles);
+	end
 
 end
 

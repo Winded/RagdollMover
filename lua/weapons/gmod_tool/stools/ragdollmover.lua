@@ -1,73 +1,47 @@
 
-TOOL.Name = "Ragdoll Mover"
-TOOL.Category = "Poser"
-TOOL.Command = nil
-TOOL.ConfigName = ""
-
-TOOL.ClientConVar["scale"] = 10;
-
-TOOL.ClientConVar["unfreeze"] = 1;
-TOOL.ClientConVar["updaterate"] = 0.01;
-
-TOOL.ClientConVar["rotatebutton"] = MOUSE_MIDDLE;
+TOOL.Name = "Ragdoll Mover";
+TOOL.Category = "Poser";
+TOOL.Command = nil;
+TOOL.ConfigName = "";
 
 function TOOL:LeftClick(tr)
 
-	-- Grab the aimed axis
-
-	if CLIENT then return false; end
-
-	local pl = self:GetOwner();
-
-	local m = pl:GetRgmManipulator();
-
-	if m:IsGrabbed() then
-		m:Release();
+	if CLIENT then
+		return false;
 	end
 
-	local grabbed = m:Grab();
+	local player = self:GetOwner();
+	local trace = RGM.Trace(player);
+
+	if trace.Axis then
+		trace.Axis:Grab();
+		return false;
+	end
+
+	if not trace.Bone then
+		return false;
+	end
+
+	local entity = trace.Entity;
+	local bone = trace.Bone;
+	RGM.Select(player, entity, bone);
 
 	return false;
 
 end
 
 function TOOL:RightClick(tr)
-
-	-- Select bone
-
-	if CLIENT then return false; end
-
-	local pl = self:GetOwner();
-
-	local m = pl:GetRgmManipulator();
-
-	if not m:IsGrabbed() then
-
-		local ent = tr.Entity;
-		if not IsValid(ent) then return false; end
-		local bone = tr.PhysicsBone;
-		if not bone or bone < 0 then return false; end
-
-		local s = ent:GetRgmSkeleton();
-		if not IsValid(s) then return false; end
-		local n = s:GetNodeForPhysBone(bone);
-		if not n then return false; end
-
-		m:SetTarget(n);
-
-	end
-
-	return false;
-
+	local player = self:GetOwner();
+	player.RGMGizmo:NextMode();
 end
 
 function TOOL:Reload()
 
-	-- Set target to none; hides gizmo
+	if CLIENT then 
+		return false; 
+	end
 
-	if CLIENT then return false; end
-
-	self:GetOwner():GetRgmManipulator():ClearTarget();
+	RGM.Select(nil);
 
 	return false;
 
@@ -75,18 +49,13 @@ end
 
 function TOOL:Deploy()
 
-	-- Ensure the player has a manipulator,
-	-- and enable it.
+	-- Since we're not using the tool's own DrawHUD function, we need to let the draw hook know when to draw
 
-	if CLIENT then return true; end
-
-	local p = self:GetOwner();
-	local m = p:GetRgmManipulator();
-	if not IsValid(m) then
-		p:CreateRgmManipulator();
+	if SERVER then
+		return true;
 	end
 
-	m:Enable();
+	RGM.CanDraw = true;
 
 	return true;
 
@@ -94,11 +63,11 @@ end
 
 function TOOL:Holster()
 
-	-- Disable the manipulator
+	if SERVER then
+		return true;
+	end
 
-	if CLIENT then return true; end
-
-	self:GetOwner():GetRgmManipulator():Disable();
+	RGM.CanDraw = false;
 
 	return true;
 
@@ -108,20 +77,20 @@ if SERVER then
 
 function TOOL:Think()
 
-	-- Update
-
-	local pl = self:GetOwner();
-
-	local m = pl:GetRgmManipulator();
-	if not IsValid(m) then return; end
-
-	m:Update();
-
-	if not pl:KeyDown(IN_ATTACK) then
-
-		m:Release();
-
+	local trace = self:GetOwner():GetEyeTrace();
+	if IsValid(trace.Entity) and not trace.Entity.RGMSkeleton and RGM.Skeleton.CanCreate(trace.Entity) then
+		RGM.Skeleton.Create(trace.Entity);
 	end
+
+	-- Call update for gizmo
+
+	--local player = self:GetOwner();
+
+	--if not player.RGMGizmo then
+	--	RGM.Gizmo.Create(player);
+	--end
+
+	--player.RGMGizmo:Update();
 	
 end
 
@@ -131,7 +100,7 @@ if CLIENT then
 
 language.Add("tool.ragdollmover.name", "Ragdoll Mover");
 language.Add("tool.ragdollmover.desc", "Allows advanced movement of ragdolls.");
-language.Add("tool.ragdollmover.0", "Check the tool menu for instructions.");
+language.Add("tool.ragdollmover.0", "Press 'Help' from tool menu for instructions.");
 
 local function CLabel(cpanel, text)
 	local L = vgui.Create("DLabel", cpanel);
@@ -173,40 +142,29 @@ local function CCol(cpanel,text)
 	return col;
 end
 
-function TOOL.BuildCPanel(CPanel)
-	
-	CPanel:AddControl("Header",{Name = "#Tool_ragdollmover_name", "#Tool.ragdollmover.desc"})
-	
-	CPanel:SetSpacing(3);
+function TOOL.BuildCPanel(cpanel)
 
-	local Colgate = CCol(CPanel, "Instructions");
-		local iText =
-		[[Help todo.]];
-		CLabel(Colgate, iText);
-	
-	local ColGizmo = CCol(CPanel, "Gizmo");
-		CNumSlider(ColGizmo, "Scale", "ragdollmover_scale", 1.0,50.0,1);
-	
-	local ColMisc = CCol(CPanel, "Misc");
-		local CB = CCheckBox(ColMisc, "Unfreeze on release.", "ragdollmover_unfreeze");
-		CB:SetToolTip("Unfreeze bones that were unfrozen before grabbing the ragdoll.");
-		CNumSlider(ColMisc, "Tool update rate.", "ragdollmover_updaterate", 0.01, 1.0, 2);
-	
-	CPanel:AddControl( "Numpad", { Label = "Move/Rotate toggle button",	Command = "ragdollmover_rotatebutton" } );
+	cpanel:AddControl("Slider", {
+		Label = "Scale",
+		Command = "rgm_scale",
+		Type = "Float",
+		Min = 5,
+		Max = 100
+	});
 
-end
+	cpanel:AddControl("CheckBox", {
+		Label = "Unfreeze on release",
+		Command = "rgm_unfreeze"
+	});
 
-function TOOL:DrawHUD()
+	cpanel:AddControl("Slider", {
+		Label = "Update rate",
+		Command = "rgm_updaterate",
+		Type = "Float",
+		Min = 0.05,
+		Max = 1
+	});
 
-	-- Render manipulator
-
-	local pl = LocalPlayer();
-
-	local m = pl:GetRgmManipulator();
-	if not IsValid(m) then return; end
-
-	m:Render();
-	
 end
 
 end
