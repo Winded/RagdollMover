@@ -214,12 +214,17 @@ end
 
 function SK:Draw()
 
-	local bone = RGM.AimedBone;
-	local hollow = bone and bone:GetSkeleton() == self;
+	if not IsValid(RGM.AimedEntity) or RGM.AimedEntity ~= self.Entity then
+		return;
+	end
+
+	cam.Start3D(EyePos(), EyeAngles());
 
 	for _, bone in pairs(self.Bones) do
-		bone:Draw(hollow);
+		bone:Draw();
 	end
+
+	cam.End3D();
 
 end
 

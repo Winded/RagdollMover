@@ -9,22 +9,6 @@ RGM.GizmoModes = {
 	Scale = 3
 };
 
-RGM.AxisDirections = {
-
-	Up = 1,
-	Forward = 2,
-	Right = 3,
-
-	UpForward = 1,
-	UpRight = 2,
-	ForwardRight = 3,
-
-	Pitch = 1,
-	Yaw = 2,
-	Roll = 3
-
-}
-
 local GIZMO = {};
 GIZMO.__index = GIZMO;
 
@@ -35,9 +19,13 @@ function GIZMO.Create(player)
 	g.Player = player;
 	g:Init();
 
+	player.RGMGizmo = g;
+
 	net.Start("RGMGizmoCreate");
 	net.WriteTable(g);
 	net.Send(player);
+
+	g:SetMode(RGM.GizmoModes.Move);
 
 end
 
@@ -47,7 +35,7 @@ function GIZMO.CreateClient()
 	local g = setmetatable(net.ReadTable(), GIZMO);
 
 	for _, axis in pairs(g.Axes) do
-		setmetatable(axis, RGM.Axis);
+		setmetatable(axis, RGM["Axis" .. axis.Type]);
 	end
 
 	player.RGMGizmo = g;
@@ -87,7 +75,6 @@ function GIZMO:Init()
 	self.ActiveAxes = {};
 
 	self.Grabbed = false;
-	self:SetMode(RGM.GizmoModes.Move);
 
 end
 
@@ -101,8 +88,10 @@ function GIZMO:SetMode(mode)
 		end
 	end
 
+	self.Mode = mode;
+
 	if SERVER then
-		net.Start("RGMSetMode");
+		net.Start("RGMGizmoSetMode");
 		net.WriteInt(mode, 32);
 		net.Send(self.Player);
 	end
@@ -119,17 +108,54 @@ function GIZMO:SetModeClient()
 
 end
 
--- Return an axis if we hit one
-function GIZMO:Trace(trace)
+function GIZMO:NextMode()
+	local mode = self.Mode + 1;
+	if mode > table.Count(RGM.GizmoModes) then
+		mode = RGM.GizmoModes.Move;
+	end
+	self:SetMode(mode);
+end
 
-	-- TODO
+-- Return an axis if we hit one
+function GIZMO:Trace(eyePos, eyeAngles)
+
+	if not self.Player.RGMSelectedBone then
+		return nil;
+	end
+
+	local lowestPriority = 999999;
+	local lowestDistance = 999999;
+	local closestAxis = nil;
+
+	for _, axis in pairs(self.ActiveAxes) do
+		local t = axis:Trace(eyePos, eyeAngles);
+		if t then
+			if axis.Priority < lowestPriority then
+				lowestPriority = axis.Priority;
+				closestAxis = axis;
+			elseif t.Distance < lowestDistance then
+				lowestDistance = t.Distance;
+				closestAxis = axis;
+			end
+		end
+	end
+
+	return closestAxis;
 
 end
 
 function GIZMO:Draw()
-	for _, axis in pairs(self.ActiveAxes) do
-		axis:Draw();
+
+	if not self.Player.RGMSelectedBone then
+		return;
 	end
+
+	local trace = RGM.Trace(self.Player);
+
+	for _, axis in pairs(self.ActiveAxes) do
+		axis:Draw(trace.Axis == axis);
+	end
+
 end
 
 RGM.Gizmo = GIZMO;
@@ -141,6 +167,8 @@ else
 	net.Receive("RGMGizmoCreate", GIZMO.CreateClient);
 	net.Receive("RGMGizmoSetMode", GIZMO.SetModeClient);
 end
+
+include("axes/axis.lua");
 
 include("axes/move.lua");
 include("axes/move_side.lua");

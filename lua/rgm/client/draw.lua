@@ -8,17 +8,22 @@ function RGM.Draw()
 	end
 
 	local player = LocalPlayer();
+	local trace = player:GetEyeTrace();
 	local entity = player.RGMSelectedEntity;
 
-	if not IsValid(entity) or not entity.RGMSkeleton then
+	if player.RGMGrabbedAxis then
+		player.RGMGrabbedAxis:Draw(true);
 		return;
 	end
 
-	cam.Start3D(EyePos(), EyeAngles());
-	entity.RGMSkeleton:Draw();
-	player.RGMGizmo:Draw();
-	cam.End3D();
+	if IsValid(entity) then
+		player.RGMGizmo:Draw();
+	end
+
+	if IsValid(trace.Entity) and trace.Entity.RGMSkeleton then
+		trace.Entity.RGMSkeleton:Draw();
+	end
 
 end
 
-hook.Add("PostDrawEffects", "RgmDraw", RGM.Draw);
+--hook.Add("PostDrawEffects", "RgmDraw", RGM.Draw);

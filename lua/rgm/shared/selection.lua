@@ -1,35 +1,29 @@
 
 
-function RGM.Select(player, entity, bone)
+function RGM.SelectBone(player, entity, bone)
 
 	if not IsValid(entity) then
 		player.RGMSelectedEntity = nil;
 		player.RGMSelectedBone = nil;
-	end
-
-	-- if not player.RGMGizmo then
-	-- 	RGM.Gizmo.Create(player);
-	-- end
-	if not entity.Skeleton then
-		RGM.Skeleton.Create(entity);
+		return;
 	end
 
 	local axis = player.RGMGrabbedAxis;
 	if axis then
-		axis:Release();
+		RGM.ReleaseAxis(player);
 	end
 
 	player.RGMSelectedEntity = entity;
 	player.RGMSelectedBone = bone;
 
-	net.Start("RGMSelect");
+	net.Start("RGMSelectBone");
 	net.WriteEntity(entity);
 	net.WriteInt(bone.ID, 32);
 	net.Send(player);
 
 end
 
-function RGM.SelectClient()
+function RGM.SelectBoneClient()
 
 	local player = LocalPlayer();
 	local entity = net.ReadEntity();
@@ -46,8 +40,53 @@ function RGM.SelectClient()
 
 end
 
+function RGM.GrabAxis(player, axis)
+
+	if player.RGMGrabbedAxis then
+		player.RGMGrabbedAxis:OnRelease();
+		player.RGMGrabbedAxis = nil;
+	end
+
+	axis:OnGrab();
+	player.RGMGrabbedAxis = axis;
+
+	net.Start("RGMGrabAxis");
+	net.WriteInt(axis.ID, 32);
+	net.Send(player);
+
+end
+
+function RGM.GrabAxisClient()
+
+	local player = LocalPlayer();
+	local gizmo = player.RGMGizmo;
+	local axisId = net.ReadInt(32);
+
+	local axis = table.First(gizmo.Axes, function(item) return item.ID == axisId; end);
+	player.RGMGrabbedAxis = axis;
+
+end
+
+function RGM.ReleaseAxis(player)
+	if player.RGMGrabbedAxis then
+		player.RGMGrabbedAxis:OnRelease();
+		player.RGMGrabbedAxis = nil;
+	end
+	net.Start("RGMReleaseAxis");
+	net.Send(player);
+end
+
+function RGM.ReleaseAxisClient()
+	local player = LocalPlayer();
+	player.RGMGrabbedAxis = nil;
+end
+
 if SERVER then
-	util.AddNetworkString("RGMSelect");
+	util.AddNetworkString("RGMSelectBone");
+	util.AddNetworkString("RGMGrabAxis");
+	util.AddNetworkString("RGMReleaseAxis");
 else
-	net.Receive("RGMSelect", RGM.SelectClient);
+	net.Receive("RGMSelectBone", RGM.SelectBoneClient);
+	net.Receive("RGMGrabAxis", RGM.GrabAxisClient);
+	net.Receive("RGMReleaseAxis", RGM.ReleaseAxisClient);
 end

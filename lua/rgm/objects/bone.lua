@@ -249,14 +249,14 @@ function BONE:RestoreOffset()
 end
 
 -- Draw the bone. Should be called between cam.Start3D and cam.End3D
-function BONE:Draw(hollow)
+function BONE:Draw()
 
 	local startPos = self:GetRealPos();
 
 	local children = self:GetChildren();
 
 	local alpha = 255;
-	if hollow and RGM.AimedBone ~= self then
+	if RGM.AimedBone ~= self then
 		alpha = 20;
 	end
 

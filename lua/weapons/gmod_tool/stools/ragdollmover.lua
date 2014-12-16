@@ -14,7 +14,7 @@ function TOOL:LeftClick(tr)
 	local trace = RGM.Trace(player);
 
 	if trace.Axis then
-		trace.Axis:Grab();
+		RGM.GrabAxis(player, trace.Axis);
 		return false;
 	end
 
@@ -24,7 +24,7 @@ function TOOL:LeftClick(tr)
 
 	local entity = trace.Entity;
 	local bone = trace.Bone;
-	RGM.Select(player, entity, bone);
+	RGM.SelectBone(player, entity, bone);
 
 	return false;
 
@@ -77,6 +77,8 @@ if SERVER then
 
 function TOOL:Think()
 
+	local player = self:GetOwner();
+
 	local trace = self:GetOwner():GetEyeTrace();
 	if IsValid(trace.Entity) and not trace.Entity.RGMSkeleton and RGM.Skeleton.CanCreate(trace.Entity) then
 		RGM.Skeleton.Create(trace.Entity);
@@ -84,19 +86,27 @@ function TOOL:Think()
 
 	-- Call update for gizmo
 
-	--local player = self:GetOwner();
+	if not player.RGMGizmo then
+		RGM.Gizmo.Create(player);
+	end
 
-	--if not player.RGMGizmo then
-	--	RGM.Gizmo.Create(player);
-	--end
+	if player.RGMGrabbedAxis then
+		
+		player.RGMGrabbedAxis:OnGrabUpdate();
 
-	--player.RGMGizmo:Update();
-	
+		if not player:KeyDown(IN_ATTACK) then
+			RGM.ReleaseAxis(player);
+		end
+
+	end
+
 end
 
-end
+else
 
-if CLIENT then
+function TOOL:Think()
+	RGM.CanDraw = true;
+end
 
 language.Add("tool.ragdollmover.name", "Ragdoll Mover");
 language.Add("tool.ragdollmover.desc", "Allows advanced movement of ragdolls.");
@@ -149,7 +159,8 @@ function TOOL.BuildCPanel(cpanel)
 		Command = "rgm_scale",
 		Type = "Float",
 		Min = 5,
-		Max = 100
+		Max = 100,
+		Value = 10
 	});
 
 	cpanel:AddControl("CheckBox", {
@@ -157,14 +168,24 @@ function TOOL.BuildCPanel(cpanel)
 		Command = "rgm_unfreeze"
 	});
 
+	cpanel:AddControl("CheckBox", {
+		Label = "Local axis",
+		Command = "rgm_local_axis"
+	});
+
 	cpanel:AddControl("Slider", {
 		Label = "Update rate",
 		Command = "rgm_updaterate",
 		Type = "Float",
 		Min = 0.05,
-		Max = 1
+		Max = 1,
+		Value = 0.05
 	});
 
+end
+
+function TOOL:DrawHUD()
+	RGM.Draw();
 end
 
 end

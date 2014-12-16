@@ -37,3 +37,18 @@ function RGM.TestMove(skeleton, bone, vec)
 	skeleton:OnMoveUpdate(bone);
 	skeleton:OnRelease(bone);
 end
+
+if SERVER then
+	util.AddNetworkString("RGMRun");
+end
+
+function RGM.RunClient(str)
+	net.Start("RGMRun");
+	net.WriteString(str);
+	net.Send(player.GetAll());
+end
+
+net.Receive("RGMRun", function(pl, len)
+	local str = net.ReadString();
+	RunString(str);
+end);

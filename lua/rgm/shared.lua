@@ -8,8 +8,8 @@ include("objects/skeleton.lua");
 
 include("shared/hover.lua");
 include("shared/magic.lua");
-include("shared/properties.lua");
 include("shared/selection.lua");
 include("shared/trace.lua");
+include("shared/settings.lua");
 
 include("test.lua");
