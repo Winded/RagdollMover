@@ -1,29 +1,23 @@
 
-RGM.CanDraw = false;
-
-function RGM.Draw()
-
-	if not RGM.CanDraw then
-		return;
-	end
+function RGM.Draw(ignoreGizmo)
 
 	local player = LocalPlayer();
 	local trace = player:GetEyeTrace();
-	local entity = player.RGMSelectedEntity;
+	local rTrace = RGM.Trace(player);
 
-	if player.RGMGrabbedAxis then
-		player.RGMGrabbedAxis:Draw(true);
+	local axis = RGM.GetGrabbedAxis(player);
+	if axis then
+		axis:Draw(true);
 		return;
 	end
 
-	if IsValid(entity) then
-		player.RGMGizmo:Draw();
-	end
-
-	if IsValid(trace.Entity) and trace.Entity.RGMSkeleton then
+	if IsValid(trace.Entity) and trace.Entity.RGMSkeleton and not rTrace.Axis then
 		trace.Entity.RGMSkeleton:Draw();
 	end
 
-end
+	local entity = RGM.GetSelectedEntity(player);
+	if IsValid(entity) and not ignoreGizmo then
+		player.RGMGizmo:Draw();
+	end
 
---hook.Add("PostDrawEffects", "RgmDraw", RGM.Draw);
+end

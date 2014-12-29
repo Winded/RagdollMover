@@ -1,59 +1,59 @@
 
 -- Because clientside tracing fucks up PhysicsBone result, we need to send the aimed bone to the client. Constant network traffic, yay!
 
-RGM.AimedEntity = nil;
-RGM.AimedBone = nil;
+function RGM.GetAimedEntity(player)
+
+	if CLIENT then
+		player = LocalPlayer();
+	end
+	local data = player.RGMData;
+
+	if IsValid(data.AimedEntity) and data.AimedBone > 0 then
+		return data.AimedEntity;
+	else
+		return nil;
+	end
+
+end
+
+function RGM.GetAimedBone(player)
+
+	if CLIENT then
+		player = LocalPlayer();
+	end
+	local data = player.RGMData;
+	local entity = data.AimedEntity;
+	local bone = data.AimedBone;
+
+	if not IsValid(entity) or not entity.RGMSkeleton or bone == 0 then
+		return nil;
+	end
+
+	if not player.RGMAimedBone or player.RGMAimedBone.ID ~= bone then
+		player.RGMAimedBone = table.First(entity.RGMSkeleton.Bones, function(item) return item.ID == bone; end);
+	end
+
+	return player.RGMAimedBone;
+
+end
 
 if SERVER then
 	
 function RGM.PlayerAimTick(player, movedata)
 
 	local trace = RGM.Trace(player);
+	local data = player.RGMData;
 
-	if RGM.AimedBone ~= trace.Bone then
-
-		local bone;
-		if trace.Bone then
-			bone = trace.Bone.ID;
-		else
-			bone = 0;
-		end
-
-		net.Start("RGMPlayerAimChange");
-		net.WriteTable({
-			Entity = trace.Entity,
-			Bone = bone
-		});
-		net.Send(player);
-
-		RGM.AimedBone = trace.Bone;
-
+	if not trace.Bone then
+		data.AimedEntity = Entity(-1);
+		data.AimedBone = 0;
+	elseif data.AimedBone ~= trace.Bone.ID then
+		data.AimedEntity = trace.Entity;
+		data.AimedBone = trace.Bone.ID;
 	end
 
 end
 
-util.AddNetworkString("RGMPlayerAimChange");
 hook.Add("PlayerTick", "RGMPlayerAimTick", RGM.PlayerAimTick);
-
-else
-
-function RGM.PlayerAimChange()
-
-	local data = net.ReadTable();
-
-	if data.Bone == 0 then
-		RGM.AimedEntity = nil;
-		RGM.AimedBone = nil;
-		return;
-	end
-
-	local skeleton = data.Entity.RGMSkeleton;
-	local bone = table.First(skeleton.Bones, function(item) return item.ID == data.Bone; end);
-	RGM.AimedEntity = data.Entity;
-	RGM.AimedBone = bone;
-
-end
-
-net.Receive("RGMPlayerAimChange", RGM.PlayerAimChange);
 
 end

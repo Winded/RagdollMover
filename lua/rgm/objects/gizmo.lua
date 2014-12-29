@@ -146,10 +146,6 @@ end
 
 function GIZMO:Draw()
 
-	if not self.Player.RGMSelectedBone then
-		return;
-	end
-
 	local trace = RGM.Trace(self.Player);
 
 	for _, axis in pairs(self.ActiveAxes) do

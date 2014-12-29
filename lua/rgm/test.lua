@@ -2,7 +2,7 @@
 -- Test utilities
 
 function RGM.TestSelect(player, boneName)
-	local entity = player.RGMSelectedEntity;
+	local entity = player.RGMData.SelectedEntity;
 	local skeleton = entity.RGMSkeleton;
 	local bone = entity:LookupBone(boneName);
 	if not bone then

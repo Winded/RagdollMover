@@ -28,6 +28,7 @@ function BONE.Create(entity, type, boneIndex)
 
 	bone.Parent = nil;
 
+	bone.Editing = false;
 	bone._Position = bone:GetRealPos();
 	bone._Angles = bone:GetRealAngles();
 	bone._Scale = bone:GetRealScale();
@@ -81,26 +82,32 @@ function BONE:IsSelected(player)
 	return player.RGMSelectedBone == self;
 end
 
----
--- Position, angle and scale methods
--- There are abstract version of these values stored in _Position, _Angle and _Scale, 
--- and these are applied to the actual object when CommitChanges is called.
----
-
 function BONE:GetPosAng()
 	return self:GetPos(), self:GetAngles();
 end
 
 function BONE:GetPos()
-	return self._Position;
+	if self.Editing then
+		return self._Position;
+	else
+		return self:GetRealPos();
+	end
 end
 
 function BONE:GetAngles()
-	return self._Angles;
+	if self.Editing then
+		return self._Angles;
+	else
+		return self:GetRealAngles();
+	end
 end
 
 function BONE:GetScale()
-	return self._Scale;
+	if self.Editing then
+		return self._Scale;
+	else
+		return self:GetRealScale();
+	end
 end
 
 function BONE:GetLocalPosAng()
@@ -127,23 +134,6 @@ end
 function BONE:GetLocalAngles()
 	local pos, ang = self:GetLocalPosAng();
 	return ang;
-end
-
-function BONE:SetPosAng(position, angles)
-	self._Position = position;
-	self._Angles = angles;
-end
-
-function BONE:SetPos(position)
-	self:SetPosAng(position, self:GetAngles());
-end
-
-function BONE:SetAngles(angles)
-	self:SetPosAng(self:GetPos(), angles);
-end
-
-function BONE:SetScale(scale)
-	self._Scale = scale;
 end
 
 function BONE:GetRealPos()
@@ -176,6 +166,35 @@ function BONE:GetRealScale()
 		return self.Entity:GetManipulateBoneScale(bone);
 	elseif self.Type == RGM.BoneTypes.Bone then
 		return self.Entity:GetManipulateBoneScale(self.Index);
+	end
+end
+
+function BONE:SetPosAng(position, angles)
+	self:SetPos(position);
+	self:SetAngles(angles);
+end
+
+function BONE:SetPos(position)
+	if self.Editing then
+		self._Position = position;
+	else
+		self:SetRealPosAng(position, self:GetAngles());
+	end
+end
+
+function BONE:SetAngles(angles)
+	if self.Editing then
+		self._Angles = angles;
+	else
+		self:SetRealPosAng(self:GetPos(), angles);
+	end
+end
+
+function BONE:SetScale(scale)
+	if self.Editing then
+		self._Scale = scale;
+	else
+		self:SetRealScale(scale);
 	end
 end
 
@@ -212,19 +231,34 @@ function BONE:SetRealScale(scale)
 	end
 end
 
--- Update stored position, angles and scale to real ones
-function BONE:Refresh()
+function BONE:StartEditing()
+
+	if self.Editing then
+		return;
+	end
+
 	self._Position = self:GetRealPos();
 	self._Angles = self:GetRealAngles();
 	self._Scale = self:GetRealScale();
+	self.Editing = true;
+
 end
 
-function BONE:CommitChanges()
+function BONE:StopEditing()
+
+	self:ApplyEdits();
+	self.Editing = false;
+
+end
+
+function BONE:ApplyEdits()
 
 	self:SetRealPosAng(self._Position, self._Angles);
 	self:SetRealScale(self._Scale);
 
-	self:Refresh();
+	self._Position = self:GetRealPos();
+	self._Angles = self:GetRealAngles();
+	self._Scale = self:GetRealScale();
 
 end
 
@@ -256,7 +290,7 @@ function BONE:Draw()
 	local children = self:GetChildren();
 
 	local alpha = 255;
-	if RGM.AimedBone ~= self then
+	if RGM.GetAimedBone() ~= self then
 		alpha = 20;
 	end
 

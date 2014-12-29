@@ -1,92 +1,101 @@
 
+function RGM.GetSelectedEntity(player)
+	if CLIENT then
+		player = LocalPlayer();
+	end
+	local data = player.RGMData;
+
+	if IsValid(data.SelectedEntity) and data.SelectedBone > 0 then
+		return data.SelectedEntity;
+	else
+		return nil;
+	end
+
+end
+
+function RGM.GetSelectedBone(player)
+
+	if CLIENT then
+		player = LocalPlayer();
+	end
+	local data = player.RGMData;
+	local entity = data.SelectedEntity;
+	local bone = data.SelectedBone;
+
+	if not IsValid(entity) or not entity.RGMSkeleton or bone == 0 then
+		return nil;
+	end
+
+	if not player.RGMSelectedBone or player.RGMSelectedBone.ID ~= bone then
+		player.RGMSelectedBone = table.First(entity.RGMSkeleton.Bones, function(item) return item.ID == bone; end);
+	end
+
+	return player.RGMSelectedBone;
+
+end
 
 function RGM.SelectBone(player, entity, bone)
 
+	local data = player.RGMData;
+
 	if not IsValid(entity) then
-		player.RGMSelectedEntity = nil;
-		player.RGMSelectedBone = nil;
+		data.SelectedEntity = Entity(-1);
+		data.SelectedBone = 0;
 		return;
 	end
 
-	local axis = player.RGMGrabbedAxis;
+	local axis = RGM.GetGrabbedAxis(player);
 	if axis then
 		RGM.ReleaseAxis(player);
 	end
 
-	player.RGMSelectedEntity = entity;
-	player.RGMSelectedBone = bone;
-
-	net.Start("RGMSelectBone");
-	net.WriteEntity(entity);
-	net.WriteInt(bone.ID, 32);
-	net.Send(player);
+	data.SelectedEntity = entity;
+	data.SelectedBone = bone.ID;
 
 end
 
-function RGM.SelectBoneClient()
+function RGM.GetGrabbedAxis(player)
 
-	local player = LocalPlayer();
-	local entity = net.ReadEntity();
-	local boneId = net.ReadInt(32);
+	if CLIENT then
+		player = LocalPlayer();
+	end
+	local data = player.RGMData;
+	local axis = data.GrabbedAxis;
 
-	local skeleton = entity.RGMSkeleton;
-	local bone = table.First(skeleton.Bones, function(item) return item.ID == boneId; end);
-	if not bone then
-		error("fuck");
+	if not player.RGMGizmo or axis == 0 then
+		return nil;
 	end
 
-	player.RGMSelectedEntity = entity;
-	player.RGMSelectedBone = bone;
+	if not player.RGMGrabbedAxis or player.RGMGrabbedAxis.ID ~= axis then
+		player.RGMGrabbedAxis = table.First(player.RGMGizmo.Axes, function(item) return item.ID == axis; end);
+	end
+
+	return player.RGMGrabbedAxis;
 
 end
 
 function RGM.GrabAxis(player, axis)
 
-	if player.RGMGrabbedAxis then
-		player.RGMGrabbedAxis:OnRelease();
-		player.RGMGrabbedAxis = nil;
+	if player.RGMData.GrabbedAxis > 0 then
+		RGM.ReleaseAxis(player);
 	end
 
+	local entity = RGM.GetSelectedEntity(player);
+	local bone = RGM.GetSelectedBone(player);
+	player.RGMData.GrabbedAxis = axis.ID;
+
+	entity.RGMSkeleton:OnGrab(bone);
 	axis:OnGrab();
-	player.RGMGrabbedAxis = axis;
-
-	net.Start("RGMGrabAxis");
-	net.WriteInt(axis.ID, 32);
-	net.Send(player);
-
-end
-
-function RGM.GrabAxisClient()
-
-	local player = LocalPlayer();
-	local gizmo = player.RGMGizmo;
-	local axisId = net.ReadInt(32);
-
-	local axis = table.First(gizmo.Axes, function(item) return item.ID == axisId; end);
-	player.RGMGrabbedAxis = axis;
 
 end
 
 function RGM.ReleaseAxis(player)
-	if player.RGMGrabbedAxis then
-		player.RGMGrabbedAxis:OnRelease();
-		player.RGMGrabbedAxis = nil;
+	local entity = RGM.GetSelectedEntity(player);
+	local bone = RGM.GetSelectedBone(player);
+	local axis = RGM.GetGrabbedAxis(player);
+	if axis then
+		entity.RGMSkeleton:OnRelease(bone);
+		axis:OnRelease();
 	end
-	net.Start("RGMReleaseAxis");
-	net.Send(player);
-end
-
-function RGM.ReleaseAxisClient()
-	local player = LocalPlayer();
-	player.RGMGrabbedAxis = nil;
-end
-
-if SERVER then
-	util.AddNetworkString("RGMSelectBone");
-	util.AddNetworkString("RGMGrabAxis");
-	util.AddNetworkString("RGMReleaseAxis");
-else
-	net.Receive("RGMSelectBone", RGM.SelectBoneClient);
-	net.Receive("RGMGrabAxis", RGM.GrabAxisClient);
-	net.Receive("RGMReleaseAxis", RGM.ReleaseAxisClient);
+	player.RGMData.GrabbedAxis = 0;
 end

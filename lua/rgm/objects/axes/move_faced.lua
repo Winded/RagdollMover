@@ -18,7 +18,7 @@ function AXIS:GetAngles()
 end
 
 function AXIS:GetColor()
-	-- TODO
+	return Color(64, 64, 64);
 end
 
 function AXIS:GetBounds()

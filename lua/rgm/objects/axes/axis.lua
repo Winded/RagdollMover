@@ -45,7 +45,7 @@ function AXIS:GetPos()
 		return Vector(0, 0, 0);
 	end
 
-	return player.RGMSelectedBone:GetPos();
+	return player.RGMSelectedBone:GetRealPos();
 
 end
 
@@ -87,9 +87,13 @@ end
 function AXIS:IsTraceHit(intersect)
 	local pos, angles = self:GetPos(), self:GetAngles();
 	local localPos, _ = WorldToLocal(intersect, angles, pos, angles);
-	local scale = RGM.GetSettings(self.Player).Scale or 10;
+	local scale = self.Player.RGMData.Scale;
 	local bounds = self:GetBounds();
 	return VectorWithin(localPos, bounds.Min * scale, bounds.Max * scale);
+end
+
+function AXIS:GetIntersectNormal()
+	return self:GetAngles():Forward();
 end
 
 function AXIS:GetIntersect(eyePos, eyeAngles)
@@ -97,7 +101,7 @@ function AXIS:GetIntersect(eyePos, eyeAngles)
 	local player = self.Player;
 	local eyeNormal = eyeAngles:Forward();
 	local planePoint = self:GetPos();
-	local planeNormal = self:GetAngles():Forward();
+	local planeNormal = self:GetIntersectNormal();
 
 	return RGM.IntersectRayWithPlane(planePoint, planeNormal, eyePos, eyeNormal);
 
@@ -108,14 +112,10 @@ function AXIS:OnGrab()
 
 	local player = self.Player;
 	local eyePos, eyeAngles = RGM.GetEyePosAng(player);
+	local intersect = self:GetIntersect(eyePos, eyeAngles);
 
-	local result = self:Trace(eyePos, eyeAngles);
-	if result.Hit then
-		local pos, ang = WorldToLocal(result.Position, self:GetAngles(), self:GetPos(), self:GetAngles());
-		self.GrabOffset = pos;
-	else
-		self.GrabOffset = Vector(0, 0, 0);
-	end
+	local pos, ang = WorldToLocal(intersect, self:GetAngles(), self:GetPos(), self:GetAngles());
+	self.GrabOffset = pos;
 
 end
 
@@ -140,7 +140,7 @@ function AXIS:Draw(highlight)
 	end
 
 	local pos, angles = self:GetPos(), self:GetAngles();
-	local scale = RGM.GetSettings(self.Player).Scale or 10;
+	local scale = self.Player.RGMData.Scale;
 
 	local screenLines = {};
 	for _, line in pairs(self.DrawLines) do

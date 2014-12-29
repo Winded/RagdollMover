@@ -13,8 +13,8 @@ AXIS.DrawLines = {
 	{Start = Vector(1, 0, 0), End = Vector(0.9, -0.1, 0)}
 };
 AXIS.Bounds = {
-	Min = Vector(0, -0.1, 0),
-	Max = Vector(1, 0.1, 0)
+	Min = Vector(0, -0.1, -0.1),
+	Max = Vector(1, 0.1, 0.1)
 };
 
 function AXIS.Create(gizmo, direction)
@@ -22,18 +22,26 @@ function AXIS.Create(gizmo, direction)
 end
 
 function AXIS:OnGrabUpdate()
-	-- TODO
-end
-
-function AXIS:GetIntersect(eyePos, eyeAngles)
 
 	local player = self.Player;
-	local eyeNormal = eyeAngles:Forward();
-	local planePoint = self:GetPos();
-	local planeNormal = self:GetAngles():Up();
+	local eyePos, eyeAngles = RGM.GetEyePosAng(player);
+	local bone = self.Player.RGMSelectedBone;
+	local intersect = self:GetIntersect(eyePos, eyeAngles);
+	local grabOffset = self.GrabOffset;
+	local pos, angles = self:GetPos(), self:GetAngles();
 
-	return RGM.IntersectRayWithPlane(planePoint, planeNormal, eyePos, eyeNormal);
+	local localPos, _ = WorldToLocal(intersect, angles, pos, angles);
+	localPos.x = localPos.x - grabOffset.x;
+	localPos.y = 0;
+	localPos.z = 0;
 
+	pos, angles = LocalToWorld(localPos, Angle(0, 0, 0), pos ,angles);
+	bone:SetPos(pos);
+
+end
+
+function AXIS:GetIntersectNormal()
+	return self:GetAngles():Up();
 end
 
 function AXIS:GetColor()

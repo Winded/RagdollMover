@@ -123,7 +123,8 @@ end
 
 -- Has the given player selected this skeleton?
 function SK:IsSelected(player)
-	return IsValid(player.RGMSelectedEntity) and player.RGMSelectedEntity.RGMSkeleton == self;
+	local selected = RGM.GetSelectedEntity(player);
+	return IsValid(selected) and selected.RGMSkeleton == self;
 end
 
 function SK:AddConstraint(constraint)
@@ -140,29 +141,17 @@ function SK:RemoveConstraint(constraint)
 	end
 end
 
--- Used to keep bones up to date when not grabbed
-function SK:Refresh()
-	for _, bone in pairs(self.Bones) do
-		bone:Refresh();
-	end
-	net.Start("RGMRefreshSkeleton");
-	net.WriteEntity(self.Entity);
-	net.Broadcast();
-end
-
-function SK.RefreshClient()
-	local entity = net.ReadEntity();
-	if not entity.RGMSkeleton then
-		return;
-	end
-	for _, bone in pairs(entity.RGMSkeleton.Bones) do
-		bone:Refresh();
-	end
-end
-
 function SK:OnGrab(selectedBone)
 
+	self.PhysMoveable = {};
+	for i = 0, self.Entity:GetPhysicsObjectCount() -1 do
+		local phys = self.Entity:GetPhysicsObjectNum(i);
+		self.PhysMoveable[i] = phys:IsMoveable();
+		phys:EnableMotion(false);
+	end
+
 	for _, bone in pairs(self.Bones) do
+		bone:StartEditing();
 		bone:RememberOffset();
 	end
 
@@ -185,14 +174,34 @@ function SK:OnMoveUpdate(selectedBone)
 		constraint:OnMoveUpdate(selectedBone);
 	end
 
+	for i = 0, self.Entity:GetPhysicsObjectCount() -1 do
+		local phys = self.Entity:GetPhysicsObjectNum(i);
+		phys:EnableMotion(true);
+	end
+
 	for _, bone in pairs(self.Bones) do
-		bone:CommitChanges();
+		bone:ApplyEdits();
+	end
+
+	for i = 0, self.Entity:GetPhysicsObjectCount() -1 do
+		local phys = self.Entity:GetPhysicsObjectNum(i);
+		phys:Wake();
+		phys:EnableMotion(false);
 	end
 
 end
 
 function SK:OnRelease(selectedBone)
-	self:Refresh();
+
+	for i = 0, self.Entity:GetPhysicsObjectCount() -1 do
+		local phys = self.Entity:GetPhysicsObjectNum(i);
+		phys:EnableMotion(self.PhysMoveable[i]);
+	end
+
+	for _, bone in pairs(self.Bones) do
+		bone:StopEditing();
+	end
+
 end
 
 -- Inspect the given trace, and return a bone that was hit, or nil if we didn't hit one
@@ -214,7 +223,8 @@ end
 
 function SK:Draw()
 
-	if not IsValid(RGM.AimedEntity) or RGM.AimedEntity ~= self.Entity then
+	local player = LocalPlayer();
+	if not IsValid(player.RGMAimedEntity) or player.RGMAimedEntity ~= self.Entity then
 		return;
 	end
 
@@ -231,11 +241,9 @@ end
 if SERVER then
 	util.AddNetworkString("RGMCreateSkeleton");
 	util.AddNetworkString("RGMRemoveSkeleton");
-	util.AddNetworkString("RGMRefreshSkeleton");
 else
 	net.Receive("RGMCreateSkeleton", SK.CreateClient);
 	net.Receive("RGMRemoveSkeleton", SK.RemoveClient);
-	net.Receive("RGMRefreshSkeleton", SK.RefreshClient);
 
 end
 

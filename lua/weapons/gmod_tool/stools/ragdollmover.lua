@@ -90,9 +90,13 @@ function TOOL:Think()
 		RGM.Gizmo.Create(player);
 	end
 
-	if player.RGMGrabbedAxis then
+	local entity = RGM.GetSelectedEntity(player);
+	local bone = RGM.GetSelectedBone(player);
+	local axis = RGM.GetGrabbedAxis(player);
+	if IsValid(entity) and bone and axis then
 		
-		player.RGMGrabbedAxis:OnGrabUpdate();
+		axis:OnGrabUpdate();
+		entity.RGMSkeleton:OnMoveUpdate(bone);
 
 		if not player:KeyDown(IN_ATTACK) then
 			RGM.ReleaseAxis(player);
@@ -154,33 +158,33 @@ end
 
 function TOOL.BuildCPanel(cpanel)
 
+	local data = LocalPlayer().RGMData;
+
 	cpanel:AddControl("Slider", {
 		Label = "Scale",
 		Command = "rgm_scale",
 		Type = "Float",
 		Min = 5,
-		Max = 100,
-		Value = 10
-	});
+		Max = 100
+	}):Bind(data, "Scale", "Number");
 
 	cpanel:AddControl("CheckBox", {
 		Label = "Unfreeze on release",
 		Command = "rgm_unfreeze"
-	});
+	}):Bind(data, "Unfreeze", "CheckBox");
 
 	cpanel:AddControl("CheckBox", {
 		Label = "Local axis",
 		Command = "rgm_local_axis"
-	});
+	}):Bind(data, "LocalAxis", "CheckBox");
 
 	cpanel:AddControl("Slider", {
 		Label = "Update rate",
 		Command = "rgm_updaterate",
 		Type = "Float",
 		Min = 0.05,
-		Max = 1,
-		Value = 0.05
-	});
+		Max = 1
+	}):Bind(data, "UpdateRate", "Number");
 
 end
 
