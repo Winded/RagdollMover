@@ -25,7 +25,7 @@ function AXIS:OnGrabUpdate()
 
 	local player = self.Player;
 	local eyePos, eyeAngles = RGM.GetEyePosAng(player);
-	local bone = self.Player.RGMSelectedBone;
+	local bone = RGM.GetSelectedBone(player);
 	local intersect = self:GetIntersect(eyePos, eyeAngles);
 	local grabOffset = self.GrabOffset;
 	local pos, angles = self:GetPos(), self:GetAngles();

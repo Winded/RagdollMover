@@ -79,7 +79,7 @@ end
 
 -- Has the given player selected this bone?
 function BONE:IsSelected(player)
-	return player.RGMSelectedBone == self;
+	return RGM.GetSelectedBone(player) == self;
 end
 
 function BONE:GetPosAng()

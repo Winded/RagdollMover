@@ -224,7 +224,8 @@ end
 function SK:Draw()
 
 	local player = LocalPlayer();
-	if not IsValid(player.RGMAimedEntity) or player.RGMAimedEntity ~= self.Entity then
+	local entity = RGM.GetAimedEntity(player);
+	if not IsValid(entity) or entity ~= self.Entity then
 		return;
 	end
 

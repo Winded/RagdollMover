@@ -119,7 +119,7 @@ end
 -- Return an axis if we hit one
 function GIZMO:Trace(eyePos, eyeAngles)
 
-	if not self.Player.RGMSelectedBone then
+	if not RGM.GetSelectedBone(self.Player) then
 		return nil;
 	end
 

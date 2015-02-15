@@ -41,11 +41,12 @@ end
 function AXIS:GetPos()
 
 	local player = self.Player;
-	if not player.RGMSelectedBone then
+	local bone = RGM.GetSelectedBone(player);
+	if not bone then
 		return Vector(0, 0, 0);
 	end
 
-	return player.RGMSelectedBone:GetRealPos();
+	return bone:GetRealPos();
 
 end
 
@@ -63,15 +64,16 @@ end
 function AXIS:GetAngles()
 
 	local player = self.Player;
-	if not player.RGMSelectedBone then
-		return Angle(0, 0, 0);
+	local bone = RGM.GetSelectedBone(player);
+	if not bone then
+		return Vector(0, 0, 0);
 	end
 
 	local offset = self:GetAngleOffset();
-	local localized = player.RGMSettings and player.RGMSettings.LocalAxis;
+	local localized = player.RGMData.LocalAxis;
 
 	if localized then
-		local boneAngles = player.RGMSelectedBone:GetRealAngles();
+		local boneAngles = bone:GetRealAngles();
 		local pos, ang = LocalToWorld(Vector(0, 0, 0), offset, Vector(0, 0, 0), boneAngles);
 		return ang;
 	else
@@ -113,9 +115,17 @@ function AXIS:OnGrab()
 	local player = self.Player;
 	local eyePos, eyeAngles = RGM.GetEyePosAng(player);
 	local intersect = self:GetIntersect(eyePos, eyeAngles);
+	local pos, angles = self:GetPos(), self:GetAngles();
 
-	local pos, ang = WorldToLocal(intersect, self:GetAngles(), self:GetPos(), self:GetAngles());
-	self.GrabOffset = pos;
+	local grabOffset, _ = WorldToLocal(intersect, angles, pos, angles);
+
+	-- Flip y-z plane to x-y, turn the vector to angle and convert it's yaw to roll.
+	local rAngles = Angle(0, 0, Vector(grabOffset.y, grabOffset.z, 0):Angle().y);
+	local _, grabAngles = LocalToWorld(Vector(0, 0, 0), rAngles, pos, angles);
+	local grabAngleOffset, _ = WorldToLocal(pos, angles, pos, grabAngles);
+
+	self.GrabOffset = grabOffset;
+	self.GrabAngleOffset = grabAngleOffset;
 
 end
 
