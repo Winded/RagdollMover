@@ -116,75 +116,45 @@ language.Add("tool.ragdollmover.name", "Ragdoll Mover");
 language.Add("tool.ragdollmover.desc", "Allows advanced movement of ragdolls.");
 language.Add("tool.ragdollmover.0", "Press 'Help' from tool menu for instructions.");
 
-local function CLabel(cpanel, text)
-	local L = vgui.Create("DLabel", cpanel);
-	L:SetText(text);
-	cpanel:AddItem(L);
-	return L;
-end
-local function CCheckBox(cpanel,text,cvar)
-	local CB = vgui.Create("DCheckBoxLabel", cpanel);
-	CB:SetText(text);
-	CB:SetConVar(cvar);
-	cpanel:AddItem(CB);
-	return CB;
-end
-local function CNumSlider(cpanel,text,cvar,min,max,dec)
-	local SL = vgui.Create("DNumSlider", cpanel);
-	SL:SetText(text);
-	SL:SetDecimals(dec);
-	SL:SetMinMax(min,max);
-	SL:SetConVar(cvar);
-	cpanel:AddItem(SL);
-	return SL;
-end
-local function CCol(cpanel,text)
-	local cat = vgui.Create("DCollapsibleCategory", cpanel);
-	cat:SetExpanded(1);
-	cat:SetLabel(text);
-	cpanel:AddItem(cat);
-	local col = vgui.Create("DPanelList");
-	col:SetAutoSize(true);
-	col:SetSpacing(5);
-	col:EnableHorizontal(false);
-	col:EnableVerticalScrollbar(true);
-	col.Paint = function()
-		surface.SetDrawColor(100, 100, 100, 255);
-		surface.DrawRect(0, 0, 500, 500);
-	end;
-	cat:SetContents(col);
-	return col;
-end
-
 function TOOL.BuildCPanel(cpanel)
 
 	local data = LocalPlayer().RGMData;
 
-	cpanel:AddControl("Slider", {
-		Label = "Scale",
-		Command = "rgm_scale",
-		Type = "Float",
-		Min = 5,
-		Max = 100
-	}):Bind(data, "Scale", "Number");
+	local scaleLabel = vgui.Create("DLabel", cpanel);
+	scaleLabel:SetText("Scale");
+	scaleLabel:SizeToContents();
+	cpanel:AddItem(scaleLabel);
+	local scaleSlider = vgui.Create("Slider", cpanel);
+	scaleSlider:SetMinMax(5, 100);
+	scaleSlider:SetDecimals(2);
+	scaleSlider:SetValue(data.Scale);
+	scaleSlider:Bind(data, "Scale", "Number");
+	cpanel:AddItem(scaleSlider);
 
-	cpanel:AddControl("CheckBox", {
-		Label = "Unfreeze on release",
-		Command = "rgm_unfreeze"
-	}):Bind(data, "Unfreeze", "CheckBox");
+	local unfreezeCB = vgui.Create("DCheckBoxLabel", cpanel);
+	unfreezeCB:SetText("Unfreeze on release");
+	--unfreezeCB:SizeToContents();
+	unfreezeCB:SetChecked(data.Unfreeze);
+	unfreezeCB:Bind(data, "Unfreeze", "CheckBox");
+	cpanel:AddItem(unfreezeCB);
 
-	cpanel:AddControl("CheckBox", {
-		Label = "Local axis",
-		Command = "rgm_local_axis"
-	}):Bind(data, "LocalAxis", "CheckBox");
+	local localAxisCB = vgui.Create("DCheckBoxLabel", cpanel);
+	localAxisCB:SetText("Local axis");
+	--localAxisCB:SizeToContents();
+	localAxisCB:SetChecked(data.LocalAxis);
+	localAxisCB:Bind(data, "LocalAxis", "CheckBox");
+	cpanel:AddItem(localAxisCB);
 
-	cpanel:AddControl("Slider", {
-		Label = "Update rate",
-		Command = "rgm_updaterate",
-		Type = "Float",
-		Min = 0.05,
-		Max = 1
-	}):Bind(data, "UpdateRate", "Number");
+	local updateRateLabel = vgui.Create("DLabel", cpanel);
+	updateRateLabel:SetText("Update rate");
+	updateRateLabel:SizeToContents();
+	cpanel:AddItem(updateRateLabel);
+	local updateRateSlider = vgui.Create("Slider", cpanel);
+	updateRateSlider:SetMinMax(0.01, 1);
+	updateRateSlider:SetDecimals(2);
+	updateRateSlider:SetValue(data.UpdateRate);
+	updateRateSlider:Bind(data, "UpdateRate", "Number");
+	cpanel:AddItem(updateRateSlider);
 
 end
 

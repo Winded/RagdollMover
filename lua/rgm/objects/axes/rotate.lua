@@ -34,6 +34,12 @@ function AXIS:OnGrabUpdate()
 	local grabAngleOffset = self.GrabAngleOffset;
 
 	local grabOffset, _ = WorldToLocal(intersect, angles, pos, angles);
+	-- Flip y-z plane to x-y, turn the vector to angle and convert it's yaw to roll, and reduce the angle offset
+	local rAngles = Angle(0, 0, Vector(grabOffset.y, grabOffset.z, 0):Angle().y) - grabAngleOffset;
+	local _, newGizmoAngles = LocalToWorld(Vector(0, 0, 0), rAngles, pos, angles);
+
+	-- Finally, add the bone offset to our new gizmo angle
+	local _, newAngles = LocalToWorld(self.BoneOffset, self.BoneAngleOffset, pos, newGizmoAngles);
 
 	bone:SetAngles(newAngles);
 

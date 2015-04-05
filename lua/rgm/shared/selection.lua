@@ -82,9 +82,13 @@ function RGM.GrabAxis(player, axis)
 
 	local entity = RGM.GetSelectedEntity(player);
 	local bone = RGM.GetSelectedBone(player);
+	if not IsValid(entity) or not bone then
+		return;
+	end
+
 	player.RGMData.GrabbedAxis = axis.ID;
 
-	entity.RGMSkeleton:OnGrab(bone);
+	entity.RGMSkeleton:OnGrab(player, bone);
 	axis:OnGrab();
 
 end
@@ -94,7 +98,7 @@ function RGM.ReleaseAxis(player)
 	local bone = RGM.GetSelectedBone(player);
 	local axis = RGM.GetGrabbedAxis(player);
 	if axis then
-		entity.RGMSkeleton:OnRelease(bone);
+		entity.RGMSkeleton:OnRelease(player, bone);
 		axis:OnRelease();
 	end
 	player.RGMData.GrabbedAxis = 0;

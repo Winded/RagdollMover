@@ -18,7 +18,13 @@ RGM.DefaultData = {
 
 function RGM.SetupData(player)
 
-	local data = BiValues.New(player, "RGMData", {AutoApply = true, UseSync = true}, RGM.DefaultData);
+	local bv = BiValuesV021;
+	local data;
+	if SERVER then
+		data = bv.New(player, "RGMData", {IsPrivate = true, AutoApply = true, UseSync = true}, RGM.DefaultData);
+	else
+		data = bv.New("RGMData", {IsPrivate = true, AutoApply = true, UseSync = true}, RGM.DefaultData);
+	end
 
 	return data;
 

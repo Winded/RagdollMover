@@ -11,7 +11,7 @@ function RGM.Draw(ignoreGizmo)
 		return;
 	end
 
-	if IsValid(trace.Entity) and trace.Entity.RGMSkeleton and not rTrace.Axis then
+	if not rTrace.Axis and IsValid(trace.Entity) and trace.Entity.RGMSkeleton then
 		trace.Entity.RGMSkeleton:Draw();
 	end
 

@@ -141,7 +141,7 @@ function SK:RemoveConstraint(constraint)
 	end
 end
 
-function SK:OnGrab(selectedBone)
+function SK:OnGrab(player, selectedBone)
 
 	self.PhysMoveable = {};
 	for i = 0, self.Entity:GetPhysicsObjectCount() -1 do
@@ -191,11 +191,17 @@ function SK:OnMoveUpdate(selectedBone)
 
 end
 
-function SK:OnRelease(selectedBone)
+function SK:OnRelease(player, selectedBone)
+
+	local data = player.RGMData;
 
 	for i = 0, self.Entity:GetPhysicsObjectCount() -1 do
 		local phys = self.Entity:GetPhysicsObjectNum(i);
-		phys:EnableMotion(self.PhysMoveable[i]);
+		if data.Unfreeze then
+			phys:EnableMotion(self.PhysMoveable[i]);
+		else
+			phys:EnableMotion(false);
+		end
 	end
 
 	for _, bone in pairs(self.Bones) do

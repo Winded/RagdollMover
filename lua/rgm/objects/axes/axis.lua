@@ -116,21 +116,20 @@ function AXIS:OnGrab()
 	local eyePos, eyeAngles = RGM.GetEyePosAng(player);
 	local intersect = self:GetIntersect(eyePos, eyeAngles);
 	local pos, angles = self:GetPos(), self:GetAngles();
+	local bone = RGM.GetSelectedBone(player);
+	local bPos, bAngles = bone:GetPos(), bone:GetAngles();
 
 	local grabOffset, _ = WorldToLocal(intersect, angles, pos, angles);
-
-	-- Flip y-z plane to x-y, turn the vector to angle and convert it's yaw to roll.
-	local rAngles = Angle(0, 0, Vector(grabOffset.y, grabOffset.z, 0):Angle().y);
-	local _, grabAngles = LocalToWorld(Vector(0, 0, 0), rAngles, pos, angles);
-	local grabAngleOffset, _ = WorldToLocal(pos, angles, pos, grabAngles);
-
 	self.GrabOffset = grabOffset;
-	self.GrabAngleOffset = grabAngleOffset;
+	-- Flip y-z plane to x-y, turn the vector to angle and convert it's yaw to roll.
+	self.GrabAngleOffset = Angle(0, 0, Vector(grabOffset.y, grabOffset.z, 0):Angle().y);
+
+	self.BoneOffset, self.BoneAngleOffset = WorldToLocal(bPos, bAngles, pos, angles);
 
 end
 
 function AXIS:OnRelease()
-	-- Nothing to do at the moment
+	-- Nothing to do
 end
 
 function AXIS:Trace(eyePos, eyeAngles)
