@@ -44,6 +44,10 @@ function RGM.PlayerAimTick(player, movedata)
 	local trace = RGM.Trace(player);
 	local data = player.RGMData;
 
+	if not data then
+		return;
+	end
+
 	if not trace.Bone then
 		data.AimedEntity = Entity(-1);
 		data.AimedBone = 0;

@@ -63,7 +63,7 @@ function GIZMO:Init()
 		RGM.AxisRotate.Create(self, RGM.AxisDirections.Roll),
 
 		RGM.AxisRotateFaced.Create(self),
-		RGM.AxisRotateAll.Create(self),
+		--RGM.AxisRotateAll.Create(self),
 
 		RGM.AxisScale.Create(self, RGM.AxisDirections.Up),
 		RGM.AxisScale.Create(self, RGM.AxisDirections.Forward),

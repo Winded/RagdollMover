@@ -133,17 +133,21 @@ function TOOL.BuildCPanel(cpanel)
 
 	local unfreezeCB = vgui.Create("DCheckBoxLabel", cpanel);
 	unfreezeCB:SetText("Unfreeze on release");
-	--unfreezeCB:SizeToContents();
 	unfreezeCB:SetChecked(data.Unfreeze);
 	unfreezeCB:Bind(data, "Unfreeze", "CheckBox");
 	cpanel:AddItem(unfreezeCB);
 
 	local localAxisCB = vgui.Create("DCheckBoxLabel", cpanel);
 	localAxisCB:SetText("Local axis");
-	--localAxisCB:SizeToContents();
 	localAxisCB:SetChecked(data.LocalAxis);
 	localAxisCB:Bind(data, "LocalAxis", "CheckBox");
 	cpanel:AddItem(localAxisCB);
+
+	local fullDiscsCB = vgui.Create("DCheckBoxLabel", cpanel);
+	fullDiscsCB:SetText("Show full discs");
+	fullDiscsCB:SetChecked(data.FullDiscs);
+	fullDiscsCB:Bind(data, "FullDiscs", "CheckBox");
+	cpanel:AddItem(fullDiscsCB);
 
 	local updateRateLabel = vgui.Create("DLabel", cpanel);
 	updateRateLabel:SetText("Update rate");

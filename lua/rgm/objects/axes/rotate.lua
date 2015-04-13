@@ -81,4 +81,36 @@ function AXIS:IsTraceHit(intersect)
 
 end
 
+-- Mostly the same as Axis.Draw but with the ability to ignore lines behind the gizmo position
+function AXIS:Draw(highlight)
+
+	local color = self:GetColor();
+	if highlight then
+		color = Color(255, 255, 0, 255);
+	end
+
+	local pos, angles = self:GetPos(), self:GetAngles();
+	local eyePos = self.Player:EyePos();
+	local scale = self.Player.RGMData.Scale;
+	local fullDiscs = self.Player.RGMData.FullDiscs;
+
+	local screenLines = {};
+	for _, line in pairs(self.DrawLines) do
+		local sLine = {};
+		local startPos = LocalToWorld(line.Start * scale, Angle(0, 0, 0), pos, angles);
+		local endPos = LocalToWorld(line.End * scale, Angle(0, 0, 0), pos, angles);
+		if fullDiscs or highlight or (startPos:Distance(eyePos) <= pos:Distance(eyePos) and endPos:Distance(eyePos) <= pos:Distance(eyePos)) then
+			sLine.Start = startPos:ToScreen();
+			sLine.End = endPos:ToScreen();
+			table.insert(screenLines, sLine);
+		end
+	end
+
+	surface.SetDrawColor(color);
+	for _, line in pairs(screenLines) do
+		surface.DrawLine(line.Start.x, line.Start.y, line.End.x, line.End.y);
+	end
+
+end
+
 RGM.AxisRotate = AXIS;
