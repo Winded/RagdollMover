@@ -4,6 +4,7 @@ RGM.DefaultData = {
 	Scale = 10,
 	Unfreeze = true,
 	LocalAxis = true,
+	FullDiscs = false,
 	UpdateRate = 0.01,
 
 	SelectedEntity = nil,

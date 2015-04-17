@@ -77,7 +77,7 @@ function AXIS:Draw(highlight)
 	end
 
 	local pos, angles = self:GetPos(), self:GetAngles();
-	local scale = RGM.GetSettings(self.Player).Scale or 10;
+	local scale = self.Player.RGMData.Scale;
 
 	local screenLines = {};
 	for _, line in pairs(self.DrawLines) do
