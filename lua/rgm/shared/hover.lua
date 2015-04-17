@@ -41,6 +41,10 @@ if SERVER then
 	
 function RGM.PlayerAimTick(player, movedata)
 
+	if not player.RGMData then
+		return;
+	end
+
 	local trace = RGM.Trace(player);
 	local data = player.RGMData;
 

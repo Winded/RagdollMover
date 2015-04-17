@@ -26,21 +26,24 @@ function AXIS:OnGrabUpdate()
 	local data = self.Player.RGMData;
 	local bone = RGM.GetSelectedBone(self.Player);
 	local eyePos, eyeAngles = RGM.GetEyePosAng(self.Player);
+	local realEyeAngles = self.Player:EyeAngles();
 	local pos, angles = self:GetPos(), self:GetAngles();
 	local bPos, bAngles = bone:GetPos(), bone:GetAngles();
 
 	local intersect = RGM.IntersectRayWithPlane(pos, angles:Forward(), eyePos, eyeAngles:Forward());
 	local lastIntersect = self.LastIntersect;
-	local pivotPoint = (lastIntersect + (intersect - lastIntersect) / 2) + eyeAngles:Forward() * (data.Scale / 2);
+	local pivotPoint = (lastIntersect + (intersect - lastIntersect) / 2) + realEyeAngles:Forward() * (data.Scale / 2);
+
 	local lastIntersectAngle = (lastIntersect - pivotPoint):Angle();
 	local intersectAngle = (intersect - pivotPoint):Angle();
+	local angleDiff = intersectAngle:Relation(lastIntersectAngle);
 
-	local _, lLastIntersectAngle = WorldToLocal(bPos, lastIntersectAngle, bPos, bAngles);
-	local _, lIntersectAngle = WorldToLocal(bPos, intersectAngle, bPos, bAngles);
-	local angDiff = lIntersectAngle - lLastIntersectAngle;
-	local newAngleNormal = bAngles:Forward();
-	newAngleNormal:Rotate(angDiff);
-	bone:SetAngles(newAngleNormal:Angle());
+	local newDirAngle = lastIntersectAngle + angleDiff;
+	newDirAngle:Normalize();
+
+	local _, relAngles = WorldToLocal(bPos, bAngles, bPos, lastIntersectAngle);
+	local _, newAngles = LocalToWorld(Vector(0, 0, 0), relAngles, bPos, newDirAngle);
+	bone:SetAngles(newAngles);
 
 	self.LastIntersect = intersect;
 
