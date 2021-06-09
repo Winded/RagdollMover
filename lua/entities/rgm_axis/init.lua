@@ -151,6 +151,7 @@ function ENT:Think()
 	local OldDiscAng = self.DiscLarge:GetLocalAngles();
 	
 	local physobj = ent:GetPhysicsObjectNum(bone)
+	if physobj == nil then return end
 	local pos,ang = physobj:GetPos(),physobj:GetAngles()
 	
 	self:SetPos(pos)

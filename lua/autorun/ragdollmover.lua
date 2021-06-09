@@ -284,6 +284,7 @@ local function SetBoneOffsets(ent,ostable,sbone)
 			local parent = ostable[pb].parent
 			local bn = ent:GetBoneName(i)
 			local ppos,pang = RTable[parent].pos,RTable[parent].ang
+			
 			local pos,ang = LocalToWorld(ostable[pb].pos,ostable[pb].ang,ppos,pang)
 			if pb == sbone.b then
 				pos = sbone.p

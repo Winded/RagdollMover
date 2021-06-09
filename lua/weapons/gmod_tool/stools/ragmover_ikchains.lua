@@ -9,8 +9,8 @@ TOOL.ClientConVar["type"] = "Left Leg"
 local ikchains_iktypes = {
 	"Left Leg",
 	"Right Leg",
-	"Left Hand",
-	"Right Hand"
+	"Left Arm",
+	"Right Arm"
 }
 
 local function Message(ply,text,icon,sound)
@@ -73,24 +73,24 @@ if CLIENT then
 
 language.Add("tool.ragmover_ikchains.name","Ragdoll Mover - IK Chains")
 language.Add("tool.ragmover_ikchains.desc","Make your own IK chains for ragdolls to be used with Ragdoll Mover.")
-language.Add("tool.ragmover_ikchains.0","Left click to select IK hip bone.")
-language.Add("tool.ragmover_ikchains.1","Now left click again to select foot bone.")
+language.Add("tool.ragmover_ikchains.0","Left click to select IK hip/upperarm bone.")
+language.Add("tool.ragmover_ikchains.1","Now left click again to select foot/hand bone.")
 
 function TOOL.BuildCPanel(CPanel)
 
 	CPanel:AddControl("Header",{Name = "#Tool_ragmover_ikchains_name","#Tool_ragmover_ikchains_desc"})
 	
-	/*local mc = CPanel:MultiChoice("IK chain type","ragmover_ikchains_type")
+	--[[ local mc = CPanel:MultiChoice("IK chain type","ragmover_ikchains_type")
 	mc:AddChoice("Left Leg")
 	mc:AddChoice("Right Leg")
-	mc:AddChoice("Left Hand")
-	mc:AddChoice("Right Hand")*/
+	mc:AddChoice("Left Arm")
+	mc:AddChoice("Right Arm") ]]
 	
 	local s = CPanel:NumSlider("IK slot: "..ikchains_iktypes[1],"ragmover_ikchains_type",1,4,0)
 	s:SetValue(0)
-	s:SetDecimals(0);
 	s.ValueChanged = function(self,val)
-		self:SetText("IK slot: "..ikchains_iktypes[math.ceil(self:GetValue())])
+		RunConsoleCommand("ragmover_ikchains_type",math.Round(self:GetValue()))
+		self:SetText("IK slot: "..ikchains_iktypes[math.Round(self:GetValue())])
 	end
 	
 end

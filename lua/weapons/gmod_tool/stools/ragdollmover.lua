@@ -8,6 +8,11 @@ TOOL.ClientConVar["localpos"] = 0
 TOOL.ClientConVar["localang"] = 1
 TOOL.ClientConVar["scale"] = 10
 TOOL.ClientConVar["fulldisc"] = 0
+TOOL.ClientConVar["manual"] = 0
+TOOL.ClientConVar["boneid"] = 0
+TOOL.ClientConVar["entityholder"] = "some"
+TOOL.ClientConVar["entity"] = ""
+ 
 
 TOOL.ClientConVar["ik_leg_L"] = 0
 TOOL.ClientConVar["ik_leg_R"] = 0
@@ -20,6 +25,17 @@ TOOL.ClientConVar["unfreeze"] = 1
 TOOL.ClientConVar["updaterate"] = 0.01
 
 TOOL.ClientConVar["rotatebutton"] = MOUSE_MIDDLE
+
+TOOL.ClientConVar["boneidmax"] = 20
+
+TOOL.ClientConVar["boneidmaxholder"] = 20
+
+TOOL.ClientConVar["boneidlabel"] = "root"
+
+TOOL.ClientConVar["boneidlabelholder"] = "root"
+
+
+RunConsoleCommand("ragdollmover_boneid",0)
 
 local TransTable = {
 	"ArrowX", "ArrowY", "ArrowZ",
@@ -46,6 +62,8 @@ function TOOL:LeftClick(tr)
 	
 	local collision = axis:TestCollision(pl,self:GetClientNumber("scale",10))
 	local ent = pl.rgm.Entity;
+	local entstr = tostring(ent)
+	RunConsoleCommand("ragdollmover_entity",entstr)
 	if collision and IsValid(ent) then
 	
 		if _G["physundo"] and _G["physundo"].Create then
@@ -65,6 +83,7 @@ function TOOL:LeftClick(tr)
 		local obj = ent:GetPhysicsObjectNum(pl.rgm.PhysBone)
 		local grabang = apart:LocalToWorldAngles(Angle(0,0,Vector(opos.y,opos.z,0):Angle().y))
 		local _p
+		if obj == nil then return end
 		_p,pl.rgmOffsetAng = WorldToLocal(apart:GetPos(),obj:GetAngles(),apart:GetPos(),grabang)
 		
 		local dirnorm = (collision.hitpos-axis:GetPos())
@@ -84,13 +103,20 @@ function TOOL:LeftClick(tr)
 		
 	end
 	
-	if IsValid(tr.Entity) and (tr.Entity:GetClass() == "prop_ragdoll" or tr.Entity:GetClass() == "prop_physics") then
+	if IsValid(tr.Entity) and (tr.Entity:GetClass() == "prop_ragdoll" or tr.Entity:GetClass() == "prop_physics" or tr.Entity:GetClass() == "prop_physics" or tr.Entity:GetClass() == "prop_effect" ) then
 		-- pl:SetNWInt("ragdollmover_physbone",tr.PhysicsBone)
 		-- pl:SetNWInt("ragdollmover_bone",tr.Entity:TranslatePhysBoneToBone(tr.PhysicsBone))
-		-- pl:SetNWEntity("ragdollmover_ent",tr.Entity)
+		pl:SetNWEntity("ragdollmover_ent",tr.Entity)
 		-- pl:SetNWBool("ragdollmover_draw",true)
+		if(self:GetClientNumber("manual",0)==0) then
 		pl.rgm.PhysBone = tr.PhysicsBone;
 		pl.rgm.Bone = tr.Entity:TranslatePhysBoneToBone(tr.PhysicsBone);
+		else
+		pl.rgm.PhysBone = self:GetClientNumber("boneid",0)
+		pl.rgm.Bone = tr.Entity:TranslatePhysBoneToBone(tr.PhysicsBone)
+
+	end
+
 		pl.rgm.Entity = tr.Entity;
 		pl.rgm.Draw = true;
 		
@@ -119,14 +145,41 @@ function TOOL:Reload()
 	return false
 end
 
-if SERVER then
 
 function TOOL:Think()
+	if CLIENT then
+		if (GetConVarNumber("ragdollmover_boneidmaxholder") ~= GetConVarNumber("ragdollmover_boneidmax")) then
+			RunConsoleCommand("ragdollmover_boneidmaxholder", GetConVarNumber("ragdollmover_boneidmax"))
+
+			--ripped from default faceposer
+			self:UpdateFaceControlPanel()
+	
+		elseif (GetConVarString("ragdollmover_entity") ~= GetConVarString("ragdollmover_entityholder")) then
+			RunConsoleCommand("ragdollmover_entityholder", GetConVarString("ragdollmover_entity"))
+
+			--ripped from default faceposer
+			self:UpdateFaceControlPanel()
+	
+		end 
+
+	end	
+
+if SERVER then
+	
 
 	if !self.LastThink then self.LastThink = CurTime() end
 	if CurTime() < self.LastThink + self:GetClientNumber("updaterate",0.01) then return end
 
 	local pl = self:GetOwner()
+
+	local ent = pl.rgm.Entity;
+
+
+	--[[ physboneid = ent:TranslatePhysBoneToBone(GetConVarNumber("ragdollmover_boneid"))
+		
+	RunConsoleCommand("ragdollmover_boneidlabel", ent:GetBoneName(physboneid)) ]]
+
+	 
 	
 	local axis = pl.rgm.Axis;
 	if IsValid(axis) then
@@ -149,9 +202,16 @@ function TOOL:Think()
 		local apart = pl.rgm.MoveAxis;
 		local bone = pl.rgm.PhysBone;
 		local ent = pl.rgm.Entity;
-		
+		if ent == nil then os.exit() end;
+		physbonecount = ent:GetPhysicsObjectCount() -1
+		if physbonecount == nil then return end
+	
+
+		RunConsoleCommand("ragdollmover_boneidmax", physbonecount)
+
 		if !IsValid(ent) then
 			pl.rgm.Moving = false;
+				
 			return
 		end
 		
@@ -160,6 +220,10 @@ function TOOL:Think()
 		local pos,ang = apart:ProcessMovement(pl.rgmOffsetPos,pl.rgmOffsetAng,eyepos,eyeang,ent,bone,pl.rgmISPos,pl.rgmISDir)
 		
 		local obj = ent:GetPhysicsObjectNum(bone)
+
+
+		
+
 		if !isik or iknum == 3 or (rotate and (iknum == 1 or iknum == 2)) then
 			obj:EnableMotion(true)
 			obj:Wake()
@@ -181,6 +245,9 @@ function TOOL:Think()
 		end
 		
 		local postable = rgm.SetOffsets(self,ent,pl.rgmOffsetTable,{b = bone,p = obj:GetPos(),a = obj:GetAngles()})
+
+		if postable == nil then return end
+		
 		local sbik,sbiknum = rgm.IsIKBone(self,ent,bone)
 		if !sbik or sbiknum != 2 then
 			postable[bone].dontset = true
@@ -251,6 +318,7 @@ local function CCheckBox(cpanel,text,cvar)
 	local CB = vgui.Create("DCheckBoxLabel",cpanel)
 	CB:SetText(text)
 	CB:SetConVar(cvar)
+	CB:SetDark(true)
 	cpanel:AddItem(CB)
 	return CB
 end
@@ -260,7 +328,11 @@ local function CNumSlider(cpanel,text,cvar,min,max,dec)
 	SL:SetDecimals(dec)
 	SL:SetMinMax(min,max)
 	SL:SetConVar(cvar)
+	SL:SetDark(true)
+
+
 	cpanel:AddItem(SL)
+
 	return SL
 end
 local function CCol(cpanel,text)
@@ -274,14 +346,25 @@ local function CCol(cpanel,text)
 	col:EnableHorizontal(false)
 	col:EnableVerticalScrollbar(true)
 	col.Paint = function()
-		surface.SetDrawColor(100,100,100,255)
 		surface.DrawRect(0, 0, 500, 500)
 	end
 	cat:SetContents(col)
 	return col
 end
 
-function TOOL.BuildCPanel(CPanel)
+function RGM_Update_BoneID(pl,cmd,args,argstr) 
+local num = tostring(args[2])
+RunConsoleCommand("ragdollmover_boneid",num)
+end
+
+concommand.Add( "ragdollmover_updateboneid", RGM_Update_BoneID )
+
+
+
+function TOOL.BuildCPanel(CPanel, ent)
+
+	
+
 	
 	CPanel:AddControl("Header",{Name = "#Tool_ragdollmover_name","#Tool_ragdollmover_desc"})
 	
@@ -292,7 +375,17 @@ function TOOL.BuildCPanel(CPanel)
 		CCheckBox(Col1,"Localized angle gizmo.","ragdollmover_localang")
 		CNumSlider(Col1,"Scale","ragdollmover_scale",1.0,50.0,1)
 		CCheckBox(Col1,"Fully visible discs.","ragdollmover_fulldisc")
-	
+		CCheckBox(Col1,"Manual Bone Picking","ragdollmover_manual")
+		CNumSlider(Col1,"BoneID","ragdollmover_boneid",0,GetConVarNumber("ragdollmover_boneidmax"),0)
+		local labeltext = GetConVarString("ragdollmover_boneidlabel")
+		local num = GetConVarNumber("ragdollmover_boneidmax") 
+		for i = 0,num do
+		local physbone = ent:TranslatePhysBoneToBone(i)
+		local text1 = ent:GetBoneName(physbone) 
+		local num2 = tostring(i)
+		local cmd = "ragdollmover_updateboneid(".. num2 ..")"
+		CPanel:AddControl("Button",{text = text1, Command = cmd})
+		end
 	local Col2 = CCol(CPanel,"IK Chains")
 		CCheckBox(Col2,"Left Hand IK","ragdollmover_ik_hand_L")
 		CCheckBox(Col2,"Right Hand IK","ragdollmover_ik_hand_R")
@@ -314,6 +407,18 @@ function TOOL.BuildCPanel(CPanel)
 	//CPanel:SetHeight(500)
 end
 
+
+function TOOL:UpdateFaceControlPanel( index )
+	local pl = self:GetOwner()
+	local ent = pl.rgm.Entity
+	local CPanel = controlpanel.Get( "ragdollmover" )
+	if ( !CPanel ) then Msg( "Couldn't find ragdollmover panel!\n" ) return end
+	
+	CPanel:ClearControls()
+	self.BuildCPanel(CPanel, ent)
+
+end
+
 function TOOL:DrawHUD()
 
 	local pl = LocalPlayer()
@@ -326,7 +431,6 @@ function TOOL:DrawHUD()
 	local bone = pl.rgm.Bone;
 	local axis = pl.rgm.Axis;
 	local dodraw = pl.rgm.Draw or false;
-
 	local moving = pl.rgm.Moving or false;
 	
 	//We don't draw the axis if we don't have the axis entity or the target entity,
@@ -353,7 +457,7 @@ function TOOL:DrawHUD()
 	
 	local tr = pl:GetEyeTrace()
 	local aimedbone = pl.rgm.AimedBone or 0;
-	if IsValid(tr.Entity) and (tr.Entity:GetClass() == "prop_ragdoll" or tr.Entity:GetClass() == "prop_physics")
+	if IsValid(tr.Entity) and (tr.Entity:GetClass() == "prop_ragdoll" or tr.Entity:GetClass() == "prop_physics" or tr.Entity:GetClass() == "prop_effect")
 	and (!bone or aimedbone != bone) and !moving then
 		rgm.DrawBoneName(tr.Entity,aimedbone);
 		-- if (!bone or aimedbone != bone) and !pl:GetNWBool("ragdollmover_moving",false) then
@@ -364,8 +468,8 @@ function TOOL:DrawHUD()
 			-- end
 			-- _pos = _pos:ToScreen()
 			-- local textpos = {x = _pos.x+5,y = _pos.y-5}
-			-- surface.DrawCircle(_pos.x,_pos.y,2.5,Color(0,200,0,255))
-			-- draw.SimpleText(name,"Default",textpos.x,textpos.y,Color(0,200,0,255),TEXT_ALIGN_LEFT,TEXT_ALIGN_BOTTOM)
+			-- surface.DrawCircle(_pos.x,_pos.y,2.5,Color(0,0,0,255))
+			-- draw.SimpleText(name,"Default",textpos.x,textpos.y,Color(0,0,0,255),TEXT_ALIGN_LEFT,TEXT_ALIGN_BOTTOM)
 		-- end
 	end
 	
