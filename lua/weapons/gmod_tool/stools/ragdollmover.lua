@@ -103,19 +103,19 @@ function TOOL:LeftClick(tr)
 		
 	end
 	
-	if IsValid(tr.Entity) and (tr.Entity:GetClass() == "prop_ragdoll" or tr.Entity:GetClass() == "prop_physics" or tr.Entity:GetClass() == "prop_physics" or tr.Entity:GetClass() == "prop_effect" ) then
+	if IsValid(tr.Entity) and (tr.Entity:GetClass() == "prop_ragdoll" or tr.Entity:GetClass() == "prop_physics" or tr.Entity:GetClass() == "prop_effect" ) then
 		-- pl:SetNWInt("ragdollmover_physbone",tr.PhysicsBone)
 		-- pl:SetNWInt("ragdollmover_bone",tr.Entity:TranslatePhysBoneToBone(tr.PhysicsBone))
 		pl:SetNWEntity("ragdollmover_ent",tr.Entity)
 		-- pl:SetNWBool("ragdollmover_draw",true)
+		
 		if(self:GetClientNumber("manual",0)==0) then
-		pl.rgm.PhysBone = tr.PhysicsBone;
-		pl.rgm.Bone = tr.Entity:TranslatePhysBoneToBone(tr.PhysicsBone);
+			pl.rgm.PhysBone = tr.PhysicsBone;
+			pl.rgm.Bone = tr.Entity:TranslatePhysBoneToBone(tr.PhysicsBone);
 		else
-		pl.rgm.PhysBone = self:GetClientNumber("boneid",0)
-		pl.rgm.Bone = tr.Entity:TranslatePhysBoneToBone(tr.PhysicsBone)
-
-	end
+			pl.rgm.PhysBone = self:GetClientNumber("boneid",0)
+			pl.rgm.Bone = tr.Entity:TranslatePhysBoneToBone(tr.PhysicsBone)
+		end
 
 		pl.rgm.Entity = tr.Entity;
 		pl.rgm.Draw = true;
@@ -171,16 +171,11 @@ if SERVER then
 	if CurTime() < self.LastThink + self:GetClientNumber("updaterate",0.01) then return end
 
 	local pl = self:GetOwner()
-
 	local ent = pl.rgm.Entity;
 
-
 	--[[ physboneid = ent:TranslatePhysBoneToBone(GetConVarNumber("ragdollmover_boneid"))
-		
 	RunConsoleCommand("ragdollmover_boneidlabel", ent:GetBoneName(physboneid)) ]]
 
-	 
-	
 	local axis = pl.rgm.Axis;
 	if IsValid(axis) then
 		if axis.localizedpos != tobool(self:GetClientNumber("localpos",1)) then
@@ -202,28 +197,22 @@ if SERVER then
 		local apart = pl.rgm.MoveAxis;
 		local bone = pl.rgm.PhysBone;
 		local ent = pl.rgm.Entity;
-		if ent == nil then os.exit() end;
-		physbonecount = ent:GetPhysicsObjectCount() -1
-		if physbonecount == nil then return end
-	
-
-		RunConsoleCommand("ragdollmover_boneidmax", physbonecount)
 
 		if !IsValid(ent) then
 			pl.rgm.Moving = false;
-				
 			return
 		end
+		
+		physbonecount = ent:GetPhysicsObjectCount() -1
+		if physbonecount == nil then return end
+
+		RunConsoleCommand("ragdollmover_boneidmax", physbonecount)
 		
 		local isik,iknum = rgm.IsIKBone(self,ent,bone)
 		
 		local pos,ang = apart:ProcessMovement(pl.rgmOffsetPos,pl.rgmOffsetAng,eyepos,eyeang,ent,bone,pl.rgmISPos,pl.rgmISDir)
 		
 		local obj = ent:GetPhysicsObjectNum(bone)
-
-
-		
-
 		if !isik or iknum == 3 or (rotate and (iknum == 1 or iknum == 2)) then
 			obj:EnableMotion(true)
 			obj:Wake()
@@ -329,8 +318,7 @@ local function CNumSlider(cpanel,text,cvar,min,max,dec)
 	SL:SetMinMax(min,max)
 	SL:SetConVar(cvar)
 	SL:SetDark(true)
-
-
+	
 	cpanel:AddItem(SL)
 
 	return SL
@@ -352,20 +340,28 @@ local function CCol(cpanel,text)
 	return col
 end
 
-function RGM_Update_BoneID(pl,cmd,args,argstr) 
-local num = tostring(args[2])
-RunConsoleCommand("ragdollmover_boneid",num)
+local function RGM_Update_BoneID(pl,cmd,args,argstr) 
+	local num = tostring(args[1])
+	RunConsoleCommand("ragdollmover_boneid",num)
 end
-
+local function RGMBuildBoneMenu(ent, cpanel)
+	if !IsValid(ent) then return end
+	local labeltext = GetConVarString("ragdollmover_boneidlabel")
+	local num = GetConVarNumber("ragdollmover_boneidmax") 
+	for i = 0,num do
+		local physbone = ent:TranslatePhysBoneToBone(i)
+		local text1 = ent:GetBoneName(physbone)
+		local butt = vgui.Create("DButton", cpanel)
+		butt:SetText(text1)
+		butt:SetConsoleCommand("ragdollmover_updateboneid", i)
+		cpanel:AddItem(butt)
+		--:AddControl("Button",{text = text1, Command = cmd})
+	end
+end
 concommand.Add( "ragdollmover_updateboneid", RGM_Update_BoneID )
 
 
-
 function TOOL.BuildCPanel(CPanel, ent)
-
-	
-
-	
 	CPanel:AddControl("Header",{Name = "#Tool_ragdollmover_name","#Tool_ragdollmover_desc"})
 	
 	CPanel:SetSpacing(3)
@@ -377,26 +373,21 @@ function TOOL.BuildCPanel(CPanel, ent)
 		CCheckBox(Col1,"Fully visible discs.","ragdollmover_fulldisc")
 		CCheckBox(Col1,"Manual Bone Picking","ragdollmover_manual")
 		CNumSlider(Col1,"BoneID","ragdollmover_boneid",0,GetConVarNumber("ragdollmover_boneidmax"),0)
-		local labeltext = GetConVarString("ragdollmover_boneidlabel")
-		local num = GetConVarNumber("ragdollmover_boneidmax") 
-		for i = 0,num do
-		local physbone = ent:TranslatePhysBoneToBone(i)
-		local text1 = ent:GetBoneName(physbone) 
-		local num2 = tostring(i)
-		local cmd = "ragdollmover_updateboneid(".. num2 ..")"
-		CPanel:AddControl("Button",{text = text1, Command = cmd})
-		end
-	local Col2 = CCol(CPanel,"IK Chains")
-		CCheckBox(Col2,"Left Hand IK","ragdollmover_ik_hand_L")
-		CCheckBox(Col2,"Right Hand IK","ragdollmover_ik_hand_R")
-		CCheckBox(Col2,"Left Leg IK","ragdollmover_ik_leg_L")
-		CCheckBox(Col2,"Right Leg IK","ragdollmover_ik_leg_R")
+		
+	local Col2 = CCol(CPanel, "Bones")
+		RGMBuildBoneMenu(ent, Col2)
+		
+	local Col3 = CCol(CPanel,"IK Chains")
+		CCheckBox(Col3,"Left Hand IK","ragdollmover_ik_hand_L")
+		CCheckBox(Col3,"Right Hand IK","ragdollmover_ik_hand_R")
+		CCheckBox(Col3,"Left Leg IK","ragdollmover_ik_leg_L")
+		CCheckBox(Col3,"Right Leg IK","ragdollmover_ik_leg_R")
 	
-	local Col3 = CCol(CPanel,"Misc")
-		local CB = CCheckBox(Col3,"Unfreeze on release.","ragdollmover_unfreeze")
+	local Col4 = CCol(CPanel,"Misc")
+		local CB = CCheckBox(Col4,"Unfreeze on release.","ragdollmover_unfreeze")
 		CB:SetToolTip("Unfreeze bones that were unfrozen before grabbing the ragdoll.")
-		CNumSlider(Col3,"Tool update rate.","ragdollmover_updaterate",0.01,1.0,2)
-		-- CCheckBox(Col3, "Use right mouse button.", "ragdollmover_use_rmb");
+		CNumSlider(Col4,"Tool update rate.","ragdollmover_updaterate",0.01,1.0,2)
+		-- CCheckBox(Col4, "Use right mouse button.", "ragdollmover_use_rmb");
 	
 	CPanel:AddControl( "Numpad",	{ Label = "Move/Rotate toggle button",	Command = "ragdollmover_rotatebutton" } )
 	-- local B = vgui.Create("DButton", CPanel);
