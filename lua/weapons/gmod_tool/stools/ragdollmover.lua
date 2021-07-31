@@ -27,13 +27,10 @@ TOOL.ClientConVar["updaterate"] = 0.01
 TOOL.ClientConVar["rotatebutton"] = MOUSE_MIDDLE
 
 TOOL.ClientConVar["boneidmax"] = 20
-
 TOOL.ClientConVar["boneidmaxholder"] = 20
 
 TOOL.ClientConVar["boneidlabel"] = "root"
-
 TOOL.ClientConVar["boneidlabelholder"] = "root"
-
 
 RunConsoleCommand("ragdollmover_boneid",0)
 
@@ -69,7 +66,7 @@ function TOOL:LeftClick(tr)
 		if _G["physundo"] and _G["physundo"].Create then
 			_G["physundo"].Create(ent,pl)
 		end
-		
+	
 		local apart = collision.axis
 		
 		pl.rgmISPos = collision.hitpos*1
@@ -85,6 +82,8 @@ function TOOL:LeftClick(tr)
 		local _p
 		if obj == nil then return end
 		_p,pl.rgmOffsetAng = WorldToLocal(apart:GetPos(),obj:GetAngles(),apart:GetPos(),grabang)
+		
+		pl.rgm.StartAngle = WorldToLocal(collision.hitpos, Angle(0,0,0), apart:GetPos(), apart:GetAngles())
 		
 		local dirnorm = (collision.hitpos-axis:GetPos())
 		dirnorm:Normalize()
@@ -424,9 +423,10 @@ function TOOL:DrawHUD()
 	local dodraw = pl.rgm.Draw or false;
 	local moving = pl.rgm.Moving or false;
 	
+
 	//We don't draw the axis if we don't have the axis entity or the target entity,
 	//or if we're not allowed to draw it.
-	if IsValid(ent) and IsValid(axis) and bone and dodraw then
+	if IsValid(ent) and IsValid(axis) and bone then
 		local scale = self:GetClientNumber("scale",10)
 		local rotate = pl.rgm.Rotate or false;
 		local moveaxis = pl.rgm.MoveAxis;
@@ -439,6 +439,7 @@ function TOOL:DrawHUD()
 				axis:DrawDirectionLine(fwd,scale,false)
 				local dirnorm = pl.rgm.DirNorm or Vector(1,0,0);
 				axis:DrawDirectionLine(dirnorm,scale,true)
+				axis:DrawAngleText(moveaxis, intersect, pl.rgm.StartAngle)
 			end
 		else
 			axis:DrawLines(scale)

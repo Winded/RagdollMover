@@ -159,10 +159,12 @@ function ENT:Think()
 	local localstate = self.localizedpos
 	local rotate = pl.rgm.Rotate or false;
 	if rotate then localstate = self.localizedang end
-	if localstate then
-		self:SetAngles(ang)
-	else
-		self:SetAngles(Angle(0,0,0))
+	if !pl.rgm.Moving then -- Prevent whole thing from rotating when we do localized rotation - needed for proper angle reading
+		if localstate then
+			self:SetAngles(ang)
+		else
+			self:SetAngles(Angle(0,0,0))
+		end
 	end
 	
 	//Updating positions

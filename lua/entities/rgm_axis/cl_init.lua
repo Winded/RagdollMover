@@ -90,6 +90,24 @@ function ENT:DrawDirectionLine(norm,scale,ghost)
 	surface.DrawLine(pos1.x,pos1.y,pos2.x,pos2.y)
 end
 
+function ENT:DrawAngleText(axis, hitpos, startAngle)
+	local pos = WorldToLocal(hitpos, Angle(0,0,0), axis:GetPos(), axis:GetAngles())
+	local overnine
+	pos = WorldToLocal(pos, pos:Angle(), Vector(0, 0, 0), startAngle:Angle())
+
+	local localized = Vector(pos.x, pos.z, 0):Angle()
+
+	if(localized.y > 181) then
+		overnine = 360
+	else
+		overnine = 0
+	end
+
+	local textAngle = math.abs(math.Round( (overnine - localized.y) * 100 ) / 100)
+	local textpos = hitpos:ToScreen()
+	draw.SimpleText(textAngle,"HudHintTextLarge",textpos.x + 5,textpos.y,Color(0,200,0,255),TEXT_ALIGN_LEFT,TEXT_ALIGN_BOTTOM)
+end
+
 function ENT:Draw()
 end
 function ENT:DrawTranslucent()
