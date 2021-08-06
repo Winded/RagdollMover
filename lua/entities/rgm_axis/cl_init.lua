@@ -53,7 +53,10 @@ end)
 
 function ENT:DrawLines(scale)
 	local pl = LocalPlayer();
-	if !self.Axises then return end
+	if !self.Axises then
+		self:Setup() -- otherwise we'll have that issue with gizmos not being drawn at all if user was too hasty and used the tool before scripts were done loading in
+		return 
+	end
 	
 	local rotate = pl.rgm.Rotate or false;
 	local collision = self:TestCollision(LocalPlayer(),scale)
