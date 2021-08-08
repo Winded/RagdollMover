@@ -1,3 +1,4 @@
-Ragdoll Mover v1
+Ragdoll Mover v1 edit
 ================
-This is the first version of Ragdoll Mover; the one that's already released.
+This is the edit of first version of Ragdoll Mover;
+You can help the development by testing it and providing feedback.

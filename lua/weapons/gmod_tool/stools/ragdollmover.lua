@@ -32,11 +32,88 @@ TOOL.ClientConVar["boneidmaxholder"] = 20
 
 RunConsoleCommand("ragdollmover_boneid",0)
 
+concommand.Add("ragdollmover_resetroot", function(pl)
+	pl.rgm.IsPhysBone = true;
+	pl.rgm.PhysBone = 0;
+	pl.rgm.Bone = 0;
+	RunConsoleCommand("ragdollmover_boneid",0);
+	pl:rgmSync();
+end)
+
 local TransTable = {
 	"ArrowX", "ArrowY", "ArrowZ",
 	"ArrowXY", "ArrowXZ", "ArrowYZ",
 	"DiscP", "DiscY", "DiscR"
 }
+
+local function SyncOneClient(self, name)
+	if SERVER or !self.rgm then return end
+	
+	local v = self.rgm[name];
+	if v == nil then return end
+	
+	net.Start("rgmSyncClient");
+	
+	local count = 1;
+	net.WriteInt(count, 32);
+	
+	net.WriteString(name);
+	
+	local Type = string.lower(type(v));
+	if Type == "entity" then
+		net.WriteInt(1, 8);
+		net.WriteEntity(v);
+	elseif Type == "number" then
+		net.WriteInt(2, 8);
+		net.WriteFloat(v);
+	elseif Type == "vector" then
+		net.WriteInt(3, 8);
+		net.WriteVector(v);
+	elseif Type == "angle" then
+		net.WriteInt(4, 8);
+		net.WriteAngle(v);
+	elseif Type == "boolean" then
+		net.WriteInt(5, 8);
+		net.WriteBit(v);
+	end
+	net.SendToServer();
+end
+
+local function RGMGetBone(pl, ent, bone)
+	--------------------------------------------------------- yeah this part is from locrotscale
+	local phys;
+	local physobj;
+	pl.rgm.IsPhysBone = false;
+			
+	for i = 0, ent:GetPhysicsObjectCount() - 1 do
+		local b = ent:TranslatePhysBoneToBone(i);
+		if bone == b then 
+			phys = i;
+		end
+	end
+		
+	local count = ent:GetPhysicsObjectCount()
+		
+	if count == 0 then
+		phys = -1;
+	elseif count == 1 then
+		phys = 0
+		pl.rgm.IsPhysBone = true;
+	end
+
+	if phys and 0 <= phys and count > phys then
+		physobj = ent:GetPhysicsObjectNum(phys);
+
+		if physobj then
+			pl.rgm.IsPhysBone = true;
+		end
+	end
+	---------------------------------------------------------
+	local bonen = phys or bone;
+					
+	pl.rgm.PhysBone = bonen;
+	pl.rgm.Bone = bonen;
+end
 
 function TOOL:LeftClick(tr)
 
@@ -116,48 +193,24 @@ function TOOL:LeftClick(tr)
 			tr.Entity.rgmbonecached = true;
 		end
 		
-		if(self:GetClientNumber("manual",0)==0) then
+		if !tobool(self:GetClientNumber("manual",0)) then
 			pl.rgm.PhysBone = tr.PhysicsBone;
 			pl.rgm.Bone = tr.Entity:TranslatePhysBoneToBone(tr.PhysicsBone);
 			pl.rgm.IsPhysBone = true;
-		else
-			--------------------------------------------------------- yeah this part is from locrotscale
-			local phys;
-			local physobj;
-			local bone = self:GetClientNumber( "boneid",0 );
-			pl.rgm.IsPhysBone = false;
-				
-			for i = 0, tr.Entity:GetPhysicsObjectCount() - 1 do
-				local b = tr.Entity:TranslatePhysBoneToBone(i);
-				if bone == b then 
-					phys = i;
-				end
-			end
-				
-			local count = tr.Entity:GetPhysicsObjectCount()
-				
-			if count == 0 then
-				phys = -1;
-			elseif count == 1 then
-				phys = 0
-				pl.rgm.IsPhysBone = true;
-			end
-
-			if phys and 0 <= phys and count > phys then
-				physobj = tr.Entity:GetPhysicsObjectNum(phys);
-
-				if physobj then
-					pl.rgm.IsPhysBone = true;
-				end
-			end
-			---------------------------------------------------------
-			local bonen = phys or bone;
-					
-			pl.rgm.PhysBone = bonen;
-			pl.rgm.Bone = bonen;
 		end
 		
-		pl:rgmSync();
+		local bonecount = tr.Entity:GetBoneCount() - 1
+		if bonecount then
+			RunConsoleCommand("ragdollmover_boneidmax", bonecount);
+		end
+		
+		if ((GetConVarNumber("ragdollmover_boneidmaxholder") ~= GetConVarNumber("ragdollmover_boneidmax")) 
+		or (GetConVarString("ragdollmover_entity") ~= GetConVarString("ragdollmover_entityholder"))) 
+		and tobool(self:GetClientNumber("manual",0)) then
+			RunConsoleCommand("ragdollmover_resetroot");
+		else
+			pl:rgmSync();
+		end
 	end
 	
 	return false
@@ -174,70 +227,33 @@ function TOOL:Reload()
 	
 	local pl = self:GetOwner();
 	
-	pl.rgm.PhysBone = 0;
-	pl.rgm.Bone = 0;
-	
-	pl:rgmSync();
+	RunConsoleCommand("ragdollmover_resetroot")
 	
 	return false
 end
 
-local function SyncOneClient(self, name)
-	if SERVER or !self.rgm then return end
-	
-	local v = self.rgm[name];
-	if v == nil then return end
-	
-	net.Start("rgmSyncClient");
-	
-	local count = 1;
-	net.WriteInt(count, 32);
-	
-	net.WriteString(name);
-	
-	local Type = string.lower(type(v));
-	if Type == "entity" then
-		net.WriteInt(1, 8);
-		net.WriteEntity(v);
-	elseif Type == "number" then
-		net.WriteInt(2, 8);
-		net.WriteFloat(v);
-	elseif Type == "vector" then
-		net.WriteInt(3, 8);
-		net.WriteVector(v);
-	elseif Type == "angle" then
-		net.WriteInt(4, 8);
-		net.WriteAngle(v);
-	elseif Type == "boolean" then
-		net.WriteInt(5, 8);
-		net.WriteBit(v);
-	end
-	net.SendToServer();
-end
-
 function TOOL:Think()
 	if CLIENT then
-		if (GetConVarNumber("ragdollmover_boneidmaxholder") ~= GetConVarNumber("ragdollmover_boneidmax")) then
-			RunConsoleCommand("ragdollmover_boneidmaxholder", GetConVarNumber("ragdollmover_boneidmax"));
-
-			--ripped from default faceposer
-			self:UpdateFaceControlPanel();
 	
-		elseif (GetConVarString("ragdollmover_entity") ~= GetConVarString("ragdollmover_entityholder")) then
-			RunConsoleCommand("ragdollmover_entityholder", GetConVarString("ragdollmover_entity"));
-
-			--ripped from default faceposer
-			self:UpdateFaceControlPanel();
-	
-		end 
-		
 		local pl = self:GetOwner();
-		
 		if !pl.rgm then return end
 		if !pl.rgm.ClientSet then -- setting special function for syncing client to server variables, since hook in ragdollmover_meta only works serverside
 			pl.rgmSyncClient = SyncOneClient;
 			pl.rgm.ClientSet = true;		
 		end
+		
+		if (GetConVarNumber("ragdollmover_boneidmaxholder") ~= GetConVarNumber("ragdollmover_boneidmax")) then
+			RunConsoleCommand("ragdollmover_boneidmaxholder", GetConVarNumber("ragdollmover_boneidmax"));
+			--ripped from default faceposer
+			self:UpdateFaceControlPanel();
+			return;
+		elseif (GetConVarString("ragdollmover_entity") ~= GetConVarString("ragdollmover_entityholder")) then
+			RunConsoleCommand("ragdollmover_entityholder", GetConVarString("ragdollmover_entity"));
+			--ripped from default faceposer
+			self:UpdateFaceControlPanel();
+			return;
+		end 
+
 		if pl.rgm.Moving then return end -- don't want to keep updating this stuff when we move stuff, so it'll go smoother
 		
 		local ent, axis = pl.rgm.Entity, pl.rgm.Axis; -- so, this thing... bone position and angles seem to work clientside best, whereas server's ones are kind of shite
@@ -281,7 +297,12 @@ if SERVER then
 	local ent = pl.rgm.Entity;
 	--[[ physboneid = ent:TranslatePhysBoneToBone(GetConVarNumber("ragdollmover_boneid"))
 	RunConsoleCommand("ragdollmover_boneidlabel", ent:GetBoneName(physboneid)) ]]
-
+	
+	if pl.rgm.Bone ~= GetConVarNumber("ragdollmover_boneid") and tobool(self:GetClientNumber("manual",0)) and IsValid(ent) then
+		RGMGetBone(pl, ent, self:GetClientNumber( "boneid",0 ))
+		pl:rgmSync()
+	end
+	
 	local axis = pl.rgm.Axis;
 	if IsValid(axis) then
 		if axis.localizedpos != tobool(self:GetClientNumber("localpos",1)) then
