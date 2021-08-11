@@ -14,6 +14,8 @@ TOOL.ClientConVar["entityholder"] = "some"
 TOOL.ClientConVar["entity"] = ""
 TOOL.ClientConVar["resetbone"] = 0
 TOOL.ClientConVar["disablefilter"] = 0
+TOOL.ClientConVar["disablechildbone"] = 0
+TOOL.ClientConVar["selecteffects"] = 0
 
 TOOL.ClientConVar["ik_leg_L"] = 0
 TOOL.ClientConVar["ik_leg_R"] = 0
@@ -61,7 +63,7 @@ local function SyncOneClient(self, name)
 	
 	local Type = string.lower(type(v));
 	if Type == "entity" then
-		net.WriteInt(1, 8);
+		net.WriteInt(1, 8); -- Int's correspond to the type of data we pass, for more info check ragdollmover_meta.lua, since that's where i took the function from
 		net.WriteEntity(v);
 	elseif Type == "number" then
 		net.WriteInt(2, 8);
@@ -109,10 +111,26 @@ local function RGMGetBone(pl, ent, bone)
 		end
 	end
 	---------------------------------------------------------
+	if tobool(GetConVarNumber("ragdollmover_manual")) and tobool(GetConVarNumber("ragdollmover_selecteffects")) then
+		if phys == -1 then phys = nil end
+	end
 	local bonen = phys or bone;
 					
 	pl.rgm.PhysBone = bonen;
 	pl.rgm.Bone = bonen;
+end
+
+function TOOL:Deploy()
+	if SERVER then
+		local pl = self:GetOwner();
+		local axis = pl.rgm.Axis;
+		if !IsValid(axis) then
+			axis = ents.Create("rgm_axis");
+			axis:Spawn();
+			axis.Owner = pl;
+			pl.rgm.Axis = axis;
+		end
+	end
 end
 
 function TOOL:LeftClick(tr)
@@ -124,12 +142,8 @@ function TOOL:LeftClick(tr)
 	if pl.rgm.Moving then return false end
 	
 	local axis = pl.rgm.Axis;
-	if !IsValid(axis) then
-		axis = ents.Create("rgm_axis")
-		axis:Spawn()
-		axis.Owner = pl;
-		axis:Setup()
-		pl.rgm.Axis = axis;
+	if !axis.Axises then
+		axis:Setup();
 	end
 	
 	local collision = axis:TestCollision(pl,self:GetClientNumber("scale",10))
@@ -178,28 +192,38 @@ function TOOL:LeftClick(tr)
 	end
 	
 	if IsValid(tr.Entity) and ( (tr.Entity:GetClass() == "prop_ragdoll" or tr.Entity:GetClass() == "prop_physics" or tr.Entity:GetClass() == "prop_effect" ) or tobool(self:GetClientNumber("disablefilter",0)) ) then
-		-- pl:SetNWInt("ragdollmover_physbone",tr.PhysicsBone)
-		-- pl:SetNWInt("ragdollmover_bone",tr.Entity:TranslatePhysBoneToBone(tr.PhysicsBone))
-		pl:SetNWEntity("ragdollmover_ent",tr.Entity)
-		-- pl:SetNWBool("ragdollmover_draw",true)
+		local entity
 		
-		pl.rgm.Entity = tr.Entity;
-		pl.rgm.Draw = true;
+		if tobool(self:GetClientNumber("manual",0)) and tobool(self:GetClientNumber("selecteffects",0)) and IsValid(tr.Entity.AttachedEntity) then
+			pl:SetNWEntity("ragdollmover_ent",tr.Entity.AttachedEntity) -- if manual bone selection is enabled and we select props, we select attached entity (the prop of effect prop, if that makes sense)
+			
+			entity = tr.Entity.AttachedEntity
+			pl.rgm.Entity = tr.Entity.AttachedEntity
+			pl.rgm.Draw = true
+		else
+			-- pl:SetNWInt("ragdollmover_physbone",tr.PhysicsBone)
+			-- pl:SetNWInt("ragdollmover_bone",tr.Entity:TranslatePhysBoneToBone(tr.PhysicsBone))
+			pl:SetNWEntity("ragdollmover_ent",tr.Entity)
+			-- pl:SetNWBool("ragdollmover_draw",true)
+			entity = tr.Entity
+			pl.rgm.Entity = tr.Entity;
+			pl.rgm.Draw = true;
+		end
 		
-		if not tr.Entity.rgmbonecached then -- also taken from locrotscale. some hacky way to cache the bones?
+		if not entity.rgmbonecached then -- also taken from locrotscale. some hacky way to cache the bones?
 			local p = self.SWEP:GetParent();
-			self.SWEP:FollowBone(ent, 0);
+			self.SWEP:FollowBone(entity, 0);
 			self.SWEP:SetParent(p);
-			tr.Entity.rgmbonecached = true;
+			entity.rgmbonecached = true;
 		end
 		
 		if !tobool(self:GetClientNumber("manual",0)) then
 			pl.rgm.PhysBone = tr.PhysicsBone;
-			pl.rgm.Bone = tr.Entity:TranslatePhysBoneToBone(tr.PhysicsBone);
+			pl.rgm.Bone = entity:TranslatePhysBoneToBone(tr.PhysicsBone);
 			pl.rgm.IsPhysBone = true;
 		end
 		
-		local bonecount = tr.Entity:GetBoneCount() - 1
+		local bonecount = entity:GetBoneCount() - 1
 		if bonecount then
 			RunConsoleCommand("ragdollmover_boneidmax", bonecount);
 		end
@@ -368,35 +392,39 @@ if SERVER then
 				end
 			end
 			
-			local postable = rgm.SetOffsets(self,ent,pl.rgmOffsetTable,{b = bone,p = obj:GetPos(),a = obj:GetAngles()})
-
-			if postable == nil then return end
+			if !tobool(self:GetClientNumber("disablechildbone",0)) then
 			
-			local sbik,sbiknum = rgm.IsIKBone(self,ent,bone)
-			if !sbik or sbiknum != 2 then
-				postable[bone].dontset = true
-			end
-			for i=0,ent:GetPhysicsObjectCount()-1 do
-				if postable[i] and !postable[i].dontset then
-					local obj = ent:GetPhysicsObjectNum(i)
-					-- postable[i].pos.x = math.Round(postable[i].pos.x,3)
-					-- postable[i].pos.y = math.Round(postable[i].pos.y,3)
-					-- postable[i].pos.z = math.Round(postable[i].pos.z,3)
-					-- postable[i].ang.p = math.Round(postable[i].ang.p,3)
-					-- postable[i].ang.y = math.Round(postable[i].ang.y,3)
-					-- postable[i].ang.r = math.Round(postable[i].ang.r,3)
-					
-					local poslen = postable[i].pos:Length();
-					local anglen = Vector(postable[i].ang.p,postable[i].ang.y,postable[i].ang.r):Length();
-					
-					//Temporary solution for INF and NaN decimals crashing the game (Even rounding doesnt fix it)
-					if poslen > 2 and anglen > 2 then
-						obj:EnableMotion(true)
-						obj:Wake()
-						obj:SetPos(postable[i].pos)
-						obj:SetAngles(postable[i].ang)
-						obj:EnableMotion(false)
-						obj:Wake()
+				local postable = rgm.SetOffsets(self,ent,pl.rgmOffsetTable,{b = bone,p = obj:GetPos(),a = obj:GetAngles()})
+
+				if postable == nil then return end
+				
+				local firstbone = pl.rgmOffsetTable["FirstBone"]
+				local sbik,sbiknum = rgm.IsIKBone(self,ent,bone)
+				if !sbik or sbiknum != 2 then
+					postable[bone].dontset = true
+				end
+				for i=0 + firstbone,ent:GetPhysicsObjectCount()-1 do
+					if postable[i] and !postable[i].dontset then
+						local obj = ent:GetPhysicsObjectNum(i)
+						-- postable[i].pos.x = math.Round(postable[i].pos.x,3)
+						-- postable[i].pos.y = math.Round(postable[i].pos.y,3)
+						-- postable[i].pos.z = math.Round(postable[i].pos.z,3)
+						-- postable[i].ang.p = math.Round(postable[i].ang.p,3)
+						-- postable[i].ang.y = math.Round(postable[i].ang.y,3)
+						-- postable[i].ang.r = math.Round(postable[i].ang.r,3)
+						
+						local poslen = postable[i].pos:Length();
+						local anglen = Vector(postable[i].ang.p,postable[i].ang.y,postable[i].ang.r):Length();
+						
+						//Temporary solution for INF and NaN decimals crashing the game (Even rounding doesnt fix it)
+						if poslen > 2 and anglen > 2 then
+							obj:EnableMotion(true)
+							obj:Wake()
+							obj:SetPos(postable[i].pos)
+							obj:SetAngles(postable[i].ang)
+							obj:EnableMotion(false)
+							obj:Wake()
+						end
 					end
 				end
 			end
@@ -483,7 +511,7 @@ local function CCol(cpanel,text)
 		surface.DrawRect(0, 0, 500, 500)
 	end
 	cat:SetContents(col)
-	return col
+	return col, cat
 end
 
 local function RGMResetButton(cpanel)
@@ -499,17 +527,29 @@ local function RGMResetButton(cpanel)
 	end
 	cpanel:AddItem(butt)
 end
+
+local colbones
+local category
+local Col4
+
 local function RGMBuildBoneMenu(ent, cpanel)
+	if category then
+		colbones:Remove()
+		category:Remove()
+	end
+	colbones, category = CCol(cpanel, "Bone List")
+	RGMResetButton(colbones)
+	CNumSlider(colbones,"BoneID","ragdollmover_boneid",0,GetConVarNumber("ragdollmover_boneidmax"),0)
 	if !IsValid(ent) then return end
 	local num = GetConVarNumber("ragdollmover_boneidmax") 
 	for i = 0,num do
 		local text1 = ent:GetBoneName(i)
-		local butt = vgui.Create("DButton", cpanel)
+		local butt = vgui.Create("DButton", colbones)
 		butt:SetText(text1)
 		function butt:DoClick() --think making a function to call a console command is better than making another console command... to call another console command
 			RunConsoleCommand("ragdollmover_boneid",i)
 		end
-		cpanel:AddItem(butt)
+		colbones:AddItem(butt)
 		--:AddControl("Button",{text = text1, Command = cmd})
 	end
 end
@@ -544,26 +584,23 @@ function TOOL.BuildCPanel(CPanel, ent)
 	-- B:SetToolTip("This must be pressed so that the move/rotate button is changed.");
 	-- B.DoClick = function() LocalPlayer():ConCommand("ragdollmover_changebutton"); end
 	
-	local Col4 = CCol(CPanel, "Bone Manipulation")
+	Col4 = CCol(CPanel, "Bone Manipulation")
 		local manual = CCheckBox(Col4,"Manual Bone Picking","ragdollmover_manual")
 		manual:SetToolTip("Enable bone selection through the bone menu. Select bone ID and then click on the selected ragdoll to pick that bone.")
-		CNumSlider(Col4,"BoneID","ragdollmover_boneid",0,GetConVarNumber("ragdollmover_boneidmax"),0)
-		RGMResetButton(Col4)
-		local colbones = CCol(Col4, "Bone List")
-			RGMBuildBoneMenu(ent, colbones)
+		local disableoffset = CCheckBox(Col4, "Disable Child Bone Offset", "ragdollmover_disablechildbone")
+		disableoffset:SetToolTip("Disable child bone offset (Example: When you rotate pelvis, angles of other bones will be the same)")
+		local effectselect = CCheckBox(Col4, "Select Effects", "ragdollmover_selecteffects")
+		effectselect:SetToolTip("MAKE SURE MANUAL BONE PICKING IS ENABLED. Allows you to manipulate bones of the effect props.")
+		RGMBuildBoneMenu(ent, Col4)
 	
 	//CPanel:SetHeight(500)
 end
 
-
 function TOOL:UpdateFaceControlPanel( index )
 	local pl = self:GetOwner()
 	local ent = pl.rgm.Entity
-	local CPanel = controlpanel.Get( "ragdollmover" )
-	if ( !CPanel ) then Msg( "Couldn't find ragdollmover panel!\n" ) return end
 	
-	CPanel:ClearControls()
-	self.BuildCPanel(CPanel, ent)
+	RGMBuildBoneMenu(ent, Col4)
 
 end
 

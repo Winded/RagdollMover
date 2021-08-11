@@ -212,15 +212,51 @@ function GetOffsetTable(tool,ent,rotate)
 		CreateDefaultIKs(tool,ent)
 	end
 	
-	RTable[0] = {}
-	RTable[0].pos = ent:GetPhysicsObjectNum(0):GetPos()
-	RTable[0].ang = ent:GetPhysicsObjectNum(0):GetAngles()
-	RTable[0].moving = ent:GetPhysicsObjectNum(0):IsMoveable()
+	local bonestart
+	--------------------------------------------------------- gotta sort out the bones in case if there are genius sfm to gmod ports with roottransform as 0 bone, like wtf
+	for a = 0, ent:GetBoneCount() - 1 do
+		local phys;
+		local IsPhysBone = false;
+				
+		for i = 0, ent:GetPhysicsObjectCount() - 1 do
+			local b = ent:TranslatePhysBoneToBone(i)
+			if a == b then 
+				phys = i
+			end
+		end
+			
+		local count = ent:GetPhysicsObjectCount()
+			
+		if count == 0 then
+			phys = -1
+		elseif count == 1 then
+			phys = 0
+			IsPhysBone = true;
+		end
+
+		if phys and 0 <= phys and count > phys then
+			if ent:GetPhysicsObjectNum(phys) then
+				IsPhysBone = true
+			end
+		end
+		--------------------------------------------------------- wait until we get first physics bone, that'll be our parent bone, and not some non physical stuff like roottransform that causes stuff to freak out
+		if IsPhysBone then
+			bonestart = a
+			a = ent:TranslateBoneToPhysBone(a)
+			RTable[a] = {}
+			RTable[a].pos = ent:GetPhysicsObjectNum(a):GetPos()
+			RTable[a].ang = ent:GetPhysicsObjectNum(a):GetAngles()
+			RTable[a].moving = ent:GetPhysicsObjectNum(a):IsMoveable()
+			RTable["FirstBone"] = a
+			RTable["FirstNPHys"] = bonestart
+			break
+		end
+	end
 	
-	for i=1,ent:GetBoneCount()-1 do
+	for i=1+bonestart,ent:GetBoneCount()-1 do
 		local pb = BoneToPhysBone(ent,i)
 		local parent = GetPhysBoneParent(ent,pb)
-		if pb and pb != 0 and parent and !RTable[pb] then
+		if pb and pb != RTable["FirstBone"] and parent and !RTable[pb] then
 			local b = ent:TranslatePhysBoneToBone(pb)
 			local bn = ent:GetBoneName(b)
 			local obj1 = ent:GetPhysicsObjectNum(pb)
@@ -271,14 +307,17 @@ end
 
 local function SetBoneOffsets(ent,ostable,sbone)
 	local RTable = {}
-	RTable[0] = {}
-	RTable[0].pos = ostable[0].pos
-	RTable[0].ang = ostable[0].ang
-	if sbone.b == 0 then
-		RTable[0].pos = sbone.p
-		RTable[0].ang = sbone.a
+	local firstbone = ostable["FirstBone"]
+	local firstnphys = ostable["FirstNPHys"]
+	
+	RTable[firstbone] = {}
+	RTable[firstbone].pos = ostable[firstbone].pos
+	RTable[firstbone].ang = ostable[firstbone].ang
+	if sbone.b == firstbone then
+		RTable[firstbone].pos = sbone.p
+		RTable[firstbone].ang = sbone.a
 	end
-	for i=1,ent:GetBoneCount()-1 do
+	for i=1 + firstnphys,ent:GetBoneCount()-1 do
 		local pb = BoneToPhysBone(ent,i)
 		if ostable[pb] then
 			local parent = ostable[pb].parent
