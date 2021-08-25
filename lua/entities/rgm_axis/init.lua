@@ -73,7 +73,7 @@ function ENT:Setup()
 		self.DiscP:SetNWInt("type",TYPE_DISC)
 		self.DiscP:SetLocalPos(Vector(0,0,0))
 		self.DiscP:SetLocalAngles(Vector(0,1,0):Angle())
-		self.DiscP.axistype = 1 -- axistype is a variable to help with setting non physical bones - 1 for pitch, 2 yaw, 3 roll
+		self.DiscP.axistype = 1 -- axistype is a variable to help with setting non physical bones - 1 for pitch, 2 yaw, 3 roll, 4 for the big one
 		
 	self.DiscY = ents.Create("rgm_axis_disc")
 		self.DiscY:SetParent(self)
@@ -101,7 +101,7 @@ function ENT:Setup()
 		self.DiscLarge:SetNWInt("type",TYPE_DISC)
 		self.DiscLarge:SetLocalPos(Vector(0,0,0))
 		self.DiscLarge:SetLocalAngles(Vector(1,0,0):Angle()) //This will be constantly changed
-		self.DiscLarge.axistype = 1 -- temporarily going to identify this one as pitch, will probably look into more math for that later
+		self.DiscLarge.axistype = 4
 		
 	self.Axises = {
 		self.ArrowX,
@@ -175,12 +175,7 @@ function ENT:Think()
 		end
 		
 		if rotate then
-			if !pl.rgm.GizmoAng then -- dunno if there is a need for these failsafes
-				ang = matrix:GetAngles();
-			else
-				ang = pl.rgm.GizmoAng;
-			end
-			
+			_ , ang = ent:GetBonePosition(bone);
 		else
 			if ent:GetBoneParent(bone) ~= -1 then
 				if !pl.rgm.GizmoParent then
@@ -189,10 +184,11 @@ function ENT:Think()
 				else
 					ang = pl.rgm.GizmoParent;
 				end
+			elseif IsValid(pl.rgm.EffectBase) then
+				ang = pl.rgm.EffectBase:GetAngles();
 			end
 		end
 	end
-	
 	self:SetPos(pos)
 	
 	local localstate = self.localizedpos

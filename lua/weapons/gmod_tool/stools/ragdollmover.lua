@@ -197,6 +197,7 @@ function TOOL:LeftClick(tr)
 		if tobool(self:GetClientNumber("manual",0)) and tobool(self:GetClientNumber("selecteffects",0)) and IsValid(tr.Entity.AttachedEntity) then
 			pl:SetNWEntity("ragdollmover_ent",tr.Entity.AttachedEntity) -- if manual bone selection is enabled and we select props, we select attached entity (the prop of effect prop, if that makes sense)
 			
+			pl.rgm.EffectBase = tr.Entity
 			entity = tr.Entity.AttachedEntity
 			pl.rgm.Entity = tr.Entity.AttachedEntity
 			pl.rgm.Draw = true
@@ -207,6 +208,7 @@ function TOOL:LeftClick(tr)
 			-- pl:SetNWBool("ragdollmover_draw",true)
 			entity = tr.Entity
 			pl.rgm.Entity = tr.Entity;
+			pl.rgm.EffectBase = nil;
 			pl.rgm.Draw = true;
 		end
 		
@@ -297,16 +299,12 @@ function TOOL:Think()
 				pl.rgm.GizmoParent = nil;
 			end
 			pl.rgm.GizmoPos = pos;
-			pl.rgm.GizmoAng = ang;
 			pl:rgmSyncClient("GizmoPos");
-			pl:rgmSyncClient("GizmoAng");
 			pl:rgmSyncClient("GizmoParent");
 		else
 			pl.rgm.GizmoPos = nil;
-			pl.rgm.GizmoAng = nil;
 			pl.rgm.GizmoParent = nil;
 			pl:rgmSyncClient("GizmoPos");
-			pl:rgmSyncClient("GizmoAng");
 			pl:rgmSyncClient("GizmoParent");
 		end
 	end	
