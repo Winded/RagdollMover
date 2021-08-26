@@ -176,6 +176,10 @@ function ENT:Think()
 		
 		if rotate then
 			_ , ang = ent:GetBonePosition(bone);
+			local manang = ent:GetManipulateBoneAngles(bone);
+			manang = Angle(0, manang.y, 0) -- for some reason non phys bones seem to only follow yaw of the bone manipulation
+			_, manang = LocalToWorld(Vector(0,0,0), manang, Vector(0,0,0), ang)
+			ang = manang
 		else
 			if ent:GetBoneParent(bone) ~= -1 then
 				if !pl.rgm.GizmoParent then
