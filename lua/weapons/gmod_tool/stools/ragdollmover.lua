@@ -83,10 +83,10 @@ end
 
 local function RGMGetBone(pl, ent, bone)
 	--------------------------------------------------------- yeah this part is from locrotscale
-	local phys;
-	local physobj;
+	local phys, physobj;
+	local manual = tobool(GetConVarNumber("ragdollmover_manual"));
 	pl.rgm.IsPhysBone = false;
-			
+	
 	for i = 0, ent:GetPhysicsObjectCount() - 1 do
 		local b = ent:TranslatePhysBoneToBone(i);
 		if bone == b then 
@@ -99,8 +99,10 @@ local function RGMGetBone(pl, ent, bone)
 	if count == 0 then
 		phys = -1;
 	elseif count == 1 then
-		phys = 0
-		pl.rgm.IsPhysBone = true;
+		if ent:GetBoneCount() <= 1 then
+			phys = 0;
+			pl.rgm.IsPhysBone = true;
+		end
 	end
 
 	if phys and 0 <= phys and count > phys then
@@ -111,7 +113,7 @@ local function RGMGetBone(pl, ent, bone)
 		end
 	end
 	---------------------------------------------------------
-	if tobool(GetConVarNumber("ragdollmover_manual")) and tobool(GetConVarNumber("ragdollmover_selecteffects")) then
+	if manual and tobool(GetConVarNumber("ragdollmover_selecteffects")) then
 		if phys == -1 then phys = nil end
 	end
 	local bonen = phys or bone;
