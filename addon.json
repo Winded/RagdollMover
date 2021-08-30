@@ -1,0 +1,9 @@
+{
+    "ignore": [
+        "README.md",
+        ".git/*"
+    ],
+    "tags": [],
+    "title": "Ragdoll Mover",
+    "type": "tool"
+}
