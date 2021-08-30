@@ -301,12 +301,16 @@ function TOOL:Think()
 				pl.rgm.GizmoParent = nil;
 			end
 			pl.rgm.GizmoPos = pos;
+			pl.rgm.GizmoAng = ang;
 			pl:rgmSyncClient("GizmoPos");
+			pl:rgmSyncClient("GizmoAng");
 			pl:rgmSyncClient("GizmoParent");
 		else
 			pl.rgm.GizmoPos = nil;
+			pl.rgm.GizmoAng = nil;
 			pl.rgm.GizmoParent = nil;
 			pl:rgmSyncClient("GizmoPos");
+			pl:rgmSyncClient("GizmoAng");
 			pl:rgmSyncClient("GizmoParent");
 		end
 	end	
