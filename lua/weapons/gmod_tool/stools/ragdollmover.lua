@@ -285,7 +285,7 @@ function TOOL:Think()
 		if pl.rgm.Moving then return end -- don't want to keep updating this stuff when we move stuff, so it'll go smoother
 		
 		local ent, axis = pl.rgm.Entity, pl.rgm.Axis; -- so, this thing... bone position and angles seem to work clientside best, whereas server's ones are kind of shite
-		if IsValid(ent) and IsValid(axis) then
+		if IsValid(ent) and IsValid(axis) and pl.rgm.Bone then
 			local bone = pl.rgm.Bone;
 			local pos, ang = ent:GetBonePosition(bone);
 			if pos == ent:GetPos() then

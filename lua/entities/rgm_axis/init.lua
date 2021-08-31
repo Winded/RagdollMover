@@ -150,7 +150,7 @@ function ENT:Think()
 	
 	local ent = pl.rgm.Entity;
 	local bone = pl.rgm.PhysBone;
-	if !IsValid(ent) then return end
+	if !IsValid(ent) or !pl.rgm.Bone then return end
 	
 	local OldPos = self:GetPos();
 	local OldAng = self:GetAngles();
