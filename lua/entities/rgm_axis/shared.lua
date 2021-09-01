@@ -24,6 +24,7 @@ function ENT:TestCollision(pl,scale)
 	local Start,End = 1,6
 	if rotate then Start,End = 7,10 end
 	local cols = {}
+	if !self.Axises then return false end;
 	for i=Start,End do
 		local e = self.Axises[i];
 		-- print(e);

@@ -3,7 +3,9 @@ ENT.Type = "anim"
 ENT.Base = "base_entity"
 
 function ENT:Initialize()
-	self:SetNoDraw(true)
+	if CLIENT then
+		self:SetNoDraw(true)
+	end
 	self:DrawShadow(false)
 	self:SetCollisionBounds(Vector(-0.1,-0.1,-0.1),Vector(0.1,0.1,0.1))
 	self:SetSolid(SOLID_VPHYSICS)

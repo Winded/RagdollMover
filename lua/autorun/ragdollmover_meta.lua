@@ -81,12 +81,40 @@ hook.Add("PlayerSpawn","rgmSpawn",function(pl)
 		pl.rgm = {};
 		pl.rgmSync = Sync;
 		pl.rgmSyncOne = SyncOne;
+		pl.rgm.ClientSet = false;
 	end
 end)
 
 if SERVER then
 
 util.AddNetworkString("rgmSync");
+util.AddNetworkString("rgmSyncClient");
+
+net.Receive("rgmSyncClient", function(len, ply)
+	local pl = ply;
+	if !pl.rgm then pl.rgm = {}; end
+	
+	local count = net.ReadInt(32);
+	
+	for i=1, count do
+		local name = net.ReadString();
+		
+		local type = net.ReadInt(8);
+		local value = nil
+		if type == TYPE_ENTITY then
+			value = net.ReadEntity();
+		elseif type == TYPE_NUMBER then
+			value = net.ReadFloat();
+		elseif type == TYPE_VECTOR then
+			value = net.ReadVector();
+		elseif type == TYPE_ANGLE then
+			value = net.ReadAngle();
+		elseif type == TYPE_BOOL then
+			value = net.ReadBit() == 1;
+		end
+		pl.rgm[name] = value;
+	end
+end)
 
 else
 

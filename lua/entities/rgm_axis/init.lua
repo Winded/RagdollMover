@@ -11,7 +11,7 @@ util.AddNetworkString("rgmAxis");
 util.AddNetworkString("rgmAxisUpdate");
 
 function ENT:Setup()
-
+	
 	//Arrows
 	self.ArrowX = ents.Create("rgm_axis_arrow")
 		self.ArrowX:SetParent(self)
@@ -19,6 +19,7 @@ function ENT:Setup()
 		self.ArrowX:SetColor(Color(255,0,0,255))
 		self.ArrowX:SetLocalPos(Vector(0,0,0))
 		self.ArrowX:SetLocalAngles(Vector(1,0,0):Angle())
+		self.ArrowX.axistype = 1
 	
 	self.ArrowY = ents.Create("rgm_axis_arrow")
 		self.ArrowY:SetParent(self)
@@ -26,6 +27,7 @@ function ENT:Setup()
 		self.ArrowY:SetColor(Color(0,255,0,255))
 		self.ArrowY:SetLocalPos(Vector(0,0,0))
 		self.ArrowY:SetLocalAngles(Vector(0,1,0):Angle())
+		self.ArrowY.axistype = 2
 	
 	self.ArrowZ = ents.Create("rgm_axis_arrow")
 		self.ArrowZ:SetParent(self)
@@ -33,6 +35,7 @@ function ENT:Setup()
 		self.ArrowZ:SetColor(Color(0,0,255,255))
 		self.ArrowZ:SetLocalPos(Vector(0,0,0))
 		self.ArrowZ:SetLocalAngles(Vector(0,0,1):Angle())
+		self.ArrowZ.axistype = 3
 	
 	//Arrow sides
 	self.ArrowXY = ents.Create("rgm_axis_side")
@@ -70,6 +73,7 @@ function ENT:Setup()
 		self.DiscP:SetNWInt("type",TYPE_DISC)
 		self.DiscP:SetLocalPos(Vector(0,0,0))
 		self.DiscP:SetLocalAngles(Vector(0,1,0):Angle())
+		self.DiscP.axistype = 1 -- axistype is a variable to help with setting non physical bones - 1 for pitch, 2 yaw, 3 roll, 4 for the big one
 		
 	self.DiscY = ents.Create("rgm_axis_disc")
 		self.DiscY:SetParent(self)
@@ -78,6 +82,7 @@ function ENT:Setup()
 		self.DiscY:SetNWInt("type",TYPE_DISC)
 		self.DiscY:SetLocalPos(Vector(0,0,0))
 		self.DiscY:SetLocalAngles(Vector(0,0,1):Angle())
+		self.DiscY.axistype = 2
 	
 	self.DiscR = ents.Create("rgm_axis_disc")
 		self.DiscR:SetParent(self)
@@ -86,6 +91,7 @@ function ENT:Setup()
 		self.DiscR:SetNWInt("type",TYPE_DISC)
 		self.DiscR:SetLocalPos(Vector(0,0,0))
 		self.DiscR:SetLocalAngles(Vector(1,0,0):Angle())
+		self.DiscR.axistype = 3
 		
 	self.DiscLarge = ents.Create("rgm_axis_disc_large")
 		self.DiscLarge:SetParent(self)
@@ -95,6 +101,7 @@ function ENT:Setup()
 		self.DiscLarge:SetNWInt("type",TYPE_DISC)
 		self.DiscLarge:SetLocalPos(Vector(0,0,0))
 		self.DiscLarge:SetLocalAngles(Vector(1,0,0):Angle()) //This will be constantly changed
+		self.DiscLarge.axistype = 4
 		
 	self.Axises = {
 		self.ArrowX,
@@ -143,25 +150,59 @@ function ENT:Think()
 	
 	local ent = pl.rgm.Entity;
 	local bone = pl.rgm.PhysBone;
-	if !IsValid(ent) then return end
+	if !IsValid(ent) or !pl.rgm.Bone then return end
 	
 	local OldPos = self:GetPos();
 	local OldAng = self:GetAngles();
 	local OldDiscPos = self.DiscLarge:GetLocalPos();
 	local OldDiscAng = self.DiscLarge:GetLocalAngles();
+	local pos, ang;
+	local rotate = pl.rgm.Rotate or false;
 	
-	local physobj = ent:GetPhysicsObjectNum(bone)
-	local pos,ang = physobj:GetPos(),physobj:GetAngles()
-	
+	if pl.rgm.IsPhysBone then
+		local physobj = ent:GetPhysicsObjectNum(bone);
+		if physobj == nil then return end
+		pos,ang = physobj:GetPos(),physobj:GetAngles();
+	else
+		if !pl.rgm.GizmoPos then
+			local matrix = ent:GetBoneMatrix(bone);
+			pos = ent:GetBonePosition(bone);
+			if pos == ent:GetPos() then
+				pos = matrix:GetTranslation();
+			end
+		else
+			pos = pl.rgm.GizmoPos;
+		end
+		
+		if rotate then
+			if !pl.rgm.GizmoAng then -- dunno if there is a need for these failsafes
+				_ , ang = ent:GetBonePosition(bone);
+			else
+				ang = pl.rgm.GizmoAng;
+			end
+		else
+			if ent:GetBoneParent(bone) ~= -1 then
+				if !pl.rgm.GizmoParent then
+					matrix = ent:GetBoneMatrix(ent:GetBoneParent(bone)); -- never would have guessed that when moving bones they use angles of their parent bone rather than their own angles. happened to get to know that after looking at vanilla bone manipulator!
+					ang = matrix:GetAngles();
+				else
+					ang = pl.rgm.GizmoParent;
+				end
+			elseif IsValid(pl.rgm.EffectBase) then
+				ang = pl.rgm.EffectBase:GetAngles();
+			end
+		end
+	end
 	self:SetPos(pos)
 	
 	local localstate = self.localizedpos
-	local rotate = pl.rgm.Rotate or false;
 	if rotate then localstate = self.localizedang end
-	if localstate then
-		self:SetAngles(ang)
-	else
-		self:SetAngles(Angle(0,0,0))
+	if !pl.rgm.Moving then -- Prevent whole thing from rotating when we do localized rotation - needed for proper angle reading
+		if localstate or !pl.rgm.IsPhysBone then -- Non phys bones don't go well with world coordinates. Well, I didn't make them to behave with those
+			self:SetAngles(ang or Angle(0,0,0))
+		else
+			self:SetAngles(Angle(0,0,0))
+		end
 	end
 	
 	//Updating positions
