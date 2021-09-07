@@ -144,6 +144,14 @@ function TOOL:LeftClick(tr)
 	if pl.rgm.Moving then return false end
 	
 	local axis = pl.rgm.Axis;
+	if !IsValid(axis) then
+		pl:ChatPrint("Axis entity isn't found. Spawning new one, try selecting the entity again.");
+		axis = ents.Create("rgm_axis");
+		axis:Spawn();
+		axis.Owner = pl;
+		pl.rgm.Axis = axis;
+		return false
+	end
 	if !axis.Axises then
 		axis:Setup();
 	end
@@ -595,7 +603,9 @@ function TOOL.BuildCPanel(CPanel, ent)
 		disableoffset:SetToolTip("Disable child bone offset (Example: When you rotate pelvis, angles of other bones will be the same)")
 		local effectselect = CCheckBox(Col4, "Select Effects", "ragdollmover_selecteffects")
 		effectselect:SetToolTip("MAKE SURE MANUAL BONE PICKING IS ENABLED. Allows you to manipulate bones of the effect props.")
-		RGMBuildBoneMenu(ent, Col4)
+		if IsValid(Col4) then
+			RGMBuildBoneMenu(ent, Col4)
+		end
 	
 	//CPanel:SetHeight(500)
 end
@@ -604,7 +614,15 @@ function TOOL:UpdateFaceControlPanel( index )
 	local pl = self:GetOwner()
 	local ent = pl.rgm.Entity
 	
-	RGMBuildBoneMenu(ent, Col4)
+	if IsValid(Col4) then
+		RGMBuildBoneMenu(ent, Col4)
+	else
+		local CPanel = controlpanel.Get( "ragdollmover" )
+		if ( !CPanel ) then Msg( "Couldn't find ragdollmover panel!\n" ) return end
+	
+		CPanel:ClearControls()
+		self.BuildCPanel(CPanel, ent)
+	end
 
 end
 
