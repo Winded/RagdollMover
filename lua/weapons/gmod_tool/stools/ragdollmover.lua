@@ -406,14 +406,13 @@ if SERVER then
 			
 			
 			local postable = rgm.SetOffsets(self,ent,pl.rgmOffsetTable,{b = bone,p = obj:GetPos(),a = obj:GetAngles()})
-			if !tobool(self:GetClientNumber("disablechildbone",0)) and postable then
+			if !tobool(self:GetClientNumber("disablechildbone",0)) then
 
-				local firstbone = pl.rgmOffsetTable["FirstBone"]
 				local sbik,sbiknum = rgm.IsIKBone(self,ent,bone)
 				if !sbik or sbiknum != 2 then
 					postable[bone].dontset = true
 				end
-				for i=0 + firstbone,ent:GetPhysicsObjectCount()-1 do
+				for i=0,ent:GetPhysicsObjectCount()-1 do
 					if postable[i] and !postable[i].dontset then
 						local obj = ent:GetPhysicsObjectNum(i)
 						-- postable[i].pos.x = math.Round(postable[i].pos.x,3)

@@ -180,10 +180,9 @@ end
 function GetPhysBoneParent(ent,bone)
 	if not bone then return nil; end
 	local b = ent:TranslatePhysBoneToBone(bone)
-	local pb
 	local cont = false
 	local i = 1
-	while !cont do
+	while not cont do
 		b = ent:GetBoneParent(b)
 		local parent = BoneToPhysBone(ent,b)
 		if parent and parent != bone then
@@ -210,123 +209,23 @@ function GetOffsetTable(tool,ent,rotate)
 	if !ent.rgmIKChains then
 		CreateDefaultIKs(tool,ent)
 	end
-	
-	local bonestart
---------------------------------------------------------- gotta sort out the bones in case if there are genius sfm to gmod ports with roottransform as 0 bone, like wtf
-	for a = 0, ent:GetBoneCount() - 1 do
-		local phys;
-		local IsPhysBone = false;
-				
-		for i = 0, ent:GetPhysicsObjectCount() - 1 do
-			local b = ent:TranslatePhysBoneToBone(i)
-			if a == b then 
-				phys = i
-			end
-		end
-			
-		local count = ent:GetPhysicsObjectCount()
-			
-		if count == 0 then
-			phys = -1
-		elseif count == 1 then
-			phys = 0
-			IsPhysBone = true;
-		end
 
-		if phys and 0 <= phys and count > phys then
-			if ent:GetPhysicsObjectNum(phys) then
-				IsPhysBone = true
-			end
-		end
---------------------------------------------------------- wait until we get first physics bone, that'll be our parent bone, and not some non physical stuff like roottransform that causes stuff to freak out
-		if IsPhysBone then
-			bonestart = a
-			a = ent:TranslateBoneToPhysBone(a)
+	for a = 0, ent:GetPhysicsObjectCount() - 1 do -- getting all "root" bones - so it'll work for ragdoll with detached stuffs
+		local Bone = ent:TranslatePhysBoneToBone(a)
+		local Parent = ent:GetBoneParent(Bone)
+		if ent:TranslateBoneToPhysBone(Parent) == a or ent:TranslateBoneToPhysBone(Parent) == -1 or not GetPhysBoneParent(ent, a) then -- root physbones seem to be "parented" to 0 or the -1
 			RTable[a] = {}
 			RTable[a].pos = ent:GetPhysicsObjectNum(a):GetPos()
 			RTable[a].ang = ent:GetPhysicsObjectNum(a):GetAngles()
 			RTable[a].moving = ent:GetPhysicsObjectNum(a):IsMoveable()
-			RTable["FirstBone"] = a
-			RTable["FirstNPHys"] = bonestart
-			break
+			RTable[a].root = true
 		end
 	end
 
-	do
-		local tableforreference = {}
----------------------------------------------- now we're sorting for case of ragdolls that "break" into several parts - they have several physbones parented to nonphysical root. we just give up on IK then.
-		for a = 0, ent:GetBoneCount() - 1 do
-			tableforreference[a] = {}
-			tableforreference[a].phys = false
-			local phys;
-			local IsPhysBone = false;
-					
-			for i = 0, ent:GetPhysicsObjectCount() - 1 do
-				local b = ent:TranslatePhysBoneToBone(i)
-				if a == b then 
-					phys = i
-				end
-			end
-				
-			local count = ent:GetPhysicsObjectCount()
-				
-			if count == 0 then
-				phys = -1
-			elseif count == 1 then
-				phys = 0
-				IsPhysBone = true;
-			end
-
-			if phys and 0 <= phys and count > phys then
-				if ent:GetPhysicsObjectNum(phys) then
-					IsPhysBone = true
-				end
-			end
-			
-			if IsPhysBone then
-				tableforreference[a].phys = true
-			end
-			local parentbone = ent:GetBoneParent(a)
-			tableforreference[a].parent = parentbone	
-		end
----------------------------------------------- 
-		local physroots = 0
-		local nonphysroots = 0
-		for i, value in pairs(tableforreference) do
-			if value.parent == -1 then
-				if value.phys then
-					physroots = physroots + 1
-					if physroots > 1 then
-						RTable["fuckedup"] = true -- can ragdolls have more than 1 root physbone anyway?
-						break
-					end
-				else
-					local children = 0
-					for _, bonestuff in pairs(tableforreference) do
-						if i == bonestuff.parent then
-							children = children + 1
-							if children > 1 then
-								RTable["fuckedup"] = true -- uh oh it's that breakable ragdoll thing, abort.
-								break
-							end
-						end
-					end
-					if children ~= 0 then
-						nonphysroots = nonphysroots + 1 -- no idea if this is possible
-						if nonphysroots > 1 then
-							RTable["fuckedup"] = true
-						end
-					end
-					if RTable["fuckedup"] then break end
-				end
-			end
-		end
-	end
-	
-	for i=1+bonestart,ent:GetBoneCount()-1 do
+	for i=0,ent:GetBoneCount()-1 do
 		local pb = BoneToPhysBone(ent,i)
 		local parent = GetPhysBoneParent(ent,pb)
-		if pb and pb != RTable["FirstBone"] and parent and !RTable[pb] then
+		if pb and parent and !RTable[pb] then
 			local b = ent:TranslatePhysBoneToBone(pb)
 			local bn = ent:GetBoneName(b)
 			local obj1 = ent:GetPhysicsObjectNum(pb)
@@ -342,56 +241,58 @@ function GetOffsetTable(tool,ent,rotate)
 			end
 		end
 	end
-	
+
 	for k,v in pairs(ent.rgmIKChains) do
-	
+		
 		local obj1 = ent:GetPhysicsObjectNum(v.hip)
 		local obj2 = ent:GetPhysicsObjectNum(v.knee)
 		local obj3 = ent:GetPhysicsObjectNum(v.foot)
-		
+			
 		ent.rgmIKChains[k].rotate = rotate
-		
+			
 		local kneedir = GetKneeDir(ent,v.hip,v.knee,v.foot)
-		
+			
 		ent.rgmIKChains[k].ikhippos = RTable[v.hip].pos*1
-		ent.rgmIKChains[k].ikhipparent = RTable[v.hip].parent*1
+		if RTable[v.hip].parent then
+			ent.rgmIKChains[k].ikhipparent = RTable[v.hip].parent*1
+		end
 		local ang,offang = GetAngleOffset(ent,v.hip,v.knee)
 		ent.rgmIKChains[k].ikhipang = ang*1
 		ent.rgmIKChains[k].ikhipoffang = offang*1
-		
+			
 		ent.rgmIKChains[k].ikkneedir = kneedir
 		ang,offang = GetAngleOffset(ent,v.knee,v.foot)
 		ent.rgmIKChains[k].ikkneeang = ang*1
 		ent.rgmIKChains[k].ikkneeoffang = offang*1
-		
+			
 		ent.rgmIKChains[k].ikfootpos = obj3:GetPos()
 		ent.rgmIKChains[k].ikfootang = obj3:GetAngles()
-		
+			
 		ent.rgmIKChains[k].thighlength = obj1:GetPos():Distance(obj2:GetPos())
 		ent.rgmIKChains[k].shinlength = obj2:GetPos():Distance(obj3:GetPos())
-		
+			
 	end
-	
+
 	return RTable
 end
 
 local function SetBoneOffsets(ent,ostable,sbone)
 	local RTable = {}
-	local firstbone = ostable["FirstBone"]
-	local firstnphys = ostable["FirstNPHys"]
 
-	if ostable["fuckedup"] then return nil end
-
-	RTable[firstbone] = {}
-	RTable[firstbone].pos = ostable[firstbone].pos
-	RTable[firstbone].ang = ostable[firstbone].ang
-	if sbone.b == firstbone then
-		RTable[firstbone].pos = sbone.p
-		RTable[firstbone].ang = sbone.a
+	for id, value in pairs(ostable) do
+		if value.root then
+			RTable[id] = {}
+			RTable[id].pos = value.pos
+			RTable[id].ang = value.ang
+			if sbone.b == id then
+				RTable[id].pos = sbone.p
+				RTable[id].ang = sbone.a
+			end
+		end
 	end
-	for i=1 + firstnphys,ent:GetBoneCount()-1 do
+	for i=0,ent:GetBoneCount()-1 do
 		local pb = BoneToPhysBone(ent,i)
-		if ostable[pb] then
+		if ostable[pb] and not RTable[pb] then
 			local parent = ostable[pb].parent
 			local bn = ent:GetBoneName(i)
 			local ppos,pang = RTable[parent].pos,RTable[parent].ang
@@ -413,14 +314,14 @@ end
 function SetOffsets(tool,ent,ostable,sbone)
 	local RTable = SetBoneOffsets(ent,ostable,sbone)
 	
-	if RTable then
-		for k,v in pairs(ent.rgmIKChains) do
-			if tobool(tool:GetClientNumber(DefIKnames[v.type],0)) then
-				local RT = ProcessIK(ent,v,sbone,RTable)
-				table.Merge(RTable,RT)
-			end
+
+	for k,v in pairs(ent.rgmIKChains) do
+		if tobool(tool:GetClientNumber(DefIKnames[v.type],0)) then
+			local RT = ProcessIK(ent,v,sbone,RTable)
+			table.Merge(RTable,RT)
 		end
 	end
+
 
 	return RTable
 	
@@ -464,8 +365,14 @@ function ProcessIK(ent,IKTable,sbone,RT)
 	local thighlength = IKTable.thighlength
 	local shinlength = IKTable.shinlength
 	
-	local obj = RT[IKTable.ikhipparent]
-	local hpos,hang = LocalToWorld(hippos,Angle(0,0,0),obj.pos,obj.ang)
+	local hpos,hang
+	
+	if IKTable.ikhipparent then
+		obj = RT[IKTable.ikhipparent]
+		hpos,hang = LocalToWorld(hippos,Angle(0,0,0),obj.pos,obj.ang)
+	else
+		hpos,hang = LocalToWorld(hippos,Angle(0,0,0),Vector(0,0,0), Angle(0,0,0))
+	end
 	local HipPos = hpos*1
 	
 	local AnklePos,AnkleAng
