@@ -290,15 +290,17 @@ function GetOffsetTable(tool,ent,rotate)
 			tableforreference[a].parent = parentbone	
 		end
 ---------------------------------------------- 
-		local roots = 0
+		local physroots = 0
+		local nonphysroots = 0
 		for i, value in pairs(tableforreference) do
 			if value.parent == -1 then
-				roots = roots + 1
-				if roots > 1 then
-					RTable["fuckedup"] = true -- can ragdolls have more than 1 root bone anyway?
-					break
-				end
-				if not value.phys then
+				if value.phys then
+					physroots = physroots + 1
+					if physroots > 1 then
+						RTable["fuckedup"] = true -- can ragdolls have more than 1 root physbone anyway?
+						break
+					end
+				else
 					local children = 0
 					for _, bonestuff in pairs(tableforreference) do
 						if i == bonestuff.parent then
@@ -307,6 +309,12 @@ function GetOffsetTable(tool,ent,rotate)
 								RTable["fuckedup"] = true -- uh oh it's that breakable ragdoll thing, abort.
 								break
 							end
+						end
+					end
+					if children ~= 0 then
+						nonphysroots = nonphysroots + 1 -- no idea if this is possible
+						if nonphysroots > 1 then
+							RTable["fuckedup"] = true
 						end
 					end
 					if RTable["fuckedup"] then break end
