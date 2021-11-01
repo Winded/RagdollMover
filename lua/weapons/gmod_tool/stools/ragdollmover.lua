@@ -35,10 +35,12 @@ TOOL.ClientConVar["boneidmaxholder"] = 20
 RunConsoleCommand("ragdollmover_boneid",0)
 
 concommand.Add("ragdollmover_resetroot", function(pl)
-	pl.rgm.IsPhysBone = true;
-	pl.rgm.PhysBone = 0;
-	pl.rgm.Bone = 0;
-	RunConsoleCommand("ragdollmover_boneid",0);
+	if not tobool(GetConVarNumber("ragdollmover_manual")) then
+		pl.rgm.IsPhysBone = true;
+		pl.rgm.PhysBone = 0;
+		pl.rgm.Bone = 0;
+	end
+	RunConsoleCommand("ragdollmover_boneid","0")
 	pl:rgmSync();
 end)
 
@@ -199,9 +201,7 @@ function TOOL:LeftClick(tr)
 		pl:rgmSync();
 		return false
 		
-	end
-	
-	if IsValid(tr.Entity) and ( (tr.Entity:GetClass() == "prop_ragdoll" or tr.Entity:GetClass() == "prop_physics" or tr.Entity:GetClass() == "prop_effect" ) or tobool(self:GetClientNumber("disablefilter",0)) ) then
+	elseif IsValid(tr.Entity) and ( (tr.Entity:GetClass() == "prop_ragdoll" or tr.Entity:GetClass() == "prop_physics" or tr.Entity:GetClass() == "prop_effect" ) or tobool(self:GetClientNumber("disablefilter",0)) ) then
 		local entity
 		
 		if tobool(self:GetClientNumber("manual",0)) and tobool(self:GetClientNumber("selecteffects",0)) and IsValid(tr.Entity.AttachedEntity) then
@@ -240,9 +240,10 @@ function TOOL:LeftClick(tr)
 			RunConsoleCommand("ragdollmover_boneidmax", bonecount);
 		end
 		
-		if ((GetConVarNumber("ragdollmover_boneidmaxholder") ~= GetConVarNumber("ragdollmover_boneidmax")) 
-		or (GetConVarString("ragdollmover_entity") ~= GetConVarString("ragdollmover_entityholder"))) 
-		and tobool(self:GetClientNumber("manual",0)) then
+		entstr = tostring(pl.rgm.Entity)
+		RunConsoleCommand("ragdollmover_entity",entstr)
+
+		if ent ~= pl.rgm.Entity and tobool(self:GetClientNumber("manual",0)) then
 			RunConsoleCommand("ragdollmover_resetroot");
 		else
 			pl:rgmSync();
@@ -262,21 +263,19 @@ function TOOL:Reload()
 	if CLIENT then return false end
 	
 	local pl = self:GetOwner();
-	
-	RunConsoleCommand("ragdollmover_resetroot")
-	
+		RunConsoleCommand("ragdollmover_resetroot")
 	return false
 end
 
 function TOOL:Think()
 	if CLIENT then
-	
 		local pl = self:GetOwner();
 		if !pl.rgm then return end
+
 		if !pl.rgm.ClientSet then -- setting special function for syncing client to server variables, since hook in ragdollmover_meta only works serverside
 			pl.rgmSyncClient = SyncOneClient;
 			pl.rgm.ClientSet = true;		
-		end
+		end	
 		
 		if (GetConVarNumber("ragdollmover_boneidmaxholder") ~= GetConVarNumber("ragdollmover_boneidmax")) then
 			RunConsoleCommand("ragdollmover_boneidmaxholder", GetConVarNumber("ragdollmover_boneidmax"));
@@ -324,20 +323,20 @@ function TOOL:Think()
 	end	
 
 if SERVER then
-	
 
 	if !self.LastThink then self.LastThink = CurTime() end
 	if CurTime() < self.LastThink + self:GetClientNumber("updaterate",0.01) then return end
 
 	local pl = self:GetOwner()
 	local ent = pl.rgm.Entity;
-	--[[ physboneid = ent:TranslatePhysBoneToBone(GetConVarNumber("ragdollmover_boneid"))
-	RunConsoleCommand("ragdollmover_boneidlabel", ent:GetBoneName(physboneid)) ]]
 	
 	if pl.rgm.Bone ~= GetConVarNumber("ragdollmover_boneid") and tobool(self:GetClientNumber("manual",0)) and IsValid(ent) then
 		RGMGetBone(pl, ent, self:GetClientNumber( "boneid",0 ))
 		pl:rgmSync()
 	end
+
+	--[[ physboneid = ent:TranslatePhysBoneToBone(GetConVarNumber("ragdollmover_boneid"))
+	RunConsoleCommand("ragdollmover_boneidlabel", ent:GetBoneName(physboneid)) ]]	
 	
 	local axis = pl.rgm.Axis;
 	if IsValid(axis) then
@@ -404,12 +403,11 @@ if SERVER then
 				end
 			end
 			
-			if !tobool(self:GetClientNumber("disablechildbone",0)) then
 			
-				local postable = rgm.SetOffsets(self,ent,pl.rgmOffsetTable,{b = bone,p = obj:GetPos(),a = obj:GetAngles()})
+			
+			local postable = rgm.SetOffsets(self,ent,pl.rgmOffsetTable,{b = bone,p = obj:GetPos(),a = obj:GetAngles()})
+			if !tobool(self:GetClientNumber("disablechildbone",0)) and postable then
 
-				if postable == nil then return end
-				
 				local firstbone = pl.rgmOffsetTable["FirstBone"]
 				local sbik,sbiknum = rgm.IsIKBone(self,ent,bone)
 				if !sbik or sbiknum != 2 then
@@ -540,28 +538,22 @@ local function RGMResetButton(cpanel)
 	cpanel:AddItem(butt)
 end
 
-local colbones
-local category
-local Col4
+local BonePanel
+local BoneIDSlider
 
 local function RGMBuildBoneMenu(ent, cpanel)
-	if category then
-		colbones:Remove()
-		category:Remove()
-	end
-	colbones, category = CCol(cpanel, "Bone List")
-	RGMResetButton(colbones)
-	CNumSlider(colbones,"BoneID","ragdollmover_boneid",0,GetConVarNumber("ragdollmover_boneidmax"),0)
-	if !IsValid(ent) then return end
+	cpanel:Clear()
+	if not IsValid(ent) then return end
 	local num = GetConVarNumber("ragdollmover_boneidmax") 
-	for i = 0,num do
+	for i = 0, num do
 		local text1 = ent:GetBoneName(i)
-		local butt = vgui.Create("DButton", colbones)
+		local butt = vgui.Create("DButton", cpanel)
 		butt:SetText(text1)
+		butt:Dock(TOP)
 		function butt:DoClick() --think making a function to call a console command is better than making another console command... to call another console command
 			RunConsoleCommand("ragdollmover_boneid",i)
 		end
-		colbones:AddItem(butt)
+		cpanel:AddItem(butt)
 		--:AddControl("Button",{text = text1, Command = cmd})
 	end
 end
@@ -599,12 +591,21 @@ function TOOL.BuildCPanel(CPanel, ent)
 	Col4 = CCol(CPanel, "Bone Manipulation")
 		local manual = CCheckBox(Col4,"Manual Bone Picking","ragdollmover_manual")
 		manual:SetToolTip("Enable bone selection through the bone menu. Select bone ID and then click on the selected ragdoll to pick that bone.")
+
 		local disableoffset = CCheckBox(Col4, "Disable Child Bone Offset", "ragdollmover_disablechildbone")
 		disableoffset:SetToolTip("Disable child bone offset (Example: When you rotate pelvis, angles of other bones will be the same)")
+
 		local effectselect = CCheckBox(Col4, "Select Effects", "ragdollmover_selecteffects")
 		effectselect:SetToolTip("MAKE SURE MANUAL BONE PICKING IS ENABLED. Allows you to manipulate bones of the effect props.")
-		if IsValid(Col4) then
-			RGMBuildBoneMenu(ent, Col4)
+
+		local colbones = CCol(Col4, "Bone List")
+		RGMResetButton(colbones)
+		BoneIDSlider = CNumSlider(colbones,"BoneID","ragdollmover_boneid",0,GetConVarNumber("ragdollmover_boneidmax"),0)
+		BonePanel = vgui.Create("DScrollPanel", colbones)
+		BonePanel:SetTall(600)
+		colbones:AddItem(BonePanel)
+		if IsValid(BonePanel) then
+			RGMBuildBoneMenu(ent, BonePanel)
 		end
 	
 	//CPanel:SetHeight(500)
@@ -614,8 +615,9 @@ function TOOL:UpdateFaceControlPanel( index )
 	local pl = self:GetOwner()
 	local ent = pl.rgm.Entity
 	
-	if IsValid(Col4) then
-		RGMBuildBoneMenu(ent, Col4)
+	if IsValid(BonePanel) then
+		BoneIDSlider:SetMinMax(0, GetConVarNumber("ragdollmover_boneidmax"))
+		RGMBuildBoneMenu(ent, BonePanel)
 	else
 		local CPanel = controlpanel.Get( "ragdollmover" )
 		if ( !CPanel ) then Msg( "Couldn't find ragdollmover panel!\n" ) return end

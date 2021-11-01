@@ -207,13 +207,12 @@ local DefIKnames = {
 //Get bone offsets from parent bones, and update IK data.
 function GetOffsetTable(tool,ent,rotate)
 	local RTable = {}
-	
 	if !ent.rgmIKChains then
 		CreateDefaultIKs(tool,ent)
 	end
 	
 	local bonestart
-	--------------------------------------------------------- gotta sort out the bones in case if there are genius sfm to gmod ports with roottransform as 0 bone, like wtf
+--------------------------------------------------------- gotta sort out the bones in case if there are genius sfm to gmod ports with roottransform as 0 bone, like wtf
 	for a = 0, ent:GetBoneCount() - 1 do
 		local phys;
 		local IsPhysBone = false;
@@ -239,7 +238,7 @@ function GetOffsetTable(tool,ent,rotate)
 				IsPhysBone = true
 			end
 		end
-		--------------------------------------------------------- wait until we get first physics bone, that'll be our parent bone, and not some non physical stuff like roottransform that causes stuff to freak out
+--------------------------------------------------------- wait until we get first physics bone, that'll be our parent bone, and not some non physical stuff like roottransform that causes stuff to freak out
 		if IsPhysBone then
 			bonestart = a
 			a = ent:TranslateBoneToPhysBone(a)
@@ -250,6 +249,69 @@ function GetOffsetTable(tool,ent,rotate)
 			RTable["FirstBone"] = a
 			RTable["FirstNPHys"] = bonestart
 			break
+		end
+	end
+
+	do
+		local tableforreference = {}
+---------------------------------------------- now we're sorting for case of ragdolls that "break" into several parts - they have several physbones parented to nonphysical root. we just give up on IK then.
+		for a = 0, ent:GetBoneCount() - 1 do
+			tableforreference[a] = {}
+			tableforreference[a].phys = false
+			local phys;
+			local IsPhysBone = false;
+					
+			for i = 0, ent:GetPhysicsObjectCount() - 1 do
+				local b = ent:TranslatePhysBoneToBone(i)
+				if a == b then 
+					phys = i
+				end
+			end
+				
+			local count = ent:GetPhysicsObjectCount()
+				
+			if count == 0 then
+				phys = -1
+			elseif count == 1 then
+				phys = 0
+				IsPhysBone = true;
+			end
+
+			if phys and 0 <= phys and count > phys then
+				if ent:GetPhysicsObjectNum(phys) then
+					IsPhysBone = true
+				end
+			end
+			
+			if IsPhysBone then
+				tableforreference[a].phys = true
+			end
+			local parentbone = ent:GetBoneParent(a)
+			tableforreference[a].parent = parentbone	
+		end
+---------------------------------------------- 
+		local roots = 0
+		for i, value in pairs(tableforreference) do
+			if value.parent == -1 then
+				roots = roots + 1
+				if roots > 1 then
+					RTable["fuckedup"] = true -- can ragdolls have more than 1 root bone anyway?
+					break
+				end
+				if not value.phys then
+					local children = 0
+					for _, bonestuff in pairs(tableforreference) do
+						if i == bonestuff.parent then
+							children = children + 1
+							if children > 1 then
+								RTable["fuckedup"] = true -- uh oh it's that breakable ragdoll thing, abort.
+								break
+							end
+						end
+					end
+					if RTable["fuckedup"] then break end
+				end
+			end
 		end
 	end
 	
@@ -309,7 +371,9 @@ local function SetBoneOffsets(ent,ostable,sbone)
 	local RTable = {}
 	local firstbone = ostable["FirstBone"]
 	local firstnphys = ostable["FirstNPHys"]
-	
+
+	if ostable["fuckedup"] then return nil end
+
 	RTable[firstbone] = {}
 	RTable[firstbone].pos = ostable[firstbone].pos
 	RTable[firstbone].ang = ostable[firstbone].ang
@@ -339,16 +403,17 @@ end
 //Set bone positions from the local positions on the offset table.
 //And process IK chains.
 function SetOffsets(tool,ent,ostable,sbone)
-	
 	local RTable = SetBoneOffsets(ent,ostable,sbone)
 	
-	for k,v in pairs(ent.rgmIKChains) do
-		if tobool(tool:GetClientNumber(DefIKnames[v.type],0)) then
-			local RT = ProcessIK(ent,v,sbone,RTable)
-			table.Merge(RTable,RT)
+	if RTable then
+		for k,v in pairs(ent.rgmIKChains) do
+			if tobool(tool:GetClientNumber(DefIKnames[v.type],0)) then
+				local RT = ProcessIK(ent,v,sbone,RTable)
+				table.Merge(RTable,RT)
+			end
 		end
 	end
-	
+
 	return RTable
 	
 end
