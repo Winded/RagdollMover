@@ -526,13 +526,11 @@ end
 
 local function RGMResetButton(cpanel)
 	local pl = LocalPlayer()
-	if !pl.rgm then return end
-	local ent = pl.rgm.Entity
-	if !IsValid(ent) then return end
 	local butt = vgui.Create("DButton", cpanel)
 	butt:SetText("Reset Non-Physics Bone")
 	function butt:DoClick()
-		if !IsValid(ent) then return end
+		if not pl.rgm then return end
+		if not IsValid(pl.rgm.Entity) then return end
 		RunConsoleCommand("ragdollmover_resetbone", 1)
 	end
 	cpanel:AddItem(butt)
