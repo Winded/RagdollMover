@@ -213,7 +213,7 @@ function GetOffsetTable(tool,ent,rotate)
 	for a = 0, ent:GetPhysicsObjectCount() - 1 do -- getting all "root" bones - so it'll work for ragdoll with detached stuffs
 		local Bone = ent:TranslatePhysBoneToBone(a)
 		local Parent = ent:GetBoneParent(Bone)
-		if ent:TranslateBoneToPhysBone(Parent) == a or ent:TranslateBoneToPhysBone(Parent) == -1 or not GetPhysBoneParent(ent, a) then -- root physbones seem to be "parented" to 0 or the -1
+		if ent:TranslateBoneToPhysBone(Parent) == -1 or not GetPhysBoneParent(ent, a) then -- root physbones seem to be "parented" to the -1. and the physboneparent function will not find the thing for it.
 			RTable[a] = {}
 			RTable[a].pos = ent:GetPhysicsObjectNum(a):GetPos()
 			RTable[a].ang = ent:GetPhysicsObjectNum(a):GetAngles()
