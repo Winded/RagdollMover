@@ -27,8 +27,13 @@ if CLIENT then
 local lastkey = -1;
 
 hook.Add("Think", "rgmToggleThink", function()
-	local curkey = GetConVar("ragdollmover_rotatebutton"):GetInt();
-	
+	local curkey
+	if not GetConVar("ragdollmover_rotatebutton") then
+		curkey = MOUSE_MIDDLE
+	else
+		curkey = GetConVar("ragdollmover_rotatebutton"):GetInt()
+	end
+
 	if curkey != lastkey then
 		net.Start("rgmSetToggleKey");
 		net.WriteEntity(LocalPlayer());

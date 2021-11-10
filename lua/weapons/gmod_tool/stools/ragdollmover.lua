@@ -24,7 +24,7 @@ TOOL.ClientConVar["ik_hand_R"] = 0
 TOOL.ClientConVar["hipkneeroll"] = 3
 TOOL.ClientConVar["ignoredaxis"] = 3
 
-TOOL.ClientConVar["unfreeze"] = 1
+TOOL.ClientConVar["unfreeze"] = 0
 TOOL.ClientConVar["updaterate"] = 0.01
 
 TOOL.ClientConVar["rotatebutton"] = MOUSE_MIDDLE
