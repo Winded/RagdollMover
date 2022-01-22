@@ -4,7 +4,7 @@ TOOL.Category = "Poser"
 TOOL.Command = nil
 TOOL.ConfigName = ""
 
-TOOL.ClientConVar["type"] = "Left Leg"
+TOOL.ClientConVar["type"] = 1
 
 local ikchains_iktypes = {
 	"Left Leg",
