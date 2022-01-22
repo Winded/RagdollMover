@@ -33,7 +33,7 @@ function TOOL:LeftClick(tr)
 		if rgm.GetPhysBoneParent(tr.Entity,kneebone) == self.SelectedBone then
 			if !tr.Entity.rgmIKChains then tr.Entity.rgmIKChains = {} end
 			local Type = self:GetClientNumber("type",1)
-			Type = math.ceil(Type);
+			Type = math.ceil(Type)
 			tr.Entity.rgmIKChains[Type] = {hip = self.SelectedBone,knee = kneebone,foot = tr.PhysicsBone,type = Type}
 		else
 			Message(self:GetOwner(),"There can be only one knee bone.",1,"buttons/button8.wav")
