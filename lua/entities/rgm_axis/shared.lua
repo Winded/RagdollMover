@@ -19,15 +19,15 @@ function ENT:Initialize()
 end
 
 function ENT:TestCollision(pl,scale)
-	-- PrintTable(self:GetTable());
-	local rotate = pl.rgm.Rotate or false;
+	-- PrintTable(self:GetTable())
+	local rotate = pl.rgm.Rotate or false
 	local Start,End = 1,6
 	if rotate then Start,End = 7,10 end
 	local cols = {}
-	if !self.Axises then return false end;
+	if !self.Axises then return false end
 	for i=Start,End do
-		local e = self.Axises[i];
-		-- print(e);
+		local e = self.Axises[i]
+		-- print(e)
 		cols[i] = e:TestCollision(pl,scale)
 	end
 	for i=Start,End do

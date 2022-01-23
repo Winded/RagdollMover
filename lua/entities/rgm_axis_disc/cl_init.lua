@@ -26,7 +26,7 @@ function ENT:DrawLines(yellow,scale)
 	color = {color.r,color.g,color.b,color.a}
 	local color2 = self:GetNWVector("color2",Vector(255,0,0))
 	color2 = {color2.x,color2.y,color2.z,255}
-	local moving = LocalPlayer().rgm.Moving or false;
+	local moving = LocalPlayer().rgm.Moving or false
 	for i,v in ipairs(linetable) do
 		local pos1 = self:LocalToWorld(v[1]*scale)
 		local pos2 = self:LocalToWorld(v[2]*scale)

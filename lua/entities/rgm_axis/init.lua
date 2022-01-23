@@ -7,8 +7,8 @@ local TYPE_ARROW = 1
 local TYPE_ARROWSIDE = 2
 local TYPE_DISC = 3
 
-util.AddNetworkString("rgmAxis");
-util.AddNetworkString("rgmAxisUpdate");
+util.AddNetworkString("rgmAxis")
+util.AddNetworkString("rgmAxisUpdate")
 
 function ENT:Setup()
 
@@ -114,22 +114,22 @@ function ENT:Setup()
 		self.DiscY,
 		self.DiscR,
 		self.DiscLarge,
-	};
+	}
 
 	timer.Create("rgmAxis", 1, 1, function()
-		net.Start("rgmAxis");
-		net.WriteEntity(self);
-		net.WriteEntity(self.ArrowX);
-		net.WriteEntity(self.ArrowY);
-		net.WriteEntity(self.ArrowZ);
-		net.WriteEntity(self.ArrowXY);
-		net.WriteEntity(self.ArrowXZ);
-		net.WriteEntity(self.ArrowYZ);
-		net.WriteEntity(self.DiscP);
-		net.WriteEntity(self.DiscY);
-		net.WriteEntity(self.DiscR);
-		net.WriteEntity(self.DiscLarge);
-		net.Send(self.Owner);
+		net.Start("rgmAxis")
+		net.WriteEntity(self)
+		net.WriteEntity(self.ArrowX)
+		net.WriteEntity(self.ArrowY)
+		net.WriteEntity(self.ArrowZ)
+		net.WriteEntity(self.ArrowXY)
+		net.WriteEntity(self.ArrowXZ)
+		net.WriteEntity(self.ArrowYZ)
+		net.WriteEntity(self.DiscP)
+		net.WriteEntity(self.DiscY)
+		net.WriteEntity(self.DiscR)
+		net.WriteEntity(self.DiscLarge)
+		net.Send(self.Owner)
 	end)
 
 	-- self:SetNWEntity("ArrowX",self.ArrowX)
@@ -145,51 +145,51 @@ function ENT:Setup()
 end
 
 function ENT:Think()
-	local pl = self.Owner;
+	local pl = self.Owner
 	if !IsValid(pl) then return end
 
-	local ent = pl.rgm.Entity;
-	local bone = pl.rgm.PhysBone;
+	local ent = pl.rgm.Entity
+	local bone = pl.rgm.PhysBone
 	if !IsValid(ent) or !pl.rgm.Bone then return end
 
-	local OldPos = self:GetPos();
-	local OldAng = self:GetAngles();
-	local OldDiscPos = self.DiscLarge:GetLocalPos();
-	local OldDiscAng = self.DiscLarge:GetLocalAngles();
-	local pos, ang;
-	local rotate = pl.rgm.Rotate or false;
+	local OldPos = self:GetPos()
+	local OldAng = self:GetAngles()
+	local OldDiscPos = self.DiscLarge:GetLocalPos()
+	local OldDiscAng = self.DiscLarge:GetLocalAngles()
+	local pos, ang
+	local rotate = pl.rgm.Rotate or false
 
 	if pl.rgm.IsPhysBone then
-		local physobj = ent:GetPhysicsObjectNum(bone);
+		local physobj = ent:GetPhysicsObjectNum(bone)
 		if physobj == nil then return end
-		pos,ang = physobj:GetPos(),physobj:GetAngles();
+		pos,ang = physobj:GetPos(),physobj:GetAngles()
 	else
 		if !pl.rgm.GizmoPos then
-			local matrix = ent:GetBoneMatrix(bone);
-			pos = ent:GetBonePosition(bone);
+			local matrix = ent:GetBoneMatrix(bone)
+			pos = ent:GetBonePosition(bone)
 			if pos == ent:GetPos() then
-				pos = matrix:GetTranslation();
+				pos = matrix:GetTranslation()
 			end
 		else
-			pos = pl.rgm.GizmoPos;
+			pos = pl.rgm.GizmoPos
 		end
 
 		if rotate then
 			if !pl.rgm.GizmoAng then -- dunno if there is a need for these failsafes
-				_ , ang = ent:GetBonePosition(bone);
+				_ , ang = ent:GetBonePosition(bone)
 			else
-				ang = pl.rgm.GizmoAng;
+				ang = pl.rgm.GizmoAng
 			end
 		else
 			if ent:GetBoneParent(bone) ~= -1 then
 				if !pl.rgm.GizmoParent then
-					matrix = ent:GetBoneMatrix(ent:GetBoneParent(bone)); -- never would have guessed that when moving bones they use angles of their parent bone rather than their own angles. happened to get to know that after looking at vanilla bone manipulator!
-					ang = matrix:GetAngles();
+					matrix = ent:GetBoneMatrix(ent:GetBoneParent(bone)) -- never would have guessed that when moving bones they use angles of their parent bone rather than their own angles. happened to get to know that after looking at vanilla bone manipulator!
+					ang = matrix:GetAngles()
 				else
-					ang = pl.rgm.GizmoParent;
+					ang = pl.rgm.GizmoParent
 				end
 			elseif IsValid(pl.rgm.EffectBase) then
-				ang = pl.rgm.EffectBase:GetAngles();
+				ang = pl.rgm.EffectBase:GetAngles()
 			end
 		end
 	end
@@ -233,25 +233,25 @@ function ENT:Think()
 	-- self.DiscR:SetLocalPos(Vector(0,0,0))
 	-- self.DiscR:SetLocalAngles(Vector(1,0,0):Angle())
 
-	local disc = self.DiscLarge;
+	local disc = self.DiscLarge
 	local ang = (self:GetPos()-pl:EyePos()):Angle()
 	ang = self:WorldToLocalAngles(ang)
 	disc:SetLocalAngles(ang)
 
-	local NewPos = self:GetPos();
-	local NewAng = self:GetAngles();
-	local NewDiscPos = self.DiscLarge:GetLocalPos();
-	local NewDiscAng = self.DiscLarge:GetLocalAngles();
+	local NewPos = self:GetPos()
+	local NewAng = self:GetAngles()
+	local NewDiscPos = self.DiscLarge:GetLocalPos()
+	local NewDiscAng = self.DiscLarge:GetLocalAngles()
 
 	if NewPos != OldPos or NewAng != OldAng
 	or NewDiscPos != OldDiscPos or NewDiscAng != OldDiscAng then
-		net.Start("rgmAxisUpdate");
-		net.WriteEntity(self);
-		net.WriteVector(self:GetPos());
-		net.WriteAngle(self:GetAngles());
-		net.WriteVector(disc:GetLocalPos());
-		net.WriteAngle(disc:GetLocalAngles());
-		net.Send(self.Owner);
+		net.Start("rgmAxisUpdate")
+		net.WriteEntity(self)
+		net.WriteVector(self:GetPos())
+		net.WriteAngle(self:GetAngles())
+		net.WriteVector(disc:GetLocalPos())
+		net.WriteAngle(disc:GetLocalAngles())
+		net.Send(self.Owner)
 	end
 
 	self:NextThink(CurTime()+0.001)

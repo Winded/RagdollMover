@@ -16,7 +16,7 @@ function ENT:ProcessMovement(offpos,offang,eyepos,eyeang,ent,bone,ppos,pnorm, is
 		local localized, startmove, finalpos, boneang
 		if ent:GetBoneParent(bone) ~= -1 then
 			local matrix = ent:GetBoneMatrix(ent:GetBoneParent(bone))
-			boneang = matrix:GetAngles();
+			boneang = matrix:GetAngles()
 		else
 			if IsValid(pl.rgm.EffectBase) then
 				boneang = pl.rgm.EffectBase:GetAngles()

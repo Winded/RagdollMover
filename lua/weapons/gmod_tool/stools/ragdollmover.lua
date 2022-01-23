@@ -157,11 +157,11 @@ function TOOL:LeftClick(tr)
 
 		local dirnorm = (collision.hitpos-axis:GetPos())
 		dirnorm:Normalize()
-		pl.rgm.DirNorm = dirnorm;
-		pl.rgm.MoveAxis = apart;
-		pl.rgm.KeyDown = true;
-		pl.rgm.Moving = true;
-		pl:rgmSync();
+		pl.rgm.DirNorm = dirnorm
+		pl.rgm.MoveAxis = apart
+		pl.rgm.KeyDown = true
+		pl.rgm.Moving = true
+		pl:rgmSync()
 		return false
 
 	elseif IsValid(tr.Entity) and ( (tr.Entity:GetClass() == "prop_ragdoll" or tr.Entity:GetClass() == "prop_physics" or tr.Entity:GetClass() == "prop_effect" ) or tobool(self:GetClientNumber("disablefilter",0)) and not tr.Entity:IsWorld() ) then
@@ -177,6 +177,13 @@ function TOOL:LeftClick(tr)
 			pl.rgm.Entity = tr.Entity
 			pl.rgm.EffectBase = nil
 			pl.rgm.Draw = true
+		end
+
+		if not entity.rgmbonecached then -- also taken from locrotscale. some hacky way to cache the bones?
+			local p = self.SWEP:GetParent()
+			self.SWEP:FollowBone(entity, 0)
+			self.SWEP:SetParent(p)
+			entity.rgmbonecached = true
 		end
 
 		if !tobool(self:GetClientNumber("manual",0)) then

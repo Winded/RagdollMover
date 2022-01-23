@@ -102,7 +102,7 @@ function TOOL:DrawHUD()
 	local tr = pl:GetEyeTrace()
 	if IsValid(tr.Entity) and (tr.Entity:GetClass() == "prop_ragdoll") then
 		local aimedbone = pl:GetNWInt("ragdollmoverik_aimedbone",0)
-		rgm.DrawBoneName(tr.Entity,aimedbone);
+		rgm.DrawBoneName(tr.Entity,aimedbone)
 		-- local name = tr.Entity:GetBoneName(aimedbone)
 		-- local _pos,_ang = tr.Entity:GetBonePosition(aimedbone)
 		-- if !_pos or !_ang then

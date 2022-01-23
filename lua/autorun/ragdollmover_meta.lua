@@ -89,21 +89,21 @@ local function SyncOneClient(self, name)
 
 	net.WriteString(name)
 
-	local Type = string.lower(type(v));
+	local Type = string.lower(type(v))
 	if Type == "entity" then
-		net.WriteInt(1, 8)
+		net.WriteInt(TYPE_ENTITY, 8)
 		net.WriteEntity(v)
 	elseif Type == "number" then
-		net.WriteInt(2, 8)
+		net.WriteInt(TYPE_NUMBER, 8)
 		net.WriteFloat(v)
 	elseif Type == "vector" then
-		net.WriteInt(3, 8)
+		net.WriteInt(TYPE_VECTOR, 8)
 		net.WriteVector(v)
 	elseif Type == "angle" then
-		net.WriteInt(4, 8)
+		net.WriteInt(TYPE_ANGLE, 8)
 		net.WriteAngle(v)
 	elseif Type == "boolean" then
-		net.WriteInt(5, 8)
+		net.WriteInt(TYPE_BOOL, 8)
 		net.WriteBit(v)
 	end
 	net.SendToServer()

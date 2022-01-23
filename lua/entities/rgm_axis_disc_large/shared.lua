@@ -3,7 +3,7 @@ ENT.Type = "anim"
 ENT.Base = "rgm_axis_disc"
 
 function ENT:TestCollision(pl,scale)
-	-- return self.BaseClass.TestCollision(self,pl,scale,1.15,1.35);
+	-- return self.BaseClass.TestCollision(self,pl,scale,1.15,1.35)
 	local eyepos,eyeang = rgm.EyePosAng(pl)
 	local intersect = self:GetGrabPos(eyepos,eyeang)
 	local distmin = 1.15*scale

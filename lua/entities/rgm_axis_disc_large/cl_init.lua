@@ -2,7 +2,7 @@
 include("shared.lua")
 
 function ENT:DrawLines(yellow,scale)
-	-- self.BaseClass.DrawLines(self,yellow,scale*1.25);
+	-- self.BaseClass.DrawLines(self,yellow,scale*1.25)
 	local ToScreen = {}
 	local linetable = self:GetLinePositions()
 	local color = self:GetColor()

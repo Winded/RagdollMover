@@ -8,17 +8,17 @@ local TransTable = {
 }
 
 net.Receive("rgmAxis",function(len)
-	local self = net.ReadEntity();
-	self.ArrowX =		net.ReadEntity();
-	self.ArrowY =		net.ReadEntity();
-	self.ArrowZ =		net.ReadEntity();
-	self.ArrowXY =		net.ReadEntity();
-	self.ArrowXZ =		net.ReadEntity();
-	self.ArrowYZ =		net.ReadEntity();
-	self.DiscP =		net.ReadEntity();
-	self.DiscY =		net.ReadEntity();
-	self.DiscR =		net.ReadEntity();
-	self.DiscLarge = 	net.ReadEntity();
+	local self = net.ReadEntity()
+	self.ArrowX =		net.ReadEntity()
+	self.ArrowY =		net.ReadEntity()
+	self.ArrowZ =		net.ReadEntity()
+	self.ArrowXY =		net.ReadEntity()
+	self.ArrowXZ =		net.ReadEntity()
+	self.ArrowYZ =		net.ReadEntity()
+	self.DiscP =		net.ReadEntity()
+	self.DiscY =		net.ReadEntity()
+	self.DiscR =		net.ReadEntity()
+	self.DiscLarge = 	net.ReadEntity()
 	self.Axises = {
 		self.ArrowX,
 		self.ArrowY,
@@ -30,39 +30,39 @@ net.Receive("rgmAxis",function(len)
 		self.DiscY,
 		self.DiscR,
 		self.DiscLarge,
-	};
-	print(self.DiscP);
-	print(self.Axises);
+	}
+	print(self.DiscP)
+	print(self.Axises)
 end)
 
 net.Receive("rgmAxisUpdate",function(len)
-	local self = net.ReadEntity();
-	local pos = net.ReadVector();
-	local ang = net.ReadAngle();
+	local self = net.ReadEntity()
+	local pos = net.ReadVector()
+	local ang = net.ReadAngle()
 
-	local discpos = net.ReadVector();
-	local discang = net.ReadAngle();
+	local discpos = net.ReadVector()
+	local discang = net.ReadAngle()
 
 	if !self.Axises then return end
 
-	self.TargetPos = pos;
-	self.TargetAng = ang;
-	self.TargetDiscPos = discpos;
-	self.TargetDiscAng = discang;
+	self.TargetPos = pos
+	self.TargetAng = ang
+	self.TargetDiscPos = discpos
+	self.TargetDiscAng = discang
 end)
 
 function ENT:DrawLines(scale)
-	local pl = LocalPlayer();
+	local pl = LocalPlayer()
 
-	local rotate = pl.rgm.Rotate or false;
+	local rotate = pl.rgm.Rotate or false
 	local collision = self:TestCollision(LocalPlayer(),scale)
 	local ToScreen = {}
 	local Start,End = 1,6
 	if rotate then Start,End = 7,10 end
-	-- print(self.Axises);
-	if !self.Axises then return end;
+	-- print(self.Axises)
+	if !self.Axises then return end
 	for i=Start,End do
-		local moveaxis = self.Axises[i];
+		local moveaxis = self.Axises[i]
 		local yellow = false
 		if collision and moveaxis == collision.axis then
 			yellow = true
