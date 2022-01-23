@@ -7,7 +7,7 @@ function ENT:ProcessMovement(offpos,offang,eyepos,eyeang,ent,bone,ppos,pnorm, is
 	local intersect = self:GetGrabPos(eyepos,eyeang,ppos)
 	local localized = self:WorldToLocal(intersect)
 	local pos, ang
-	
+
 	if isphys then
 		local _a
 		local obj = ent:GetPhysicsObjectNum(bone)

@@ -7,7 +7,7 @@ function ENT:ProcessMovement(offpos,offang,eyepos,eyeang,ent,bone,ppos,pnorm, is
 	local intersect = self:GetGrabPos(eyepos,eyeang,ppos,pnorm)
 	local pos, ang
 	local pl = self:GetParent().Owner
-	
+
 	if isphys then
 		local obj = ent:GetPhysicsObjectNum(bone)
 		ang = obj:GetAngles()
@@ -24,7 +24,6 @@ function ENT:ProcessMovement(offpos,offang,eyepos,eyeang,ent,bone,ppos,pnorm, is
 				boneang = Angle(0,0,0)
 			end
 		end
-		
 		localized = LocalToWorld(offpos,Angle(0,0,0),intersect,self:GetAngles())
 		localized = WorldToLocal(localized, Angle(0,0,0), self:GetPos(), boneang)
 

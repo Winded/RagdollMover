@@ -28,7 +28,7 @@ util.AddNetworkString("rgmSetToggleKey")
 net.Receive("rgmSetToggleKey",function(len, pl)
 	local key = net.ReadInt(32)
 	if !key then return end
-	
+
 	CurrentToggleKey = key
 	if NumpadBind then numpad.Remove(NumpadBind) end
 	NumpadBind = numpad.OnDown(pl, key, "rgmAxisChangeState")
@@ -220,35 +220,27 @@ function GetOffsetTable(tool,ent,rotate)
 	end
 
 	for k,v in pairs(ent.rgmIKChains) do
-		
 		local obj1 = ent:GetPhysicsObjectNum(v.hip)
 		local obj2 = ent:GetPhysicsObjectNum(v.knee)
 		local obj3 = ent:GetPhysicsObjectNum(v.foot)
-			
-		ent.rgmIKChains[k].rotate = rotate
-			
-		local kneedir = GetKneeDir(ent,v.hip,v.knee,v.foot)
-			
-		ent.rgmIKChains[k].ikhippos = RTable[v.hip].pos*1
+			ent.rgmIKChains[k].rotate = rotate
+			local kneedir = GetKneeDir(ent,v.hip,v.knee,v.foot)
+			ent.rgmIKChains[k].ikhippos = RTable[v.hip].pos*1
 		if RTable[v.hip].parent then
 			ent.rgmIKChains[k].ikhipparent = RTable[v.hip].parent*1
 		end
 		local ang,offang = GetAngleOffset(ent,v.hip,v.knee)
 		ent.rgmIKChains[k].ikhipang = ang*1
 		ent.rgmIKChains[k].ikhipoffang = offang*1
-			
-		ent.rgmIKChains[k].ikkneedir = kneedir
+			ent.rgmIKChains[k].ikkneedir = kneedir
 		ang,offang = GetAngleOffset(ent,v.knee,v.foot)
 		ent.rgmIKChains[k].ikkneeang = ang*1
 		ent.rgmIKChains[k].ikkneeoffang = offang*1
-			
-		ent.rgmIKChains[k].ikfootpos = obj3:GetPos()
+			ent.rgmIKChains[k].ikfootpos = obj3:GetPos()
 		ent.rgmIKChains[k].ikfootang = obj3:GetAngles()
-			
-		ent.rgmIKChains[k].thighlength = obj1:GetPos():Distance(obj2:GetPos())
+			ent.rgmIKChains[k].thighlength = obj1:GetPos():Distance(obj2:GetPos())
 		ent.rgmIKChains[k].shinlength = obj2:GetPos():Distance(obj3:GetPos())
-			
-	end
+		end
 
 	return RTable
 end
@@ -290,7 +282,7 @@ end
 --And process IK chains.
 function SetOffsets(tool,ent,ostable,sbone)
 	local RTable = SetBoneOffsets(ent,ostable,sbone)
-	
+
 
 	for k,v in pairs(ent.rgmIKChains) do
 		if tobool(tool:GetClientNumber(DefIKnames[v.type],0)) then
@@ -301,7 +293,7 @@ function SetOffsets(tool,ent,ostable,sbone)
 
 
 	return RTable
-	
+
 end
 
 -----
@@ -311,7 +303,7 @@ end
 --[[	Key function for IK chains: finding the knee position (in case of arms, it's elbow position)
 	Once again, a math function, which I didn't fully make myself, and cannot explain much.
 	Only that the arguments in order are: hip position, ankle position, thigh length, shin length, knee vector direction.
-	
+
 	Got the math from this thread:
 	http://forum.unity3d.com/threads/40431-IK-Chain
 ]]
@@ -330,7 +322,7 @@ end
 function ProcessIK(ent,IKTable,sbone,RT)
 
 	local RTable = {}
-	
+
 	local hippos = IKTable.ikhippos
 	local hipang = IKTable.ikhipang
 	local hipoffang = IKTable.ikhipoffang
@@ -341,9 +333,9 @@ function ProcessIK(ent,IKTable,sbone,RT)
 	local footang = IKTable.ikfootang
 	local thighlength = IKTable.thighlength
 	local shinlength = IKTable.shinlength
-	
+
 	local hpos,hang
-	
+
 	if IKTable.ikhipparent then
 		obj = RT[IKTable.ikhipparent]
 		hpos,hang = LocalToWorld(hippos,Angle(0,0,0),obj.pos,obj.ang)
@@ -351,7 +343,7 @@ function ProcessIK(ent,IKTable,sbone,RT)
 		hpos,hang = LocalToWorld(hippos,Angle(0,0,0),Vector(0,0,0), Angle(0,0,0))
 	end
 	local HipPos = hpos*1
-	
+
 	local AnklePos,AnkleAng
 	if IKTable.foot != sbone.b then
 		AnklePos,AnkleAng = footpos*1,footang*1
@@ -364,13 +356,13 @@ function ProcessIK(ent,IKTable,sbone,RT)
 		anklenorm:Normalize()
 		AnklePos = HipPos + (anklenorm * (thighlength + shinlength))
 	end
-	
+
 	local KneePos = FindKnee(HipPos,AnklePos,thighlength,shinlength,kneedir)
 	hang = SetAngleOffset(ent,HipPos,(KneePos-HipPos):Angle(),hipang,hipoffang)
 	local HipAng = hang*1
 	hang = SetAngleOffset(ent,KneePos,(AnklePos-KneePos):Angle(),kneeang,kneeoffang)
 	local KneeAng = hang*1
-	
+
 	RTable[IKTable.hip] = {pos = HipPos,ang = HipAng}
 	RTable[IKTable.knee] = {pos = KneePos,ang = KneeAng}
 	if IKTable.rotate and sbone.b == IKTable.hip then
@@ -379,9 +371,9 @@ function ProcessIK(ent,IKTable,sbone,RT)
 		RTable[IKTable.knee].dontset = true
 	end
 	RTable[IKTable.foot] = {pos = AnklePos,ang = AnkleAng}
-	
+
 	return RTable
-	
+
 end
 
 function NormalizeAngle(ang)

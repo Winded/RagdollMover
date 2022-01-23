@@ -5,7 +5,7 @@ AddCSLuaFile("shared.lua")
 
 local function ConvertVector(vec, axistype)
 	local rotationtable, result
-	
+
 	if axistype == 1 then
 		result = Vector(-vec.x, vec.z, 0)
 	elseif axistype == 2 then
@@ -30,8 +30,8 @@ function ENT:ProcessMovement(offpos,offang,eyepos,eyeang,ent,bone,ppos,pnorm, is
 		(self:GetParent():LocalToWorld(Vector(1,0,0)) - self:GetPos()):Angle(),
 		(self:GetPos()-pl:EyePos()):Angle()
 	}
-	
-	
+
+
 	if isphys then
 		localized = Vector(localized.y,localized.z,0):Angle()
 		local pos = self:GetPos()
@@ -46,7 +46,6 @@ function ENT:ProcessMovement(offpos,offang,eyepos,eyeang,ent,bone,ppos,pnorm, is
 		localized = Vector(localized.x, localized.z, 0):Angle()
 		rotateang = NPhysAngle[self.axistype] + localized.y -- putting it in another variable to avoid constant adding onto the angle variable
 		_a[self.axistype] = rotateang]]
-		
 		local _, boneang = ent:GetBonePosition(bone)
 		local startlocal = LocalToWorld(startAngle, startAngle:Angle(), Vector(0,0,0), axisangle) -- first we get our vectors into world coordinates, relative to the axis angles
 		localized = LocalToWorld(localized, localized:Angle(), Vector(0,0,0), axisangle)
@@ -55,7 +54,6 @@ function ENT:ProcessMovement(offpos,offang,eyepos,eyeang,ent,bone,ppos,pnorm, is
 
 		localized = ConvertVector(localized, self.axistype)
 		startlocal = ConvertVector(startlocal, self.axistype)
-		
 		localized = localized:Angle() - startlocal:Angle()
 
 		if self.axistype == 4 then
@@ -66,10 +64,8 @@ function ENT:ProcessMovement(offpos,offang,eyepos,eyeang,ent,bone,ppos,pnorm, is
 			rotateang = NPhysAngle[self.axistype] + localized.y
 			_a[self.axistype] = rotateang
 		end
-		
-		
 		_p = ent:GetManipulateBonePosition(bone)
 	end
-	
+
 	return _p,_a
 end

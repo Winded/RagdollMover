@@ -39,12 +39,12 @@ net.Receive("rgmAxisUpdate",function(len)
 	local self = net.ReadEntity();
 	local pos = net.ReadVector();
 	local ang = net.ReadAngle();
-	
+
 	local discpos = net.ReadVector();
 	local discang = net.ReadAngle();
-	
+
 	if !self.Axises then return end
-	
+
 	self.TargetPos = pos;
 	self.TargetAng = ang;
 	self.TargetDiscPos = discpos;
@@ -53,7 +53,7 @@ end)
 
 function ENT:DrawLines(scale)
 	local pl = LocalPlayer();
-	
+
 	local rotate = pl.rgm.Rotate or false;
 	local collision = self:TestCollision(LocalPlayer(),scale)
 	local ToScreen = {}
@@ -114,5 +114,5 @@ function ENT:DrawTranslucent()
 end
 
 function ENT:Think()
-	
+
 end
