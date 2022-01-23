@@ -1,7 +1,7 @@
 
 include("shared.lua")
 
-//To be overwritten
+--To be overwritten
 function ENT:GetLinePositions()
 end
 

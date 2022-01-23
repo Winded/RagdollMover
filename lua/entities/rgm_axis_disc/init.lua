@@ -46,6 +46,7 @@ function ENT:ProcessMovement(offpos,offang,eyepos,eyeang,ent,bone,ppos,pnorm, is
 		localized = Vector(localized.x, localized.z, 0):Angle()
 		rotateang = NPhysAngle[self.axistype] + localized.y -- putting it in another variable to avoid constant adding onto the angle variable
 		_a[self.axistype] = rotateang]]
+
 		local _, boneang = ent:GetBonePosition(bone)
 		local startlocal = LocalToWorld(startAngle, startAngle:Angle(), Vector(0,0,0), axisangle) -- first we get our vectors into world coordinates, relative to the axis angles
 		localized = LocalToWorld(localized, localized:Angle(), Vector(0,0,0), axisangle)
@@ -54,6 +55,7 @@ function ENT:ProcessMovement(offpos,offang,eyepos,eyeang,ent,bone,ppos,pnorm, is
 
 		localized = ConvertVector(localized, self.axistype)
 		startlocal = ConvertVector(startlocal, self.axistype)
+
 		localized = localized:Angle() - startlocal:Angle()
 
 		if self.axistype == 4 then
@@ -64,6 +66,8 @@ function ENT:ProcessMovement(offpos,offang,eyepos,eyeang,ent,bone,ppos,pnorm, is
 			rotateang = NPhysAngle[self.axistype] + localized.y
 			_a[self.axistype] = rotateang
 		end
+
+
 		_p = ent:GetManipulateBonePosition(bone)
 	end
 

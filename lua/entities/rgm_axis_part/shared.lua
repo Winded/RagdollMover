@@ -27,6 +27,6 @@ function ENT:GetGrabPos(eyepos,eyeang,ppos,pnorm)
 	return intersect
 end
 
-//To be overwritten
+--To be overwritten
 function ENT:TestCollision(id,pl,scale)
 end

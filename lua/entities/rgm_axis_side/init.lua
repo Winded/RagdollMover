@@ -24,6 +24,7 @@ function ENT:ProcessMovement(offpos,offang,eyepos,eyeang,ent,bone,ppos,pnorm, is
 				boneang = Angle(0,0,0)
 			end
 		end
+
 		localized = LocalToWorld(offpos,Angle(0,0,0),intersect,self:GetAngles())
 		localized = WorldToLocal(localized, Angle(0,0,0), self:GetPos(), boneang)
 

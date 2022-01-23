@@ -12,7 +12,7 @@ util.AddNetworkString("rgmAxisUpdate");
 
 function ENT:Setup()
 
-	//Arrows
+	--Arrows
 	self.ArrowX = ents.Create("rgm_axis_arrow")
 		self.ArrowX:SetParent(self)
 		self.ArrowX:Spawn()
@@ -37,7 +37,7 @@ function ENT:Setup()
 		self.ArrowZ:SetLocalAngles(Vector(0,0,1):Angle())
 		self.ArrowZ.axistype = 3
 
-	//Arrow sides
+	--Arrow sides
 	self.ArrowXY = ents.Create("rgm_axis_side")
 		self.ArrowXY:SetParent(self)
 		self.ArrowXY:Spawn()
@@ -65,7 +65,7 @@ function ENT:Setup()
 		self.ArrowYZ:SetLocalPos(Vector(0,0,0))
 		self.ArrowYZ:SetLocalAngles(Vector(1,0,0):Angle())
 
-	//Discs
+	--Discs
 	self.DiscP = ents.Create("rgm_axis_disc")
 		self.DiscP:SetParent(self)
 		self.DiscP:Spawn()
@@ -74,6 +74,7 @@ function ENT:Setup()
 		self.DiscP:SetLocalPos(Vector(0,0,0))
 		self.DiscP:SetLocalAngles(Vector(0,1,0):Angle())
 		self.DiscP.axistype = 1 -- axistype is a variable to help with setting non physical bones - 1 for pitch, 2 yaw, 3 roll, 4 for the big one
+
 	self.DiscY = ents.Create("rgm_axis_disc")
 		self.DiscY:SetParent(self)
 		self.DiscY:Spawn()
@@ -91,6 +92,7 @@ function ENT:Setup()
 		self.DiscR:SetLocalPos(Vector(0,0,0))
 		self.DiscR:SetLocalAngles(Vector(1,0,0):Angle())
 		self.DiscR.axistype = 3
+
 	self.DiscLarge = ents.Create("rgm_axis_disc_large")
 		self.DiscLarge:SetParent(self)
 		self.DiscLarge:Spawn()
@@ -98,8 +100,9 @@ function ENT:Setup()
 		self.DiscLarge:SetNWVector("color2",Vector(88,88,88))
 		self.DiscLarge:SetNWInt("type",TYPE_DISC)
 		self.DiscLarge:SetLocalPos(Vector(0,0,0))
-		self.DiscLarge:SetLocalAngles(Vector(1,0,0):Angle()) //This will be constantly changed
+		self.DiscLarge:SetLocalAngles(Vector(1,0,0):Angle()) --This will be constantly changed
 		self.DiscLarge.axistype = 4
+
 	self.Axises = {
 		self.ArrowX,
 		self.ArrowY,
@@ -170,6 +173,7 @@ function ENT:Think()
 		else
 			pos = pl.rgm.GizmoPos;
 		end
+
 		if rotate then
 			if !pl.rgm.GizmoAng then -- dunno if there is a need for these failsafes
 				_ , ang = ent:GetBonePosition(bone);
@@ -201,7 +205,7 @@ function ENT:Think()
 		end
 	end
 
-	//Updating positions
+	--Updating positions
 	-- self.ArrowX:SetLocalPos(Vector(0,0,0))
 	-- self.ArrowX:SetLocalAngles(Vector(1,0,0):Angle())
 

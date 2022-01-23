@@ -72,7 +72,7 @@ function ENT:DrawLines(scale)
 	end
 end
 
-// Deprecated
+-- Deprecated
 function ENT:DrawLinesSingle(id,scale)
 	local ToScreen = self:GetNWEntity(TransTable[id]):DrawLines(true,scale)
 	for i,v in ipairs(ToScreen) do

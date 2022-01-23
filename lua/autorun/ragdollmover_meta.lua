@@ -19,6 +19,7 @@ local function Sync(self)
 
 	for k,v in pairs(self.rgm) do
 		net.WriteString(k)
+
 		local Type = string.lower(type(v))
 		if Type == "entity" then
 			net.WriteInt(TYPE_ENTITY, 8)
@@ -132,6 +133,7 @@ net.Receive("rgmSyncClient", function(len, ply)
 
 	for i=1, count do
 		local name = net.ReadString()
+
 		local type = net.ReadInt(8)
 		local value = nil
 		if type == TYPE_ENTITY then
@@ -159,6 +161,7 @@ net.Receive("rgmSync",function(len)
 
 	for i=1, count do
 		local name = net.ReadString()
+
 		local type = net.ReadInt(8)
 		local value = nil
 		if type == TYPE_ENTITY then

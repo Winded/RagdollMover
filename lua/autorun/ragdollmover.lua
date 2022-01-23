@@ -220,27 +220,35 @@ function GetOffsetTable(tool,ent,rotate)
 	end
 
 	for k,v in pairs(ent.rgmIKChains) do
+
 		local obj1 = ent:GetPhysicsObjectNum(v.hip)
 		local obj2 = ent:GetPhysicsObjectNum(v.knee)
 		local obj3 = ent:GetPhysicsObjectNum(v.foot)
-			ent.rgmIKChains[k].rotate = rotate
-			local kneedir = GetKneeDir(ent,v.hip,v.knee,v.foot)
-			ent.rgmIKChains[k].ikhippos = RTable[v.hip].pos*1
+
+		ent.rgmIKChains[k].rotate = rotate
+
+		local kneedir = GetKneeDir(ent,v.hip,v.knee,v.foot)
+
+		ent.rgmIKChains[k].ikhippos = RTable[v.hip].pos*1
 		if RTable[v.hip].parent then
 			ent.rgmIKChains[k].ikhipparent = RTable[v.hip].parent*1
 		end
 		local ang,offang = GetAngleOffset(ent,v.hip,v.knee)
 		ent.rgmIKChains[k].ikhipang = ang*1
 		ent.rgmIKChains[k].ikhipoffang = offang*1
-			ent.rgmIKChains[k].ikkneedir = kneedir
+
+		ent.rgmIKChains[k].ikkneedir = kneedir
 		ang,offang = GetAngleOffset(ent,v.knee,v.foot)
 		ent.rgmIKChains[k].ikkneeang = ang*1
 		ent.rgmIKChains[k].ikkneeoffang = offang*1
-			ent.rgmIKChains[k].ikfootpos = obj3:GetPos()
+
+		ent.rgmIKChains[k].ikfootpos = obj3:GetPos()
 		ent.rgmIKChains[k].ikfootang = obj3:GetAngles()
-			ent.rgmIKChains[k].thighlength = obj1:GetPos():Distance(obj2:GetPos())
+
+		ent.rgmIKChains[k].thighlength = obj1:GetPos():Distance(obj2:GetPos())
 		ent.rgmIKChains[k].shinlength = obj2:GetPos():Distance(obj3:GetPos())
-		end
+
+	end
 
 	return RTable
 end
