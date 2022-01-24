@@ -33,7 +33,7 @@ function TOOL:LeftClick(tr)
 		if rgm.GetPhysBoneParent(tr.Entity,kneebone) == self.SelectedBone then
 			if !tr.Entity.rgmIKChains then tr.Entity.rgmIKChains = {} end
 			local Type = self:GetClientNumber("type",1)
-			Type = math.ceil(Type);
+			Type = math.ceil(Type)
 			tr.Entity.rgmIKChains[Type] = {hip = self.SelectedBone,knee = kneebone,foot = tr.PhysicsBone,type = Type}
 		else
 			Message(self:GetOwner(),"There can be only one knee bone.",1,"buttons/button8.wav")
@@ -79,30 +79,30 @@ language.Add("tool.ragmover_ikchains.1","Now left click again to select foot/han
 function TOOL.BuildCPanel(CPanel)
 
 	CPanel:AddControl("Header",{Name = "#Tool_ragmover_ikchains_name","#Tool_ragmover_ikchains_desc"})
-	
+
 	--[[ local mc = CPanel:MultiChoice("IK chain type","ragmover_ikchains_type")
 	mc:AddChoice("Left Leg")
 	mc:AddChoice("Right Leg")
 	mc:AddChoice("Left Arm")
 	mc:AddChoice("Right Arm") ]]
-	
+
 	local s = CPanel:NumSlider("IK slot: "..ikchains_iktypes[1],"ragmover_ikchains_type",1,4,0)
 	s:SetValue(0)
 	s.ValueChanged = function(self,val)
 		RunConsoleCommand("ragmover_ikchains_type",math.Round(self:GetValue()))
 		self:SetText("IK slot: "..ikchains_iktypes[math.Round(self:GetValue())])
 	end
-	
+
 end
 
 function TOOL:DrawHUD()
 
 	local pl = LocalPlayer()
-	
+
 	local tr = pl:GetEyeTrace()
 	if IsValid(tr.Entity) and (tr.Entity:GetClass() == "prop_ragdoll") then
 		local aimedbone = pl:GetNWInt("ragdollmoverik_aimedbone",0)
-		rgm.DrawBoneName(tr.Entity,aimedbone);
+		rgm.DrawBoneName(tr.Entity,aimedbone)
 		-- local name = tr.Entity:GetBoneName(aimedbone)
 		-- local _pos,_ang = tr.Entity:GetBonePosition(aimedbone)
 		-- if !_pos or !_ang then
@@ -113,7 +113,7 @@ function TOOL:DrawHUD()
 		-- surface.DrawCircle(_pos.x,_pos.y,2.5,Color(0,200,0,255))
 		-- draw.SimpleText(name,"Default",textpos.x,textpos.y,Color(0,200,0,255),TEXT_ALIGN_LEFT,TEXT_ALIGN_BOTTOM)
 	end
-	
+
 end
 
 end

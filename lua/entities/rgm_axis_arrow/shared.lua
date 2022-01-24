@@ -10,7 +10,7 @@ function ENT:GetGrabPos(eyepos,eyeang,ppos)
 	local planenorm = self:WorldToLocalAngles(self:GetAngles():Up():Angle())
 	planenorm = Angle(planenorm.p,self:WorldToLocalAngles((self:GetPos()-eyepos):Angle()).y,planenorm.r)
 	planenorm = self:LocalToWorldAngles(planenorm):Forward()
-	//local planenorm = self:GetAngles():Up()
+	--local planenorm = self:GetAngles():Up()
 	local intersect = rgm.IntersectRayWithPlane(planepos,planenorm,pos,norm)
 	return intersect
 end

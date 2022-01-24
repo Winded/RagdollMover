@@ -1,15 +1,15 @@
 
-/*
+--[[
 	rgm module
 	Various functions used by Ragdoll Mover tool, and the axis entities.
-*/
+]]
 
-module("rgm",package.seeall);
+module("rgm",package.seeall)
 
-/*	Line-Plane intersection, and return the result vector
+--[[	Line-Plane intersection, and return the result vector
 	I honestly cannot explain this at all. I just followed this tutorial:
 	http://www.wiremod.com/forum/expression-2-discussion-help/19008-line-plane-intersection-tutorial.html
-	Lots of cookies for the guy who made it.*/
+	Lots of cookies for the guy who made it]]
 function IntersectRayWithPlane(planepoint,norm,line,linenormal)
 	local linepoint = line*1
 	local linepoint2 = linepoint+linenormal
@@ -18,70 +18,42 @@ function IntersectRayWithPlane(planepoint,norm,line,linenormal)
 	return vec
 end
 
-//We need to receive from clientside if the middle mouse button is pressed.
-//To get that, we need constant spam of console command sending.
-//This is one of the reasons that the tool might not be healthy for multiplayer.
+if SERVER then
 
-if CLIENT then
+CurrentToggleKey = MOUSE_MIDDLE
+local NumpadBind = nil
 
-local lastkey = -1;
+util.AddNetworkString("rgmSetToggleKey")
 
-hook.Add("Think", "rgmToggleThink", function()
-	local curkey
-	if not GetConVar("ragdollmover_rotatebutton") then
-		curkey = MOUSE_MIDDLE
-	else
-		curkey = GetConVar("ragdollmover_rotatebutton"):GetInt()
-	end
+net.Receive("rgmSetToggleKey",function(len, pl)
+	local key = net.ReadInt(32)
+	if !key then return end
 
-	if curkey != lastkey then
-		net.Start("rgmSetToggleKey");
-		net.WriteEntity(LocalPlayer());
-		net.WriteInt(curkey, 32);
-		net.SendToServer();
-	end
-	
-	lastkey = curkey;
+	CurrentToggleKey = key
+	if NumpadBind then numpad.Remove(NumpadBind) end
+	NumpadBind = numpad.OnDown(pl, key, "rgmAxisChangeState")
 end)
 
-else
-
-CurrentToggleKey = MOUSE_MIDDLE;
-
-util.AddNetworkString("rgmSetToggleKey");
-
-net.Receive("rgmSetToggleKey",function(len)
-	local pl = net.ReadEntity();
-	local key = net.ReadInt(32);
-	if !key then return; end
-	
-	CurrentToggleKey = key;
-	numpad.OnDown(pl, key, "rgmAxisChangeState", key);
-end)
-
-numpad.Register("rgmAxisChangeState", function(pl, key)
-	if key != CurrentToggleKey then return false; end
-	
-	if !pl.rgm then pl.rgm = {}; end
+numpad.Register("rgmAxisChangeState", function(pl)
+	if !pl.rgm then pl.rgm = {} end
 	if pl.rgm.Rotate == nil then
-		pl.rgm.Rotate = true;
+		pl.rgm.Rotate = true
 	else
-		pl.rgm.Rotate = !pl.rgm.Rotate;
+		pl.rgm.Rotate = !pl.rgm.Rotate
 	end
-	pl:rgmSyncOne("Rotate");
-	return true;
+	pl:rgmSyncOne("Rotate")
+	return true
 end)
-
 
 
 end
 
-//Receives player eye position and eye angles.
-//If cursor is visible, eye angles are based on cursor position.
+--Receives player eye position and eye angles.
+--If cursor is visible, eye angles are based on cursor position.
 function EyePosAng(pl)
 	local eyepos,eyeang = pl:EyePos(),pl:EyeAngles()
 	local cursorvec = pl:GetAimVector()
-	//local cursorvec = pl:EyeAngles();
+	--local cursorvec = pl:EyeAngles()
 	return eyepos,cursorvec:Angle()
 end
 
@@ -89,7 +61,7 @@ function AbsVector(vec)
 	return Vector(math.abs(vec.x),math.abs(vec.y),math.abs(vec.z))
 end
 
-//Default IK chain tables
+--Default IK chain tables
 
 local DefaultIK = {}
 
@@ -131,7 +103,7 @@ table.insert(DefaultIK,{
 	type = 2
 })
 
-//For simplicity, we'll just call the arm IK parts hip, knee and foot aswell.
+--For simplicity, we'll just call the arm IK parts hip, knee and foot aswell.
 table.insert(DefaultIK,{
 	hip = "ValveBiped.Bip01_L_UpperArm",
 	knee = "ValveBiped.Bip01_L_Forearm",
@@ -170,20 +142,20 @@ table.insert(DefaultIK,{
 	type = 4
 })
 
-//---
-//Bone Movement library (functions to make ragdoll bones move relatively to their parent bones, or with IK chains)
-//---
+-----
+--Bone Movement library (functions to make ragdoll bones move relatively to their parent bones, or with IK chains)
+-----
 
 function BoneToPhysBone(ent,bone)
 	for i=0,ent:GetPhysicsObjectCount()-1 do
 		local b = ent:TranslatePhysBoneToBone(i)
 		if bone == b then return i end
 	end
-	return nil;
+	return nil
 end
 
 function GetPhysBoneParent(ent,bone)
-	if not bone then return nil; end
+	if not bone then return nil end
 	local b = ent:TranslatePhysBoneToBone(bone)
 	local cont = false
 	local i = 1
@@ -194,11 +166,11 @@ function GetPhysBoneParent(ent,bone)
 			return parent
 		end
 		i = i + 1
-		if i > 128 then //We've gone through all possible bones, so we get out.
+		if i > 128 then --We've gone through all possible bones, so we get out.
 			cont = true
 		end
 	end
-	return nil;
+	return nil
 end
 
 local DefIKnames = {
@@ -208,7 +180,7 @@ local DefIKnames = {
 	"ik_hand_R"
 }
 
-//Get bone offsets from parent bones, and update IK data.
+--Get bone offsets from parent bones, and update IK data.
 function GetOffsetTable(tool,ent,rotate)
 	local RTable = {}
 	if !ent.rgmIKChains then
@@ -248,15 +220,15 @@ function GetOffsetTable(tool,ent,rotate)
 	end
 
 	for k,v in pairs(ent.rgmIKChains) do
-		
+
 		local obj1 = ent:GetPhysicsObjectNum(v.hip)
 		local obj2 = ent:GetPhysicsObjectNum(v.knee)
 		local obj3 = ent:GetPhysicsObjectNum(v.foot)
-			
+
 		ent.rgmIKChains[k].rotate = rotate
-			
+
 		local kneedir = GetKneeDir(ent,v.hip,v.knee,v.foot)
-			
+
 		ent.rgmIKChains[k].ikhippos = RTable[v.hip].pos*1
 		if RTable[v.hip].parent then
 			ent.rgmIKChains[k].ikhipparent = RTable[v.hip].parent*1
@@ -264,18 +236,18 @@ function GetOffsetTable(tool,ent,rotate)
 		local ang,offang = GetAngleOffset(ent,v.hip,v.knee)
 		ent.rgmIKChains[k].ikhipang = ang*1
 		ent.rgmIKChains[k].ikhipoffang = offang*1
-			
+
 		ent.rgmIKChains[k].ikkneedir = kneedir
 		ang,offang = GetAngleOffset(ent,v.knee,v.foot)
 		ent.rgmIKChains[k].ikkneeang = ang*1
 		ent.rgmIKChains[k].ikkneeoffang = offang*1
-			
+
 		ent.rgmIKChains[k].ikfootpos = obj3:GetPos()
 		ent.rgmIKChains[k].ikfootang = obj3:GetAngles()
-			
+
 		ent.rgmIKChains[k].thighlength = obj1:GetPos():Distance(obj2:GetPos())
 		ent.rgmIKChains[k].shinlength = obj2:GetPos():Distance(obj3:GetPos())
-			
+
 	end
 
 	return RTable
@@ -314,11 +286,11 @@ local function SetBoneOffsets(ent,ostable,sbone)
 	return RTable
 end
 
-//Set bone positions from the local positions on the offset table.
-//And process IK chains.
+--Set bone positions from the local positions on the offset table.
+--And process IK chains.
 function SetOffsets(tool,ent,ostable,sbone)
 	local RTable = SetBoneOffsets(ent,ostable,sbone)
-	
+
 
 	for k,v in pairs(ent.rgmIKChains) do
 		if tobool(tool:GetClientNumber(DefIKnames[v.type],0)) then
@@ -329,20 +301,20 @@ function SetOffsets(tool,ent,ostable,sbone)
 
 
 	return RTable
-	
+
 end
 
-//---
-//Inverse kinematics library
-//---
+-----
+--Inverse kinematics library
+-----
 
-/*	Key function for IK chains: finding the knee position (in case of arms, it's elbow position)
+--[[	Key function for IK chains: finding the knee position (in case of arms, it's elbow position)
 	Once again, a math function, which I didn't fully make myself, and cannot explain much.
 	Only that the arguments in order are: hip position, ankle position, thigh length, shin length, knee vector direction.
-	
+
 	Got the math from this thread:
 	http://forum.unity3d.com/threads/40431-IK-Chain
-*/
+]]
 function FindKnee(pHip,pAnkle,fThigh,fShin,vKneeDir)
 	local vB = pAnkle-pHip
     local LB = vB:Length()
@@ -354,11 +326,11 @@ function FindKnee(pHip,pAnkle,fThigh,fShin,vKneeDir)
     return pHip+(aa*vB)+(bb*vF)
 end
 
-//Process one IK chain, and set it's positions.
+--Process one IK chain, and set it's positions.
 function ProcessIK(ent,IKTable,sbone,RT)
 
 	local RTable = {}
-	
+
 	local hippos = IKTable.ikhippos
 	local hipang = IKTable.ikhipang
 	local hipoffang = IKTable.ikhipoffang
@@ -369,9 +341,9 @@ function ProcessIK(ent,IKTable,sbone,RT)
 	local footang = IKTable.ikfootang
 	local thighlength = IKTable.thighlength
 	local shinlength = IKTable.shinlength
-	
+
 	local hpos,hang
-	
+
 	if IKTable.ikhipparent then
 		obj = RT[IKTable.ikhipparent]
 		hpos,hang = LocalToWorld(hippos,Angle(0,0,0),obj.pos,obj.ang)
@@ -379,7 +351,7 @@ function ProcessIK(ent,IKTable,sbone,RT)
 		hpos,hang = LocalToWorld(hippos,Angle(0,0,0),Vector(0,0,0), Angle(0,0,0))
 	end
 	local HipPos = hpos*1
-	
+
 	local AnklePos,AnkleAng
 	if IKTable.foot != sbone.b then
 		AnklePos,AnkleAng = footpos*1,footang*1
@@ -392,13 +364,13 @@ function ProcessIK(ent,IKTable,sbone,RT)
 		anklenorm:Normalize()
 		AnklePos = HipPos + (anklenorm * (thighlength + shinlength))
 	end
-	
+
 	local KneePos = FindKnee(HipPos,AnklePos,thighlength,shinlength,kneedir)
 	hang = SetAngleOffset(ent,HipPos,(KneePos-HipPos):Angle(),hipang,hipoffang)
 	local HipAng = hang*1
 	hang = SetAngleOffset(ent,KneePos,(AnklePos-KneePos):Angle(),kneeang,kneeoffang)
 	local KneeAng = hang*1
-	
+
 	RTable[IKTable.hip] = {pos = HipPos,ang = HipAng}
 	RTable[IKTable.knee] = {pos = KneePos,ang = KneeAng}
 	if IKTable.rotate and sbone.b == IKTable.hip then
@@ -407,9 +379,9 @@ function ProcessIK(ent,IKTable,sbone,RT)
 		RTable[IKTable.knee].dontset = true
 	end
 	RTable[IKTable.foot] = {pos = AnklePos,ang = AnkleAng}
-	
+
 	return RTable
-	
+
 end
 
 function NormalizeAngle(ang)
@@ -437,7 +409,7 @@ function SetAngleOffset(ent,pos,ang,ang2,offang)
 	return _a
 end
 
-//Get IK chain's knee direction.
+--Get IK chain's knee direction.
 function GetKneeDir(ent,bHip,bKnee,bAnkle)
 	local obj1 = ent:GetPhysicsObjectNum(bHip)
 	local obj2 = ent:GetPhysicsObjectNum(bKnee)
@@ -448,7 +420,7 @@ function GetKneeDir(ent,bHip,bKnee,bAnkle)
 	return r
 end
 
-//Create the default IK chains for a ragdoll.
+--Create the default IK chains for a ragdoll.
 function CreateDefaultIKs(tool,ent)
 	if !ent.rgmIKChains then ent.rgmIKChains = {} end
 	for k,v in pairs(DefaultIK) do
@@ -461,7 +433,7 @@ function CreateDefaultIKs(tool,ent)
 	end
 end
 
-//Returns true if given bone is part of an active IK chain. Also returns it's position on the chain.
+--Returns true if given bone is part of an active IK chain. Also returns it's position on the chain.
 function IsIKBone(tool,ent,bone)
 	if !ent.rgmIKChains then return false end
 	for k,v in pairs(ent.rgmIKChains) do
