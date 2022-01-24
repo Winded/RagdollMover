@@ -3,6 +3,9 @@ include("shared.lua")
 AddCSLuaFile("cl_init.lua")
 AddCSLuaFile("shared.lua")
 
+ENT.DisableDuplicator = true
+ENT.DoNotDuplicate = true
+
 local TYPE_ARROW = 1
 local TYPE_ARROWSIDE = 2
 local TYPE_DISC = 3
