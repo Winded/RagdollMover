@@ -178,17 +178,21 @@ function ENT:Think()
 		end
 
 		if rotate then
-			if not pl.rgm.GizmoAng or not pl.rgm.GizmoParent then -- dunno if there is a need for these failsafes
-				_ , ang = ent:GetBonePosition(bone)
+			if ent:GetBoneParent(bone) ~= -1 then
+				if not pl.rgm.GizmoParent then -- dunno if there is a need for these failsafes
+					_ , ang = ent:GetBonePosition(bone)
+				else
+					_ , pang = ent:GetBonePosition(ent:GetBoneParent(bone))
+					_ , ang = ent:GetBonePosition(bone)
+					ang = pl.rgm.GizmoParent - pang + ang
+				end
 			else
-				_ , pang = ent:GetBonePosition(ent:GetBoneParent(bone))
 				_ , ang = ent:GetBonePosition(bone)
-				ang = pl.rgm.GizmoParent - pang + ang
 			end
 		else
 			if ent:GetBoneParent(bone) ~= -1 then
 				if not pl.rgm.GizmoParent then
-					matrix = ent:GetBoneMatrix(ent:GetBoneParent(bone)) -- never would have guessed that when moving bones they use angles of their parent bone rather than their own angles. happened to get to know that after looking at vanilla bone manipulator!
+					local matrix = ent:GetBoneMatrix(ent:GetBoneParent(bone)) -- never would have guessed that when moving bones they use angles of their parent bone rather than their own angles. happened to get to know that after looking at vanilla bone manipulator!
 					ang = matrix:GetAngles()
 				else
 					ang = pl.rgm.GizmoParent
@@ -207,8 +211,13 @@ function ENT:Think()
 	if not pl.rgm.Moving then -- Prevent whole thing from rotating when we do localized rotation - needed for proper angle reading
 		if localstate or not pl.rgm.IsPhysBone then -- Non phys bones don't go well with world coordinates. Well, I didn't make them to behave with those
 			self:SetAngles(ang or Angle(0,0,0))
-			self.DiscP:SetLocalAngles(Angle(0, 90 + ent:GetManipulateBoneAngles(bone).Yaw, 0)) -- Pitch follows Yaw angles
-			self.DiscR:SetLocalAngles(Angle(0 + ent:GetManipulateBoneAngles(bone).Pitch, 0 + ent:GetManipulateBoneAngles(bone).Yaw, 0)) -- Roll follows Pitch and Yaw angles
+			if ent:GetClass() == "prop_ragdoll" then -- those things are meant to work for nonphysical bones of any entity, but man i can't figure out how to do that as GetBonePosition returns angles differently for ragdolls and any other entity. please help
+				self.DiscP:SetLocalAngles(Angle(0, 90 + ent:GetManipulateBoneAngles(bone).y, 0)) -- Pitch follows Yaw angles
+				self.DiscR:SetLocalAngles(Angle(0 + ent:GetManipulateBoneAngles(bone).x, 0 + ent:GetManipulateBoneAngles(bone).y, 0)) -- Roll follows Pitch and Yaw angles
+			else
+				self.DiscP:SetLocalAngles(Angle(0, 90, 0))
+				self.DiscR:SetLocalAngles(Angle(0, 0, 0))
+			end
 		else
 			self:SetAngles(Angle(0,0,0))
 			self.DiscP:SetLocalAngles(Angle(0, 90, 0))

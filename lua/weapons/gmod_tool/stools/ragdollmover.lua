@@ -34,25 +34,24 @@ local function RGMGetBone(pl, ent, bone)
 		local b = ent:TranslatePhysBoneToBone(i)
 		if bone == b then 
 			phys = i
+			pl.rgm.IsPhysBone = true
 		end
 	end
 
-	if count == 0 then
-		phys = -1
-	elseif count == 1 then
+	if count == 1 then
 		if (ent:GetClass() == "prop_physics" or ent:GetClass() == "prop_effect") and bone == 0 then
 			phys = 0
 			pl.rgm.IsPhysBone = true
 		end
 	end
 
-	if phys and 0 <= phys and count > phys then
+--[[	if phys and 0 <= phys and count > phys then
 		physobj = ent:GetPhysicsObjectNum(phys)
 
 		if physobj then
 			pl.rgm.IsPhysBone = true
 		end
-	end
+	end]]
 	---------------------------------------------------------
 	local bonen = phys or bone
 
@@ -245,16 +244,12 @@ function TOOL:Think()
 				pl.rgm.GizmoParent = nil
 			end
 			pl.rgm.GizmoPos = pos
-			pl.rgm.GizmoAng = ang
 			pl:rgmSyncClient("GizmoPos")
-			pl:rgmSyncClient("GizmoAng")
 			pl:rgmSyncClient("GizmoParent")
 		else
 			pl.rgm.GizmoPos = nil
-			pl.rgm.GizmoAng = nil
 			pl.rgm.GizmoParent = nil
 			pl:rgmSyncClient("GizmoPos")
-			pl:rgmSyncClient("GizmoAng")
 			pl:rgmSyncClient("GizmoParent")
 		end
 	end
@@ -325,27 +320,25 @@ if SERVER then
 
 
 			local postable = rgm.SetOffsets(self,ent,pl.rgmOffsetTable,{b = bone,p = obj:GetPos(),a = obj:GetAngles()})
-			if not tobool(self:GetClientNumber("disablechildbone",0)) then
 
-				local sbik,sbiknum = rgm.IsIKBone(self,ent,bone)
-				if not sbik or sbiknum ~= 2 then
-					postable[bone].dontset = true
-				end
-				for i=0,ent:GetPhysicsObjectCount()-1 do
-					if postable[i] and not postable[i].dontset then
-						local obj = ent:GetPhysicsObjectNum(i)
-						local poslen = postable[i].pos:Length()
-						local anglen = Vector(postable[i].ang.p,postable[i].ang.y,postable[i].ang.r):Length()
+			local sbik,sbiknum = rgm.IsIKBone(self,ent,bone)
+			if not sbik or sbiknum ~= 2 then
+				postable[bone].dontset = true
+			end
+			for i=0,ent:GetPhysicsObjectCount()-1 do
+				if postable[i] and not postable[i].dontset then
+					local obj = ent:GetPhysicsObjectNum(i)
+					local poslen = postable[i].pos:Length()
+					local anglen = Vector(postable[i].ang.p,postable[i].ang.y,postable[i].ang.r):Length()
 
-						--Temporary solution for INF and NaN decimals crashing the game (Even rounding doesnt fix it)
-						if poslen > 2 and anglen > 2 then
-							obj:EnableMotion(true)
-							obj:Wake()
-							obj:SetPos(postable[i].pos)
-							obj:SetAngles(postable[i].ang)
-							obj:EnableMotion(false)
-							obj:Wake()
-						end
+					--Temporary solution for INF and NaN decimals crashing the game (Even rounding doesnt fix it)
+					if poslen > 2 and anglen > 2 then
+						obj:EnableMotion(true)
+						obj:Wake()
+						obj:SetPos(postable[i].pos)
+						obj:SetAngles(postable[i].ang)
+						obj:EnableMotion(false)
+						obj:Wake()
 					end
 				end
 			end
@@ -582,11 +575,10 @@ function TOOL.BuildCPanel(CPanel)
 	CBinder(CPanel)
 
 	Col4 = CCol(CPanel, "Bone Manipulation")
-		local disableoffset = CCheckBox(Col4, "Disable Child Bone Offset", "ragdollmover_disablechildbone")
-		disableoffset:SetToolTip("Disable child bone offset (Example: When you rotate pelvis, angles of other bones will be the same)")
+
+		RGMResetButton(Col4)
 
 		local colbones = CCol(Col4, "Bone List")
-		RGMResetButton(colbones)
 		BonePanel = vgui.Create("DTree", colbones)
 		BonePanel:SetTall(600)
 
