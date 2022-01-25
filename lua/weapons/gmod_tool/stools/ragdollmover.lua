@@ -8,11 +8,8 @@ TOOL.ClientConVar["localpos"] = 0
 TOOL.ClientConVar["localang"] = 1
 TOOL.ClientConVar["scale"] = 10
 TOOL.ClientConVar["fulldisc"] = 0
-TOOL.ClientConVar["manual"] = 0
-TOOL.ClientConVar["boneid"] = 0
 TOOL.ClientConVar["disablefilter"] = 0
 TOOL.ClientConVar["disablechildbone"] = 0
-TOOL.ClientConVar["selecteffects"] = 0
 
 TOOL.ClientConVar["ik_leg_L"] = 0
 TOOL.ClientConVar["ik_leg_R"] = 0
@@ -26,50 +23,24 @@ TOOL.ClientConVar["updaterate"] = 0.01
 
 TOOL.ClientConVar["rotatebutton"] = MOUSE_MIDDLE
 
-RunConsoleCommand("ragdollmover_boneid",0)
-
-if SERVER then
-
-util.AddNetworkString("rgmUpdateBoneList")
-
-
-end
-
-concommand.Add("ragdollmover_resetroot", function(pl)
-	if not tobool(GetConVarNumber("ragdollmover_manual")) then
-		pl.rgm.IsPhysBone = true
-		pl.rgm.PhysBone = 0
-		pl.rgm.Bone = 0
-	end
-	RunConsoleCommand("ragdollmover_boneid","0")
-	pl:rgmSync()
-end)
-
-concommand.Add("ragdollmover_resetbone", function(pl)
-	ent = pl.rgm.Entity
-	ent:ManipulateBoneAngles(pl.rgm.Bone, Angle(0, 0, 0))
-	ent:ManipulateBonePosition(pl.rgm.Bone, Vector(0, 0, 0))
-end)
-
 local function RGMGetBone(pl, ent, bone)
 	--------------------------------------------------------- yeah this part is from locrotscale
 	local phys, physobj
-	local manual = tobool(GetConVarNumber("ragdollmover_manual"))
 	pl.rgm.IsPhysBone = false
 
-	for i = 0, ent:GetPhysicsObjectCount() - 1 do
+	local count = ent:GetPhysicsObjectCount()
+
+	for i = 0, count - 1 do
 		local b = ent:TranslatePhysBoneToBone(i)
 		if bone == b then 
 			phys = i
 		end
 	end
 
-	local count = ent:GetPhysicsObjectCount()
-
 	if count == 0 then
 		phys = -1
 	elseif count == 1 then
-		if ent:GetBoneCount() <= 1 then
+		if ent:GetClass() == "prop_physics" and bone == 0 then
 			phys = 0
 			pl.rgm.IsPhysBone = true
 		end
@@ -83,26 +54,71 @@ local function RGMGetBone(pl, ent, bone)
 		end
 	end
 	---------------------------------------------------------
-	if manual and tobool(GetConVarNumber("ragdollmover_selecteffects")) then
-		if phys == -1 then phys = nil end
-	end
 	local bonen = phys or bone
 
 	pl.rgm.PhysBone = bonen
 	pl.rgm.Bone = bonen
 end
 
+if SERVER then
+
+util.AddNetworkString("rgmUpdateBoneList")
+util.AddNetworkString("rgmAskForPhysbones")
+util.AddNetworkString("rgmAskForPhysbonesResponse")
+util.AddNetworkString("rgmSelectBone")
+
+net.Receive("rgmAskForPhysbones", function(len, pl)
+	local ent = net.ReadEntity()
+	if not IsValid(ent) then return end
+
+	net.Start("rgmAskForPhysbonesResponse")
+		local count = ent:GetPhysicsObjectCount() - 1
+		net.WriteUInt(count, 8)
+		for i = 0, count do
+			local bone = ent:TranslatePhysBoneToBone(i)
+			if bone == -1 and ent:GetClass() == "prop_physics" then bone = 0 end
+			net.WriteUInt(bone, 32)
+		end
+	net.Send(pl)
+end)
+
+net.Receive("rgmSelectBone", function(len, pl)
+	local ent = net.ReadEntity()
+	local bone = net.ReadUInt(32)
+	RGMGetBone(pl, ent, bone)
+	pl:rgmSync()
+end)
+
+end
+
+concommand.Add("ragdollmover_resetroot", function(pl)
+	pl.rgm.IsPhysBone = true
+	pl.rgm.PhysBone = 0
+	pl.rgm.Bone = 0
+	pl:rgmSync()
+end)
+
+concommand.Add("ragdollmover_resetbone", function(pl)
+	ent = pl.rgm.Entity
+	ent:ManipulateBoneAngles(pl.rgm.Bone, Angle(0, 0, 0))
+	ent:ManipulateBonePosition(pl.rgm.Bone, Vector(0, 0, 0))
+end)
+
 function TOOL:Deploy()
 	if SERVER then
 		local pl = self:GetOwner()
 		local axis = pl.rgm.Axis
-		if !IsValid(axis) then
+		if not IsValid(axis) then
 			axis = ents.Create("rgm_axis")
 			axis:Spawn()
 			axis.Owner = pl
 			pl.rgm.Axis = axis
 		end
 	end
+end
+
+local function EntityFilter(ent)
+	return (ent:GetClass() == "prop_ragdoll" or ent:GetClass() == "prop_physics" or ent:GetClass() == "prop_effect") or (tobool(GetConVar("ragdollmover_disablefilter"):GetBool()) and not ent:IsWorld())
 end
 
 function TOOL:LeftClick(tr)
@@ -114,7 +130,7 @@ function TOOL:LeftClick(tr)
 	if pl.rgm.Moving then return false end
 
 	local axis = pl.rgm.Axis
-	if !IsValid(axis) then
+	if not IsValid(axis) then
 		pl:ChatPrint("Axis entity isn't found. Spawning new one, try selecting the entity again.")
 		axis = ents.Create("rgm_axis")
 		axis:Spawn()
@@ -122,7 +138,7 @@ function TOOL:LeftClick(tr)
 		pl.rgm.Axis = axis
 		return false
 	end
-	if !axis.Axises then
+	if not axis.Axises then
 		axis:Setup()
 	end
 
@@ -164,20 +180,11 @@ function TOOL:LeftClick(tr)
 		pl:rgmSync()
 		return false
 
-	elseif IsValid(tr.Entity) and ( (tr.Entity:GetClass() == "prop_ragdoll" or tr.Entity:GetClass() == "prop_physics" or tr.Entity:GetClass() == "prop_effect" ) or tobool(self:GetClientNumber("disablefilter",0)) and not tr.Entity:IsWorld() ) then
+	elseif IsValid(tr.Entity) and EntityFilter(tr.Entity) then
 		local entity
-
-		if tobool(self:GetClientNumber("manual",0)) and tobool(self:GetClientNumber("selecteffects",0)) and IsValid(tr.Entity.AttachedEntity) then
-			pl.rgm.EffectBase = tr.Entity
-			entity = tr.Entity.AttachedEntity
-			pl.rgm.Entity = tr.Entity.AttachedEntity
-			pl.rgm.Draw = true
-		else
-			entity = tr.Entity
-			pl.rgm.Entity = tr.Entity
-			pl.rgm.EffectBase = nil
-			pl.rgm.Draw = true
-		end
+		entity = tr.Entity
+		pl.rgm.Entity = tr.Entity
+		pl.rgm.Draw = true
 
 		if not entity.rgmbonecached then -- also taken from locrotscale. some hacky way to cache the bones?
 			local p = self.SWEP:GetParent()
@@ -186,11 +193,9 @@ function TOOL:LeftClick(tr)
 			entity.rgmbonecached = true
 		end
 
-		if !tobool(self:GetClientNumber("manual",0)) then
-			pl.rgm.PhysBone = tr.PhysicsBone
-			pl.rgm.Bone = entity:TranslatePhysBoneToBone(tr.PhysicsBone)
-			pl.rgm.IsPhysBone = true
-		end
+		pl.rgm.PhysBone = tr.PhysicsBone
+		pl.rgm.Bone = entity:TranslatePhysBoneToBone(tr.PhysicsBone)
+		pl.rgm.IsPhysBone = true
 
 		if ent ~= pl.rgm.Entity then
 			net.Start("rgmUpdateBoneList")
@@ -198,11 +203,7 @@ function TOOL:LeftClick(tr)
 			net.Send(pl)
 		end
 
-		if ent ~= pl.rgm.Entity and tobool(self:GetClientNumber("manual",0)) then
-			RunConsoleCommand("ragdollmover_resetroot")
-		else
-			pl:rgmSync()
-		end
+		pl:rgmSync()
 	end
 
 	return false
@@ -223,7 +224,7 @@ end
 function TOOL:Think()
 	if CLIENT then
 		local pl = self:GetOwner()
-		if !pl.rgm then return end
+		if not pl.rgm then return end
 
 		if pl.rgm.Moving then return end -- don't want to keep updating this stuff when we move stuff, so it'll go smoother
 
@@ -260,23 +261,18 @@ function TOOL:Think()
 
 if SERVER then
 
-	if !self.LastThink then self.LastThink = CurTime() end
+	if not self.LastThink then self.LastThink = CurTime() end
 	if CurTime() < self.LastThink + self:GetClientNumber("updaterate",0.01) then return end
 
 	local pl = self:GetOwner()
 	local ent = pl.rgm.Entity
 
-	if pl.rgm.Bone ~= GetConVarNumber("ragdollmover_boneid") and tobool(self:GetClientNumber("manual",0)) and IsValid(ent) then
-		RGMGetBone(pl, ent, self:GetClientNumber( "boneid",0 ))
-		pl:rgmSync()
-	end
-
 	local axis = pl.rgm.Axis
 	if IsValid(axis) then
-		if axis.localizedpos != tobool(self:GetClientNumber("localpos",1)) then
+		if axis.localizedpos ~= tobool(self:GetClientNumber("localpos",1)) then
 			axis.localizedpos = tobool(self:GetClientNumber("localpos",1))
 		end
-		if axis.localizedang != tobool(self:GetClientNumber("localang",1)) then
+		if axis.localizedang ~= tobool(self:GetClientNumber("localang",1)) then
 			axis.localizedang = tobool(self:GetClientNumber("localang",1))
 		end
 	end
@@ -285,14 +281,14 @@ if SERVER then
 	local rotate = pl.rgm.Rotate or false
 	if moving then
 
-		if !IsValid(axis) then return end
+		if not IsValid(axis) then return end
 
 		local eyepos,eyeang = rgm.EyePosAng(pl)
 
 		local apart = pl.rgm.MoveAxis
 		local bone = pl.rgm.PhysBone
 
-		if !IsValid(ent) then
+		if not IsValid(ent) then
 			pl.rgm.Moving = false
 			return
 		end
@@ -307,7 +303,7 @@ if SERVER then
 			local pos,ang = apart:ProcessMovement(pl.rgmOffsetPos,pl.rgmOffsetAng,eyepos,eyeang,ent,bone,pl.rgmISPos,pl.rgmISDir, true)
 
 			local obj = ent:GetPhysicsObjectNum(bone)
-			if !isik or iknum == 3 or (rotate and (iknum == 1 or iknum == 2)) then
+			if not isik or iknum == 3 or (rotate and (iknum == 1 or iknum == 2)) then
 				obj:EnableMotion(true)
 				obj:Wake()
 				obj:SetPos(pos)
@@ -329,14 +325,14 @@ if SERVER then
 
 
 			local postable = rgm.SetOffsets(self,ent,pl.rgmOffsetTable,{b = bone,p = obj:GetPos(),a = obj:GetAngles()})
-			if !tobool(self:GetClientNumber("disablechildbone",0)) then
+			if not tobool(self:GetClientNumber("disablechildbone",0)) then
 
 				local sbik,sbiknum = rgm.IsIKBone(self,ent,bone)
-				if !sbik or sbiknum != 2 then
+				if not sbik or sbiknum ~= 2 then
 					postable[bone].dontset = true
 				end
 				for i=0,ent:GetPhysicsObjectCount()-1 do
-					if postable[i] and !postable[i].dontset then
+					if postable[i] and not postable[i].dontset then
 						local obj = ent:GetPhysicsObjectNum(i)
 						local poslen = postable[i].pos:Length()
 						local anglen = Vector(postable[i].ang.p,postable[i].ang.y,postable[i].ang.r):Length()
@@ -354,8 +350,8 @@ if SERVER then
 				end
 			end
 
-			-- if !pl:GetNWBool("ragdollmover_keydown") then
-			if !pl:KeyDown(IN_ATTACK) then
+			-- if not pl:GetNWBool("ragdollmover_keydown") then
+			if not pl:KeyDown(IN_ATTACK) then
 				if self:GetClientNumber("unfreeze",1) > 0 then
 					for i=0,ent:GetPhysicsObjectCount()-1 do
 						if pl.rgmOffsetTable[i].moving then
@@ -375,7 +371,7 @@ if SERVER then
 			ent:ManipulateBoneAngles(bone, ang)
 			ent:ManipulateBonePosition(bone, pos)
 
-			if !pl:KeyDown(IN_ATTACK) then -- don't think entity has to be unfrozen if you were working with non phys bones, that would be weird?
+			if not pl:KeyDown(IN_ATTACK) then -- don't think entity has to be unfrozen if you were working with non phys bones, that would be weird?
 				pl.rgm.Moving = false
 				pl:rgmSyncOne("Moving")
 			end
@@ -401,6 +397,31 @@ if CLIENT then
 language.Add("tool.ragdollmover.name","Ragdoll Mover")
 language.Add("tool.ragdollmover.desc","Allows advanced movement of ragdolls!")
 language.Add("tool.ragdollmover.0","Left click to select and move bones. Click with mid mouse button to toggle between move/rotate.")
+
+local BONE_PHYSICAL = 1
+local BONE_NONPHYSICAL = 2
+local BONE_PROCEDURAL = 3
+
+local function GetRecursiveBones(ent, boneid, tab)
+	for k, v in ipairs(ent:GetChildBones(boneid)) do
+		local bone = {id = v, Type = BONE_NONPHYSICAL, parent = boneid}
+
+		if ent:BoneHasFlag(v, 4) then -- BONE_ALWAYS_PROCEDURAL flag
+			bone.Type = BONE_PROCEDURAL
+		else
+			for i = 0, ent:GetPhysicsObjectCount() - 1 do
+				local b = ent:TranslatePhysBoneToBone(i)
+				if v == b then
+					bone.Type = BONE_PHYSICAL
+					break
+				end
+			end
+		end
+
+		table.insert(tab, bone)
+		GetRecursiveBones(ent, v, tab)
+	end
+end
 
 local function CCheckBox(cpanel,text,cvar)
 	local CB = vgui.Create("DCheckBoxLabel",cpanel)
@@ -473,26 +494,69 @@ local function RGMResetButton(cpanel)
 	cpanel:AddItem(butt)
 end
 
+local BonePanel
+local nodes
+local HoveredBone
+
 local function RGMBuildBoneMenu(ent, bonepanel)
 	bonepanel:Clear()
 	if not IsValid(ent) then return end
-	local num = ent:GetBoneCount() - 1
-	for i = 0, num do
-		local text1 = ent:GetBoneName(i)
-		if text1 == "__INVALIDBONE__" then continue end
+	local sortedbones = {}
 
-		local butt = vgui.Create("DButton", bonepanel)
-		butt:SetText(text1)
-		butt:Dock(TOP)
-		function butt:DoClick() --think making a function to call a console command is better than making another console command... to call another console command
-			RunConsoleCommand("ragdollmover_boneid",i)
+	local num = ent:GetBoneCount() - 1 -- first we find all rootbones and their children
+	for v = 0, num do
+		if ent:GetBoneName(v) == "__INVALIDBONE__" then continue end
+
+		if ent:GetBoneParent(v) == -1 then
+			local bone = { id = v, Type = BONE_NONPHYSICAL }
+			if ent:BoneHasFlag(v, 4) then -- BONE_ALWAYS_PROCEDURAL flag
+				bone.Type = BONE_PROCEDURAL
+			end
+
+			table.insert(sortedbones, bone)
+			local bonesadd = GetRecursiveBones(ent, v, sortedbones)
 		end
-		bonepanel:AddItem(butt)
 	end
-end
 
-local BonePanel
-local BoneIDSlider
+	nodes = {}
+
+	for k, v in ipairs(sortedbones) do
+		local text1 = ent:GetBoneName(v.id)
+
+		if not v.parent then
+			nodes[v.id] = bonepanel:AddNode(text1)
+		else
+			nodes[v.id] = nodes[v.parent]:AddNode(text1)
+		end
+
+		nodes[v.id].Type = v.Type
+		nodes[v.id]:SetExpanded(true)
+		if nodes[v.id].Type == BONE_NONPHYSICAL then
+			nodes[v.id]:SetIcon("icon16/connect.png")
+		elseif nodes[v.id].Type == BONE_PROCEDURAL then
+			nodes[v.id]:SetIcon("icon16/error.png")
+		end
+
+		nodes[v.id].DoClick = function()
+			net.Start("rgmSelectBone")
+				net.WriteEntity(ent)
+				net.WriteUInt(v.id, 32)
+			net.SendToServer()
+		end
+
+		nodes[v.id].Label.OnCursorEntered = function()
+			HoveredBone = v.id
+		end
+
+		nodes[v.id].Label.OnCursorExited = function()
+			HoveredBone = nil
+		end
+	end
+
+	net.Start("rgmAskForPhysbones")
+		net.WriteEntity(ent)
+	net.SendToServer()
+end
 
 function TOOL.BuildCPanel(CPanel)
 
@@ -518,20 +582,14 @@ function TOOL.BuildCPanel(CPanel)
 	CBinder(CPanel)
 
 	Col4 = CCol(CPanel, "Bone Manipulation")
-		local manual = CCheckBox(Col4,"Manual Bone Picking","ragdollmover_manual")
-		manual:SetToolTip("Enable bone selection through the bone menu. Select bone ID and then click on the selected ragdoll to pick that bone.")
-
 		local disableoffset = CCheckBox(Col4, "Disable Child Bone Offset", "ragdollmover_disablechildbone")
 		disableoffset:SetToolTip("Disable child bone offset (Example: When you rotate pelvis, angles of other bones will be the same)")
 
-		local effectselect = CCheckBox(Col4, "Select Effects", "ragdollmover_selecteffects")
-		effectselect:SetToolTip("MAKE SURE MANUAL BONE PICKING IS ENABLED. Allows you to manipulate bones of the effect props.")
-
 		local colbones = CCol(Col4, "Bone List")
 		RGMResetButton(colbones)
-		BoneIDSlider = CNumSlider(colbones,"BoneID","ragdollmover_boneid",0,128,0)
-		BonePanel = vgui.Create("DScrollPanel", colbones)
+		BonePanel = vgui.Create("DTree", colbones)
 		BonePanel:SetTall(600)
+
 		colbones:AddItem(BonePanel)
 		if IsValid(BonePanel) then
 			RGMBuildBoneMenu(nil, BonePanel)
@@ -544,15 +602,24 @@ net.Receive("rgmUpdateBoneList", function(len)
 	local pl = LocalPlayer()
 
 	if IsValid(BonePanel) then
-		BoneIDSlider:SetMinMax(0, ent:GetBoneCount() - 1)
 		RGMBuildBoneMenu(ent, BonePanel)
+	end
+end)
+
+net.Receive("rgmAskForPhysbonesResponse", function(len)
+	local count = net.ReadUInt(8)
+
+	for i = 0, count do
+		local bone = net.ReadUInt(32)
+		nodes[bone].Type = BONE_PHYSICAL
+		nodes[bone]:SetIcon("icon16/brick.png")
 	end
 end)
 
 function TOOL:DrawHUD()
 
 	local pl = LocalPlayer()
-	if !pl.rgm then pl.rgm = {} end
+	if not pl.rgm then pl.rgm = {} end
 
 	local ent = pl.rgm.Entity
 	local bone = pl.rgm.Bone
@@ -583,8 +650,9 @@ function TOOL:DrawHUD()
 
 	local tr = pl:GetEyeTrace()
 	local aimedbone = pl.rgm.AimedBone or 0
-	if IsValid(tr.Entity) and (tr.Entity:GetClass() == "prop_ragdoll" or tr.Entity:GetClass() == "prop_physics" or tr.Entity:GetClass() == "prop_effect")
-	and (!bone or aimedbone != bone) and !moving then
+	if IsValid(pl.rgm.Entity) and EntityFilter(pl.rgm.Entity) and HoveredBone then
+		rgm.DrawBoneName(pl.rgm.Entity,HoveredBone)
+	elseif IsValid(tr.Entity) and EntityFilter(tr.Entity) and (not bone or aimedbone ~= bone or tr.Entity ~= pl.rgm.Entity) and not moving then
 		rgm.DrawBoneName(tr.Entity,aimedbone)
 	end
 

@@ -43,7 +43,7 @@ net.Receive("rgmAxisUpdate",function(len)
 	local discpos = net.ReadVector()
 	local discang = net.ReadAngle()
 
-	if !self.Axises then return end
+	if not self.Axises then return end
 
 	self.TargetPos = pos
 	self.TargetAng = ang
@@ -60,7 +60,7 @@ function ENT:DrawLines(scale)
 	local Start,End = 1,6
 	if rotate then Start,End = 7,10 end
 	-- print(self.Axises)
-	if !self.Axises then return end
+	if not self.Axises then return end
 	for i=Start,End do
 		local moveaxis = self.Axises[i]
 		local yellow = false

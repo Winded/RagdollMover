@@ -149,11 +149,11 @@ end
 
 function ENT:Think()
 	local pl = self.Owner
-	if !IsValid(pl) then return end
+	if not IsValid(pl) then return end
 
 	local ent = pl.rgm.Entity
 	local bone = pl.rgm.PhysBone
-	if !IsValid(ent) or !pl.rgm.Bone then return end
+	if not IsValid(ent) or not pl.rgm.Bone then return end
 
 	local OldPos = self:GetPos()
 	local OldAng = self:GetAngles()
@@ -167,7 +167,7 @@ function ENT:Think()
 		if physobj == nil then return end
 		pos,ang = physobj:GetPos(),physobj:GetAngles()
 	else
-		if !pl.rgm.GizmoPos then
+		if not pl.rgm.GizmoPos then
 			local matrix = ent:GetBoneMatrix(bone)
 			pos = ent:GetBonePosition(bone)
 			if pos == ent:GetPos() then
@@ -178,21 +178,23 @@ function ENT:Think()
 		end
 
 		if rotate then
-			if !pl.rgm.GizmoAng then -- dunno if there is a need for these failsafes
+			if not pl.rgm.GizmoAng then -- dunno if there is a need for these failsafes
 				_ , ang = ent:GetBonePosition(bone)
 			else
 				ang = pl.rgm.GizmoAng
 			end
 		else
 			if ent:GetBoneParent(bone) ~= -1 then
-				if !pl.rgm.GizmoParent then
+				if not pl.rgm.GizmoParent then
 					matrix = ent:GetBoneMatrix(ent:GetBoneParent(bone)) -- never would have guessed that when moving bones they use angles of their parent bone rather than their own angles. happened to get to know that after looking at vanilla bone manipulator!
 					ang = matrix:GetAngles()
 				else
 					ang = pl.rgm.GizmoParent
 				end
-			elseif IsValid(pl.rgm.EffectBase) then
-				ang = pl.rgm.EffectBase:GetAngles()
+			else
+				if IsValid(ent) then
+					ang = ent:GetAngles()
+				end
 			end
 		end
 	end
@@ -200,8 +202,8 @@ function ENT:Think()
 
 	local localstate = self.localizedpos
 	if rotate then localstate = self.localizedang end
-	if !pl.rgm.Moving then -- Prevent whole thing from rotating when we do localized rotation - needed for proper angle reading
-		if localstate or !pl.rgm.IsPhysBone then -- Non phys bones don't go well with world coordinates. Well, I didn't make them to behave with those
+	if not pl.rgm.Moving then -- Prevent whole thing from rotating when we do localized rotation - needed for proper angle reading
+		if localstate or not pl.rgm.IsPhysBone then -- Non phys bones don't go well with world coordinates. Well, I didn't make them to behave with those
 			self:SetAngles(ang or Angle(0,0,0))
 		else
 			self:SetAngles(Angle(0,0,0))
@@ -246,8 +248,8 @@ function ENT:Think()
 	local NewDiscPos = self.DiscLarge:GetLocalPos()
 	local NewDiscAng = self.DiscLarge:GetLocalAngles()
 
-	if NewPos != OldPos or NewAng != OldAng
-	or NewDiscPos != OldDiscPos or NewDiscAng != OldDiscAng then
+	if NewPos ~= OldPos or NewAng ~= OldAng
+	or NewDiscPos ~= OldDiscPos or NewDiscAng ~= OldDiscAng then
 		net.Start("rgmAxisUpdate")
 		net.WriteEntity(self)
 		net.WriteVector(self:GetPos())

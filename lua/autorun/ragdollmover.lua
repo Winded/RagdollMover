@@ -27,7 +27,7 @@ util.AddNetworkString("rgmSetToggleKey")
 
 net.Receive("rgmSetToggleKey",function(len, pl)
 	local key = net.ReadInt(32)
-	if !key then return end
+	if not key then return end
 
 	CurrentToggleKey = key
 	if NumpadBind then numpad.Remove(NumpadBind) end
@@ -35,11 +35,11 @@ net.Receive("rgmSetToggleKey",function(len, pl)
 end)
 
 numpad.Register("rgmAxisChangeState", function(pl)
-	if !pl.rgm then pl.rgm = {} end
+	if not pl.rgm then pl.rgm = {} end
 	if pl.rgm.Rotate == nil then
 		pl.rgm.Rotate = true
 	else
-		pl.rgm.Rotate = !pl.rgm.Rotate
+		pl.rgm.Rotate = not pl.rgm.Rotate
 	end
 	pl:rgmSyncOne("Rotate")
 	return true
@@ -162,7 +162,7 @@ function GetPhysBoneParent(ent,bone)
 	while not cont do
 		b = ent:GetBoneParent(b)
 		local parent = BoneToPhysBone(ent,b)
-		if parent and parent != bone then
+		if parent and parent ~= bone then
 			return parent
 		end
 		i = i + 1
@@ -183,7 +183,7 @@ local DefIKnames = {
 --Get bone offsets from parent bones, and update IK data.
 function GetOffsetTable(tool,ent,rotate)
 	local RTable = {}
-	if !ent.rgmIKChains then
+	if not ent.rgmIKChains then
 		CreateDefaultIKs(tool,ent)
 	end
 
@@ -202,7 +202,7 @@ function GetOffsetTable(tool,ent,rotate)
 	for i=0,ent:GetBoneCount()-1 do
 		local pb = BoneToPhysBone(ent,i)
 		local parent = GetPhysBoneParent(ent,pb)
-		if pb and parent and !RTable[pb] then
+		if pb and parent and not RTable[pb] then
 			local b = ent:TranslatePhysBoneToBone(pb)
 			local bn = ent:GetBoneName(b)
 			local obj1 = ent:GetPhysicsObjectNum(pb)
@@ -353,7 +353,7 @@ function ProcessIK(ent,IKTable,sbone,RT)
 	local HipPos = hpos*1
 
 	local AnklePos,AnkleAng
-	if IKTable.foot != sbone.b then
+	if IKTable.foot ~= sbone.b then
 		AnklePos,AnkleAng = footpos*1,footang*1
 	else
 		AnklePos,AnkleAng = sbone.p,sbone.a
@@ -422,7 +422,7 @@ end
 
 --Create the default IK chains for a ragdoll.
 function CreateDefaultIKs(tool,ent)
-	if !ent.rgmIKChains then ent.rgmIKChains = {} end
+	if not ent.rgmIKChains then ent.rgmIKChains = {} end
 	for k,v in pairs(DefaultIK) do
 		local b = BoneToPhysBone(ent,ent:LookupBone(v.hip))
 		local b2 = BoneToPhysBone(ent,ent:LookupBone(v.knee))
@@ -435,7 +435,7 @@ end
 
 --Returns true if given bone is part of an active IK chain. Also returns it's position on the chain.
 function IsIKBone(tool,ent,bone)
-	if !ent.rgmIKChains then return false end
+	if not ent.rgmIKChains then return false end
 	for k,v in pairs(ent.rgmIKChains) do
 		if tobool(tool:GetClientNumber(DefIKnames[v.type],0)) then
 			if bone == v.hip then
@@ -453,7 +453,7 @@ end
 function DrawBoneName(ent,bone)
 	local name = ent:GetBoneName(bone)
 	local _pos,_ang = ent:GetBonePosition(bone)
-	if !_pos or !_ang then
+	if not _pos or not _ang then
 		_pos,_ang = ent:GetPos(),ent:GetAngles()
 	end
 	_pos = _pos:ToScreen()

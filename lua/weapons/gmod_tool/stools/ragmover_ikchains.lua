@@ -21,17 +21,17 @@ local function Message(ply,text,icon,sound)
 end
 
 function TOOL:LeftClick(tr)
-	if !IsValid(tr.Entity) or tr.Entity:GetClass() != "prop_ragdoll" or !tr.PhysicsBone then return false end
+	if not IsValid(tr.Entity) or tr.Entity:GetClass() ~= "prop_ragdoll" or not tr.PhysicsBone then return false end
 	if self:GetStage() == 0 then
 		self.SelectedEnt = tr.Entity
 		self.SelectedBone = tr.PhysicsBone
 		self:SetStage(1)
 		return true
 	else
-		if tr.Entity != self.SelectedEnt then return false end
+		if tr.Entity ~= self.SelectedEnt then return false end
 		local kneebone = rgm.GetPhysBoneParent(tr.Entity,tr.PhysicsBone)
 		if rgm.GetPhysBoneParent(tr.Entity,kneebone) == self.SelectedBone then
-			if !tr.Entity.rgmIKChains then tr.Entity.rgmIKChains = {} end
+			if not tr.Entity.rgmIKChains then tr.Entity.rgmIKChains = {} end
 			local Type = self:GetClientNumber("type",1)
 			Type = math.ceil(Type)
 			tr.Entity.rgmIKChains[Type] = {hip = self.SelectedBone,knee = kneebone,foot = tr.PhysicsBone,type = Type}
@@ -105,7 +105,7 @@ function TOOL:DrawHUD()
 		rgm.DrawBoneName(tr.Entity,aimedbone)
 		-- local name = tr.Entity:GetBoneName(aimedbone)
 		-- local _pos,_ang = tr.Entity:GetBonePosition(aimedbone)
-		-- if !_pos or !_ang then
+		-- if not _pos or not _ang then
 			-- _pos,_ang = tr.Entity:GetPos(),tr.Entity:GetAngles()
 		-- end
 		-- _pos = _pos:ToScreen()

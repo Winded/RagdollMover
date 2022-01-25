@@ -18,7 +18,7 @@ function ENT:DrawLines(yellow,scale)
 		local pos1 = self:LocalToWorld(v[1]*(scale*1.25))
 		local pos2 = self:LocalToWorld(v[2]*(scale*1.25))
 		table.insert(ToScreen,{pos1:ToScreen(),pos2:ToScreen(),col})
-		if !GetConVar("ragdollmover_fulldisc"):GetBool() and !moving then
+		if not GetConVar("ragdollmover_fulldisc"):GetBool() and not moving then
 			local col2 = color2
 			local Pos1 = self:LocalToWorld(v[1]*scale)
 			local Pos2 = self:LocalToWorld(v[2]*scale)

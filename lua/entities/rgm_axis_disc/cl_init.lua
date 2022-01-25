@@ -20,7 +20,7 @@ function ENT:DrawLines(yellow,scale)
 	local linetable = self:GetLinePositions()
 	local eyepos = LocalPlayer():EyePos()
 	local largedisc = self:GetParent().DiscLarge
-	if !IsValid(largedisc) then return end
+	if not IsValid(largedisc) then return end
 	local borderpos = largedisc:GetPos()
 	local color = self:GetColor()
 	color = {color.r,color.g,color.b,color.a}
