@@ -40,7 +40,7 @@ local function RGMGetBone(pl, ent, bone)
 	if count == 0 then
 		phys = -1
 	elseif count == 1 then
-		if ent:GetClass() == "prop_physics" and bone == 0 then
+		if (ent:GetClass() == "prop_physics" or ent:GetClass() == "prop_effect") and bone == 0 then
 			phys = 0
 			pl.rgm.IsPhysBone = true
 		end
@@ -76,7 +76,7 @@ net.Receive("rgmAskForPhysbones", function(len, pl)
 		net.WriteUInt(count, 8)
 		for i = 0, count do
 			local bone = ent:TranslatePhysBoneToBone(i)
-			if bone == -1 and ent:GetClass() == "prop_physics" then bone = 0 end
+			if bone == -1 then bone = 0 end
 			net.WriteUInt(bone, 32)
 		end
 	net.Send(pl)

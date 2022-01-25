@@ -75,7 +75,7 @@ function ENT:Setup()
 		self.DiscP:SetColor(Color(255,0,0,255))
 		self.DiscP:SetNWInt("type",TYPE_DISC)
 		self.DiscP:SetLocalPos(Vector(0,0,0))
-		self.DiscP:SetLocalAngles(Vector(0,1,0):Angle())
+		self.DiscP:SetLocalAngles(Vector(0,1,0):Angle()) -- 0 90 0
 		self.DiscP.axistype = 1 -- axistype is a variable to help with setting non physical bones - 1 for pitch, 2 yaw, 3 roll, 4 for the big one
 
 	self.DiscY = ents.Create("rgm_axis_disc")
@@ -84,7 +84,7 @@ function ENT:Setup()
 		self.DiscY:SetColor(Color(0,255,0,255))
 		self.DiscY:SetNWInt("type",TYPE_DISC)
 		self.DiscY:SetLocalPos(Vector(0,0,0))
-		self.DiscY:SetLocalAngles(Vector(0,0,1):Angle())
+		self.DiscY:SetLocalAngles(Vector(0,0,1):Angle()) -- 270 0 0
 		self.DiscY.axistype = 2
 
 	self.DiscR = ents.Create("rgm_axis_disc")
@@ -93,7 +93,7 @@ function ENT:Setup()
 		self.DiscR:SetColor(Color(0,0,255,255))
 		self.DiscR:SetNWInt("type",TYPE_DISC)
 		self.DiscR:SetLocalPos(Vector(0,0,0))
-		self.DiscR:SetLocalAngles(Vector(1,0,0):Angle())
+		self.DiscR:SetLocalAngles(Vector(1,0,0):Angle()) -- 0 0 0
 		self.DiscR.axistype = 3
 
 	self.DiscLarge = ents.Create("rgm_axis_disc_large")
@@ -178,10 +178,12 @@ function ENT:Think()
 		end
 
 		if rotate then
-			if not pl.rgm.GizmoAng then -- dunno if there is a need for these failsafes
+			if not pl.rgm.GizmoAng or not pl.rgm.GizmoParent then -- dunno if there is a need for these failsafes
 				_ , ang = ent:GetBonePosition(bone)
 			else
-				ang = pl.rgm.GizmoAng
+				_ , pang = ent:GetBonePosition(ent:GetBoneParent(bone))
+				_ , ang = ent:GetBonePosition(bone)
+				ang = pl.rgm.GizmoParent - pang + ang
 			end
 		else
 			if ent:GetBoneParent(bone) ~= -1 then
@@ -205,8 +207,12 @@ function ENT:Think()
 	if not pl.rgm.Moving then -- Prevent whole thing from rotating when we do localized rotation - needed for proper angle reading
 		if localstate or not pl.rgm.IsPhysBone then -- Non phys bones don't go well with world coordinates. Well, I didn't make them to behave with those
 			self:SetAngles(ang or Angle(0,0,0))
+			self.DiscP:SetLocalAngles(Angle(0, 90 + ent:GetManipulateBoneAngles(bone).Yaw, 0)) -- Pitch follows Yaw angles
+			self.DiscR:SetLocalAngles(Angle(0 + ent:GetManipulateBoneAngles(bone).Pitch, 0 + ent:GetManipulateBoneAngles(bone).Yaw, 0)) -- Roll follows Pitch and Yaw angles
 		else
 			self:SetAngles(Angle(0,0,0))
+			self.DiscP:SetLocalAngles(Angle(0, 90, 0))
+			self.DiscR:SetLocalAngles(Angle(0, 0, 0))
 		end
 	end
 
