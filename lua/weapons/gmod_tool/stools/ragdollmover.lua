@@ -44,27 +44,29 @@ local function RGMGetBone(pl, ent, bone)
 			pl.rgm.IsPhysBone = true
 		end
 	end
-
---[[	if phys and 0 <= phys and count > phys then
-		physobj = ent:GetPhysicsObjectNum(phys)
-
-		if physobj then
-			pl.rgm.IsPhysBone = true
-		end
-	end]]
 	---------------------------------------------------------
 	local bonen = phys or bone
 
 	pl.rgm.PhysBone = bonen
-	pl.rgm.Bone = bonen
+	if pl.rgm.IsPhysBone then
+		pl.rgm.Bone = ent:TranslatePhysBoneToBone(bonen)
+	else
+		pl.rgm.Bone = bonen
+	end
 end
 
 if SERVER then
 
 util.AddNetworkString("rgmUpdateBoneList")
+
 util.AddNetworkString("rgmAskForPhysbones")
 util.AddNetworkString("rgmAskForPhysbonesResponse")
+
 util.AddNetworkString("rgmSelectBone")
+util.AddNetworkString("rgmSelectBoneResponse")
+
+util.AddNetworkString("rgmLockBone")
+util.AddNetworkString("rgmLockBoneResponse")
 
 net.Receive("rgmAskForPhysbones", function(len, pl)
 	local ent = net.ReadEntity()
@@ -86,6 +88,41 @@ net.Receive("rgmSelectBone", function(len, pl)
 	local bone = net.ReadUInt(32)
 	RGMGetBone(pl, ent, bone)
 	pl:rgmSync()
+
+	net.Start("rgmSelectBoneResponse")
+		net.WriteBool(pl.rgm.IsPhysBone)
+		net.WriteEntity(ent)
+		net.WriteUInt(pl.rgm.Bone, 32)
+	net.Send(pl)
+end)
+
+net.Receive("rgmLockBone", function(len, pl)
+	local mode = net.ReadUInt(2)
+	local ent = pl.rgm.Entity
+	if not IsValid(ent) or not pl.rgm.IsPhysBone then return end
+	if ent:GetClass() ~= "prop_ragdoll" then return end
+
+	if mode == 1 then
+		if not pl.rgmPosLocks[pl.rgm.PhysBone] then
+			pl.rgmPosLocks[pl.rgm.PhysBone] = ent:GetPhysicsObjectNum(pl.rgm.PhysBone)
+		else
+			pl.rgmPosLocks[pl.rgm.PhysBone] = nil
+		end
+	elseif mode == 2 then
+		if not pl.rgmAngLocks[pl.rgm.PhysBone] then
+			pl.rgmAngLocks[pl.rgm.PhysBone] = ent:GetPhysicsObjectNum(pl.rgm.PhysBone)
+		else
+			pl.rgmAngLocks[pl.rgm.PhysBone] = nil
+		end
+	end
+
+	local poslock, anglock = IsValid(pl.rgmPosLocks[pl.rgm.PhysBone]), IsValid(pl.rgmAngLocks[pl.rgm.PhysBone])
+
+	net.Start("rgmLockBoneResponse")
+		net.WriteUInt(ent:TranslatePhysBoneToBone(pl.rgm.PhysBone), 32)
+		net.WriteBool(poslock)
+		net.WriteBool(anglock)
+	net.Send(pl)
 end)
 
 end
@@ -198,11 +235,17 @@ function TOOL:LeftClick(tr)
 
 		if ent ~= pl.rgm.Entity then
 			net.Start("rgmUpdateBoneList")
-			net.WriteEntity(pl.rgm.Entity)
+				net.WriteEntity(pl.rgm.Entity)
 			net.Send(pl)
 		end
 
 		pl:rgmSync()
+
+		net.Start("rgmSelectBoneResponse")
+			net.WriteBool(pl.rgm.IsPhysBone)
+			net.WriteEntity(pl.rgm.Entity)
+			net.WriteUInt(pl.rgm.Bone, 32)
+		net.Send(pl)
 	end
 
 	return false
@@ -319,7 +362,7 @@ if SERVER then
 			end
 
 
-			local postable = rgm.SetOffsets(self,ent,pl.rgmOffsetTable,{b = bone,p = obj:GetPos(),a = obj:GetAngles()})
+			local postable = rgm.SetOffsets(self,ent,pl.rgmOffsetTable,{b = bone,p = obj:GetPos(),a = obj:GetAngles()}, pl.rgmAngLocks, pl.rgmPosLocks)
 
 			local sbik,sbiknum = rgm.IsIKBone(self,ent,bone)
 			if not sbik or sbiknum ~= 2 then
@@ -436,6 +479,15 @@ local function CNumSlider(cpanel,text,cvar,min,max,dec)
 
 	return SL
 end
+local function CButton(cpanel, text, func, arg)
+	local butt = vgui.Create("DButton", cpanel)
+	butt:SetText(text)
+	function butt:DoClick()
+		func(arg)
+	end
+	cpanel:AddItem(butt)
+	return butt
+end
 local function CCol(cpanel,text)
 	local cat = vgui.Create("DCollapsibleCategory",cpanel)
 	cat:SetExpanded(1)
@@ -475,21 +527,27 @@ local function CBinder(cpanel)
 	end
 end
 
-local function RGMResetButton(cpanel)
+local function RGMResetBone()
 	local pl = LocalPlayer()
-	local butt = vgui.Create("DButton", cpanel)
-	butt:SetText("Reset Non-Physics Bone")
-	function butt:DoClick()
-		if not pl.rgm then return end
-		if not IsValid(pl.rgm.Entity) then return end
-		RunConsoleCommand("ragdollmover_resetbone")
-	end
-	cpanel:AddItem(butt)
+	if not pl.rgm then return end
+	if not IsValid(pl.rgm.Entity) then return end
+	RunConsoleCommand("ragdollmover_resetbone")
+end
+
+local function RGMLockPBone(mode)
+	local pl = LocalPlayer()
+	if not pl.rgm then return end
+	if not IsValid(pl.rgm.Entity) or not pl.rgm.IsPhysBone then return end
+	net.Start("rgmLockBone")
+		net.WriteUInt(mode, 2)
+	net.SendToServer()
 end
 
 local BonePanel
+local LockRotB, LockPosB
 local nodes
 local HoveredBone
+local Col4
 
 local function RGMBuildBoneMenu(ent, bonepanel)
 	bonepanel:Clear()
@@ -576,7 +634,13 @@ function TOOL.BuildCPanel(CPanel)
 
 	Col4 = CCol(CPanel, "Bone Manipulation")
 
-		RGMResetButton(Col4)
+		CButton(Col4, "Reset Non-Physics Bone", RGMResetBone)
+
+		LockPosB = CButton(Col4, "Lock PhysBone Position", RGMLockPBone, 1)
+		LockPosB:SetVisible(false)
+
+		LockRotB = CButton(Col4, "Lock PhysBone Rotation", RGMLockPBone, 2)
+		LockRotB:SetVisible(false)
 
 		local colbones = CCol(Col4, "Bone List")
 		BonePanel = vgui.Create("DTree", colbones)
@@ -606,6 +670,59 @@ net.Receive("rgmAskForPhysbonesResponse", function(len)
 		nodes[bone].Type = BONE_PHYSICAL
 		nodes[bone]:SetIcon("icon16/brick.png")
 	end
+end)
+
+net.Receive("rgmLockBoneResponse", function(len)
+	local boneid = net.ReadUInt(32)
+	local poslock = net.ReadBool()
+	local anglock = net.ReadBool()
+
+	nodes[boneid].poslock = poslock
+	nodes[boneid].anglock = anglock
+
+	if poslock or anglock then
+		nodes[boneid]:SetIcon("icon16/lock.png")
+	else
+		nodes[boneid]:SetIcon("icon16/brick.png")
+	end
+
+	if nodes[boneid].poslock then
+		LockPosB:SetText("Unlock PhysBone Position")
+	else
+		LockPosB:SetText("Lock PhysBone Position")
+	end
+	if nodes[boneid].anglock then
+		LockRotB:SetText("Unlock PhysBone Rotation")
+	else
+		LockRotB:SetText("Lock PhysBone Rotation")
+	end
+end)
+
+net.Receive("rgmSelectBoneResponse", function(len)
+	local isphys = net.ReadBool()
+	local ent = net.ReadEntity()
+	local boneid = net.ReadUInt(32)
+
+	if ent:GetClass() == "prop_ragdoll" and isphys then
+		LockPosB:SetVisible(true)
+		LockRotB:SetVisible(true)
+
+		if nodes[boneid].poslock then
+			LockPosB:SetText("Unlock PhysBone Position")
+		else
+			LockPosB:SetText("Lock PhysBone Position")
+		end
+		if nodes[boneid].anglock then
+			LockRotB:SetText("Unlock PhysBone Rotation")
+		else
+			LockRotB:SetText("Lock PhysBone Rotation")
+		end
+	else
+		LockPosB:SetVisible(false)
+		LockRotB:SetVisible(false)
+	end
+
+	Col4:InvalidateLayout()
 end)
 
 function TOOL:DrawHUD()

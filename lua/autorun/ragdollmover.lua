@@ -253,7 +253,7 @@ function GetOffsetTable(tool,ent,rotate)
 	return RTable
 end
 
-local function SetBoneOffsets(ent,ostable,sbone)
+local function SetBoneOffsets(ent,ostable,sbone, rlocks, plocks)
 	local RTable = {}
 
 	for id, value in pairs(ostable) do
@@ -277,6 +277,13 @@ local function SetBoneOffsets(ent,ostable,sbone)
 			if pb == sbone.b then
 				pos = sbone.p
 				ang = sbone.a
+			else
+				if IsValid(rlocks[pb]) then
+					ang = rlocks[pb]:GetAngles()
+				end
+				if IsValid(plocks[pb]) then
+					pos = plocks[pb]:GetPos()
+				end
 			end
 			RTable[pb] = {}
 			RTable[pb].pos = pos*1
@@ -288,8 +295,8 @@ end
 
 --Set bone positions from the local positions on the offset table.
 --And process IK chains.
-function SetOffsets(tool,ent,ostable,sbone)
-	local RTable = SetBoneOffsets(ent,ostable,sbone)
+function SetOffsets(tool,ent,ostable,sbone, rlocks, plocks)
+	local RTable = SetBoneOffsets(ent,ostable,sbone, rlocks, plocks)
 
 
 	for k,v in pairs(ent.rgmIKChains) do

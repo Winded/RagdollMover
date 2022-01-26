@@ -112,6 +112,9 @@ end
 hook.Add("PlayerSpawn","rgmSpawn",function(pl) --PlayerSpawn is a hook that runs only serverside btw
 	if pl.rgm == nil then
 		pl.rgm = {}
+		pl.rgmPosLocks = {}
+		pl.rgmAngLocks = {}
+
 		pl.rgmSync = Sync
 		pl.rgmSyncOne = SyncOne
 		net.Start("rgmSetupClient")
