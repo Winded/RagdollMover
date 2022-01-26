@@ -237,6 +237,9 @@ function TOOL:LeftClick(tr)
 			net.Start("rgmUpdateBoneList")
 				net.WriteEntity(pl.rgm.Entity)
 			net.Send(pl)
+
+			pl.rgmPosLocks = {}
+			pl.rgmAngLocks = {}
 		end
 
 		pl:rgmSync()
