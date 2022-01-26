@@ -57,7 +57,9 @@ end
 
 if SERVER then
 
-util.AddNetworkString("rgmUpdateBoneList")
+util.AddNetworkString("rgmUpdateLists")
+
+util.AddNetworkString("rgmUpdateBones")
 
 util.AddNetworkString("rgmAskForPhysbones")
 util.AddNetworkString("rgmAskForPhysbonesResponse")
@@ -68,19 +70,23 @@ util.AddNetworkString("rgmSelectBoneResponse")
 util.AddNetworkString("rgmLockBone")
 util.AddNetworkString("rgmLockBoneResponse")
 
+util.AddNetworkString("rgmSelectEntity")
+
 net.Receive("rgmAskForPhysbones", function(len, pl)
 	local ent = net.ReadEntity()
 	if not IsValid(ent) then return end
 
-	net.Start("rgmAskForPhysbonesResponse")
-		local count = ent:GetPhysicsObjectCount() - 1
-		net.WriteUInt(count, 8)
-		for i = 0, count do
-			local bone = ent:TranslatePhysBoneToBone(i)
-			if bone == -1 then bone = 0 end
-			net.WriteUInt(bone, 32)
-		end
-	net.Send(pl)
+	local count = ent:GetPhysicsObjectCount() - 1
+	if count ~= -1 then
+		net.Start("rgmAskForPhysbonesResponse")
+			net.WriteUInt(count, 8)
+			for i = 0, count do
+				local bone = ent:TranslatePhysBoneToBone(i)
+				if bone == -1 then bone = 0 end
+				net.WriteUInt(bone, 32)
+			end
+		net.Send(pl)
+	end
 end)
 
 net.Receive("rgmSelectBone", function(len, pl)
@@ -125,12 +131,31 @@ net.Receive("rgmLockBone", function(len, pl)
 	net.Send(pl)
 end)
 
+net.Receive("rgmSelectEntity", function(len, pl)
+	local ent = net.ReadEntity()
+	if not IsValid(ent) then return end
+
+	pl.rgm.Entity = ent
+
+	if not ent.rgmbonecached then -- also taken from locrotscale. some hacky way to cache the bones?
+		local p = pl.rgmSwep:GetParent()
+		pl.rgmSwep:FollowBone(ent, 0)
+		pl.rgmSwep:SetParent(p)
+		ent.rgmbonecached = true
+	end
+
+	RGMGetBone(pl, pl.rgm.Entity, 0)
+	pl:rgmSync()
+
+	net.Start("rgmUpdateBones")
+		net.WriteEntity(ent)
+	net.Send(pl)
+end)
+
 end
 
 concommand.Add("ragdollmover_resetroot", function(pl)
-	pl.rgm.IsPhysBone = true
-	pl.rgm.PhysBone = 0
-	pl.rgm.Bone = 0
+	RGMGetBone(pl, pl.rgm.Entity, 0)
 	pl:rgmSync()
 end)
 
@@ -151,6 +176,22 @@ function TOOL:Deploy()
 			pl.rgm.Axis = axis
 		end
 	end
+end
+
+local function rgmFindEntityChildren(parent)
+	local children = {}
+
+	if parent:GetClass() == "prop_effect" and IsValid(parent.AttachedEntity) then
+		table.insert(children, parent.AttachedEntity)
+	end
+	for k, ent in pairs(parent:GetChildren()) do
+		if !IsValid(ent) then continue end
+		if ent:GetClass() == "ent_bonemerged" then
+			table.insert(children, ent)
+		end
+	end
+
+	return children
 end
 
 local function EntityFilter(ent)
@@ -220,9 +261,10 @@ function TOOL:LeftClick(tr)
 		local entity
 		entity = tr.Entity
 		pl.rgm.Entity = tr.Entity
-		pl.rgm.Draw = true
+		pl.rgm.ParentEntity = tr.Entity
 
 		if not entity.rgmbonecached then -- also taken from locrotscale. some hacky way to cache the bones?
+			pl.rgmSwep = self.SWEP
 			local p = self.SWEP:GetParent()
 			self.SWEP:FollowBone(entity, 0)
 			self.SWEP:SetParent(p)
@@ -233,9 +275,15 @@ function TOOL:LeftClick(tr)
 		pl.rgm.Bone = entity:TranslatePhysBoneToBone(tr.PhysicsBone)
 		pl.rgm.IsPhysBone = true
 
-		if ent ~= pl.rgm.Entity then
-			net.Start("rgmUpdateBoneList")
+		if ent ~= pl.rgm.ParentEntity then
+			local children = rgmFindEntityChildren(pl.rgm.ParentEntity)
+
+			net.Start("rgmUpdateLists")
 				net.WriteEntity(pl.rgm.Entity)
+				net.WriteUInt(#children, 32)
+				for k, v in ipairs(children) do
+					net.WriteEntity(v)
+				end
 			net.Send(pl)
 
 			pl.rgmPosLocks = {}
@@ -462,6 +510,12 @@ local function GetRecursiveBones(ent, boneid, tab)
 	end
 end
 
+local function GetModelName(ent)
+	local name = ent:GetModel()
+	local splitname = string.Split(name, "/")
+	return splitname[#splitname]
+end
+
 local function CCheckBox(cpanel,text,cvar)
 	local CB = vgui.Create("DCheckBoxLabel",cpanel)
 	CB:SetText(text)
@@ -546,9 +600,9 @@ local function RGMLockPBone(mode)
 	net.SendToServer()
 end
 
-local BonePanel
+local BonePanel, EntPanel
 local LockRotB, LockPosB
-local nodes
+local nodes, entnodes
 local HoveredBone
 local Col4
 
@@ -612,6 +666,32 @@ local function RGMBuildBoneMenu(ent, bonepanel)
 	net.SendToServer()
 end
 
+local function RGMBuildEntMenu(parent, children, entpanel)
+	entpanel:Clear()
+	if not IsValid(parent) then return end
+
+	entnodes = {}
+
+	entnodes[parent] = entpanel:AddNode(GetModelName(parent))
+	entnodes[parent]:SetExpanded(true)
+
+	entnodes[parent].DoClick = function()
+		net.Start("rgmSelectEntity")
+			net.WriteEntity(parent)
+		net.SendToServer()
+	end
+
+	for k, v in ipairs(children) do
+		entnodes[v] = entnodes[parent]:AddNode(GetModelName(v))
+
+		entnodes[v].DoClick = function()
+			net.Start("rgmSelectEntity")
+				net.WriteEntity(v)
+			net.SendToServer()
+		end
+	end
+end
+
 function TOOL.BuildCPanel(CPanel)
 
 	local Col1 = CCol(CPanel,"Gizmo")
@@ -646,19 +726,39 @@ function TOOL.BuildCPanel(CPanel)
 		LockRotB:SetVisible(false)
 
 		local colbones = CCol(Col4, "Bone List")
-		BonePanel = vgui.Create("DTree", colbones)
-		BonePanel:SetTall(600)
+			BonePanel = vgui.Create("DTree", colbones)
+			BonePanel:SetTall(600)
+			colbones:AddItem(BonePanel)
 
-		colbones:AddItem(BonePanel)
-		if IsValid(BonePanel) then
-			RGMBuildBoneMenu(nil, BonePanel)
-		end
+	local colents = CCol(CPanel, "Entity Children")
+
+		EntPanel = vgui.Create("DTree", colents)
+		EntPanel:SetTall(150)
+		EntPanel:SetShowIcons(false)
+		colents:AddItem(EntPanel)
 
 end
 
-net.Receive("rgmUpdateBoneList", function(len)
+net.Receive("rgmUpdateLists", function(len)
 	local ent = net.ReadEntity()
+	local children = {}
 	local pl = LocalPlayer()
+
+	for i = 1, net.ReadUInt(32) do
+		table.insert(children, net.ReadEntity())
+	end
+
+	if IsValid(BonePanel) then
+		RGMBuildBoneMenu(ent, BonePanel)
+	end
+	if IsValid(EntPanel) then
+		RGMBuildEntMenu(ent, children, EntPanel)
+	end
+end)
+
+
+net.Receive("rgmUpdateBones", function(len)
+	local ent = net.ReadEntity()
 
 	if IsValid(BonePanel) then
 		RGMBuildBoneMenu(ent, BonePanel)
@@ -667,11 +767,12 @@ end)
 
 net.Receive("rgmAskForPhysbonesResponse", function(len)
 	local count = net.ReadUInt(8)
-
 	for i = 0, count do
 		local bone = net.ReadUInt(32)
-		nodes[bone].Type = BONE_PHYSICAL
-		nodes[bone]:SetIcon("icon16/brick.png")
+		if bone then
+			nodes[bone].Type = BONE_PHYSICAL
+			nodes[bone]:SetIcon("icon16/brick.png")
+		end
 	end
 end)
 

@@ -211,7 +211,7 @@ function ENT:Think()
 	if not pl.rgm.Moving then -- Prevent whole thing from rotating when we do localized rotation - needed for proper angle reading
 		if localstate or not pl.rgm.IsPhysBone then -- Non phys bones don't go well with world coordinates. Well, I didn't make them to behave with those
 			self:SetAngles(ang or Angle(0,0,0))
-			if ent:GetClass() == "prop_ragdoll" then -- those things are meant to work for nonphysical bones of any entity, but man i can't figure out how to do that as GetBonePosition returns angles differently for ragdolls and any other entity. please help
+			if ent:GetClass() == "prop_ragdoll" or (ent:GetClass() == "prop_dynamic" and pl.rgm.ParentEntity:GetClass() == "prop_effect") or ent:GetClass() == "ent_bonemerged" then -- those things are meant to work for nonphysical bones of any entity, but man i can't figure out how to do that as GetBonePosition returns angles differently for ragdolls and any other entity. please help
 				self.DiscP:SetLocalAngles(Angle(0, 90 + ent:GetManipulateBoneAngles(bone).y, 0)) -- Pitch follows Yaw angles
 				self.DiscR:SetLocalAngles(Angle(0 + ent:GetManipulateBoneAngles(bone).x, 0 + ent:GetManipulateBoneAngles(bone).y, 0)) -- Roll follows Pitch and Yaw angles
 			else
