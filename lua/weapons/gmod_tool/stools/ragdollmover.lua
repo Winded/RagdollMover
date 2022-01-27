@@ -206,7 +206,14 @@ function TOOL:Deploy()
 			axis.Owner = pl
 			pl.rgm.Axis = axis
 		end
+		pl.rgmToolActive = true
 	end
+end
+
+function TOOL:Holster()
+	if CLIENT then return end
+	local pl = self:GetOwner()
+	pl.rgmToolActive = false
 end
 
 local function rgmFindEntityChildren(parent)
@@ -276,14 +283,13 @@ function TOOL:LeftClick(tr)
 		end
 
 		pl.rgm.StartAngle = WorldToLocal(collision.hitpos, Angle(0,0,0), apart:GetPos(), apart:GetAngles())
+		if ent:GetClass() ~= "prop_ragdoll" and pl.rgm.IsPhysBone then
+			pl.rgm.Bone = 0
+		end
 		pl.rgm.NPhysBonePos = ent:GetManipulateBonePosition(pl.rgm.Bone)
 		pl.rgm.NPhysBoneAng = ent:GetManipulateBoneAngles(pl.rgm.Bone)
-		if ent:GetClass() ~= "prop_ragdoll" and pl.rgm.IsPhysBone then
-			pl.rgm.NPhysBoneScale = ent:GetManipulateBoneScale(0)
-			pl.rgm.Bone = 0
-		else
-			pl.rgm.NPhysBoneScale = ent:GetManipulateBoneScale(pl.rgm.Bone)
-		end
+		pl.rgm.NPhysBoneScale = ent:GetManipulateBoneScale(pl.rgm.Bone)
+		
 
 		local dirnorm = (collision.hitpos-axis:GetPos())
 		dirnorm:Normalize()

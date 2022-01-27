@@ -218,11 +218,20 @@ function ENT:Think()
 	local rotate = pl.rgm.Rotate or false
 	local scale = pl.rgm.Scale or false
 
-	if pl.rgm.IsPhysBone and not scale then
+	if pl.rgm.IsPhysBone and scale then
+
 		local physobj = ent:GetPhysicsObjectNum(bone)
 		if physobj == nil then return end
-		pos,ang = physobj:GetPos(),physobj:GetAngles()
+		pos = physobj:GetPos()
+
+	elseif pl.rgm.IsPhysBone then
+
+		local physobj = ent:GetPhysicsObjectNum(bone)
+		if physobj == nil then return end
+		pos = physobj:GetPos()
+
 	else
+		bone = pl.rgm.Bone
 		if not pl.rgm.GizmoPos then
 			local matrix = ent:GetBoneMatrix(bone)
 			pos = ent:GetBonePosition(bone)
@@ -232,7 +241,14 @@ function ENT:Think()
 		else
 			pos = pl.rgm.GizmoPos
 		end
+	end
+	if pl.rgm.IsPhysBone and not scale then
 
+		local physobj = ent:GetPhysicsObjectNum(bone)
+		if physobj == nil then return end
+		ang = physobj:GetAngles()
+
+	else
 		if rotate then
 			if ent:GetBoneParent(bone) ~= -1 then
 				if not pl.rgm.GizmoParent then -- dunno if there is a need for these failsafes
@@ -262,6 +278,7 @@ function ENT:Think()
 			end
 		end
 	end
+
 	self:SetPos(pos)
 
 	local localstate = self.localizedpos

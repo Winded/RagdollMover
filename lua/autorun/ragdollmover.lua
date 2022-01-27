@@ -37,6 +37,7 @@ end)
 numpad.Register("rgmAxisChangeStateRot", function(pl)
 	if not pl.rgm then pl.rgm = {} end
 
+	if not pl.rgmToolActive then return end
 	pl.rgm.Rotate = not pl.rgm.Rotate
 	pl.rgm.Scale = false
 
@@ -57,6 +58,7 @@ end)
 numpad.Register("rgmAxisChangeStateScale", function(pl)
 	if not pl.rgm then pl.rgm = {} end
 
+	if not pl.rgmToolActive then return end
 	pl.rgm.Scale = not pl.rgm.Scale
 	pl.rgm.Rotate = false
 
