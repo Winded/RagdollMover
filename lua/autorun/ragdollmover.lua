@@ -20,31 +20,50 @@ end
 
 if SERVER then
 
-CurrentToggleKey = MOUSE_MIDDLE
-local NumpadBind = nil
+local NumpadBindRot = nil
+local NumpadBindScale = nil
 
-util.AddNetworkString("rgmSetToggleKey")
+util.AddNetworkString("rgmSetToggleRot")
+util.AddNetworkString("rgmSetToggleScale")
 
-net.Receive("rgmSetToggleKey",function(len, pl)
+net.Receive("rgmSetToggleRot",function(len, pl)
 	local key = net.ReadInt(32)
 	if not key then return end
 
-	CurrentToggleKey = key
-	if NumpadBind then numpad.Remove(NumpadBind) end
-	NumpadBind = numpad.OnDown(pl, key, "rgmAxisChangeState")
+	if NumpadBindRot then numpad.Remove(NumpadBindRot) end
+	NumpadBindRot = numpad.OnDown(pl, key, "rgmAxisChangeStateRot")
 end)
 
-numpad.Register("rgmAxisChangeState", function(pl)
+numpad.Register("rgmAxisChangeStateRot", function(pl)
 	if not pl.rgm then pl.rgm = {} end
-	if pl.rgm.Rotate == nil then
-		pl.rgm.Rotate = true
-	else
-		pl.rgm.Rotate = not pl.rgm.Rotate
-	end
+
+	pl.rgm.Rotate = not pl.rgm.Rotate
+	pl.rgm.Scale = false
+
 	pl:rgmSyncOne("Rotate")
+	pl:rgmSyncOne("Scale")
 	return true
 end)
 
+
+net.Receive("rgmSetToggleScale",function(len, pl)
+	local key = net.ReadInt(32)
+	if not key then return end
+
+	if NumpadBindScale then numpad.Remove(NumpadBindScale) end
+	NumpadBindScale = numpad.OnDown(pl, key, "rgmAxisChangeStateScale")
+end)
+
+numpad.Register("rgmAxisChangeStateScale", function(pl)
+	if not pl.rgm then pl.rgm = {} end
+
+	pl.rgm.Scale = not pl.rgm.Scale
+	pl.rgm.Rotate = false
+
+	pl:rgmSyncOne("Rotate")
+	pl:rgmSyncOne("Scale")
+	return true
+end)
 
 end
 

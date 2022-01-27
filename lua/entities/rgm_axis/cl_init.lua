@@ -4,7 +4,9 @@ include("shared.lua")
 local TransTable = {
 	"ArrowX", "ArrowY", "ArrowZ",
 	"ArrowXY", "ArrowXZ", "ArrowYZ",
-	"DiscP", "DiscY", "DiscR", "DiscLarge"
+	"DiscP", "DiscY", "DiscR", "DiscLarge",
+	"ScaleX", "ScaleY", "ScaleZ",
+	"ScaleXY", "ScaleXZ", "ScaleYZ"
 }
 
 net.Receive("rgmAxis",function(len)
@@ -19,6 +21,12 @@ net.Receive("rgmAxis",function(len)
 	self.DiscY =		net.ReadEntity()
 	self.DiscR =		net.ReadEntity()
 	self.DiscLarge = 	net.ReadEntity()
+	self.ScaleX =		net.ReadEntity()
+	self.ScaleY =		net.ReadEntity()
+	self.ScaleZ =		net.ReadEntity()
+	self.ScaleXY =		net.ReadEntity()
+	self.ScaleXZ =		net.ReadEntity()
+	self.ScaleYZ =		net.ReadEntity()
 	self.Axises = {
 		self.ArrowX,
 		self.ArrowY,
@@ -30,9 +38,13 @@ net.Receive("rgmAxis",function(len)
 		self.DiscY,
 		self.DiscR,
 		self.DiscLarge,
+		self.ScaleX,
+		self.ScaleY,
+		self.ScaleZ,
+		self.ScaleXY,
+		self.ScaleXZ,
+		self.ScaleYZ,
 	}
-	print(self.DiscP)
-	print(self.Axises)
 end)
 
 net.Receive("rgmAxisUpdate",function(len)
@@ -55,10 +67,12 @@ function ENT:DrawLines(scale)
 	local pl = LocalPlayer()
 
 	local rotate = pl.rgm.Rotate or false
+	local modescale = pl.rgm.Scale or false
 	local collision = self:TestCollision(LocalPlayer(),scale)
 	local ToScreen = {}
 	local Start,End = 1,6
 	if rotate then Start,End = 7,10 end
+	if modescale then Start, End = 11, 16 end
 	-- print(self.Axises)
 	if not self.Axises then return end
 	for i=Start,End do

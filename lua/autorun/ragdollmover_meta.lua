@@ -114,6 +114,8 @@ hook.Add("PlayerSpawn","rgmSpawn",function(pl) --PlayerSpawn is a hook that runs
 		pl.rgm = {}
 		pl.rgmPosLocks = {}
 		pl.rgmAngLocks = {}
+		pl.rgm.Rotate = false
+		pl.rgm.Scale = false
 
 		pl.rgmSync = Sync
 		pl.rgmSyncOne = SyncOne

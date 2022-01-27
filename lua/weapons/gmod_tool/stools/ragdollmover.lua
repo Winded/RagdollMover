@@ -22,6 +22,7 @@ TOOL.ClientConVar["unfreeze"] = 0
 TOOL.ClientConVar["updaterate"] = 0.01
 
 TOOL.ClientConVar["rotatebutton"] = MOUSE_MIDDLE
+TOOL.ClientConVar["scalebutton"] = MOUSE_RIGHT
 
 local function RGMGetBone(pl, ent, bone)
 	--------------------------------------------------------- yeah this part is from locrotscale
@@ -64,6 +65,9 @@ util.AddNetworkString("rgmUpdateBones")
 util.AddNetworkString("rgmAskForPhysbones")
 util.AddNetworkString("rgmAskForPhysbonesResponse")
 
+util.AddNetworkString("rgmAskForParented")
+util.AddNetworkString("rgmAskForParentedResponse")
+
 util.AddNetworkString("rgmSelectBone")
 util.AddNetworkString("rgmSelectBoneResponse")
 
@@ -84,6 +88,28 @@ net.Receive("rgmAskForPhysbones", function(len, pl)
 				local bone = ent:TranslatePhysBoneToBone(i)
 				if bone == -1 then bone = 0 end
 				net.WriteUInt(bone, 32)
+			end
+		net.Send(pl)
+	end
+end)
+
+net.Receive("rgmAskForParented", function(len, pl)
+	local ent = net.ReadEntity()
+	if not IsValid(ent) or not IsValid(pl.rgm.ParentEntity) then return end
+
+	local parented = {}
+
+	for i = 0, ent:GetBoneCount() - 1 do
+		if pl.rgm.ParentEntity:LookupBone(ent:GetBoneName(i)) then
+			table.insert(parented, i)
+		end
+	end
+
+	if next(parented) then
+		net.Start("rgmAskForParentedResponse")
+			net.WriteUInt(#parented, 32)
+			for k, id in ipairs(parented) do
+				net.WriteUInt(id, 32)
 			end
 		net.Send(pl)
 	end
@@ -163,6 +189,11 @@ concommand.Add("ragdollmover_resetbone", function(pl)
 	ent = pl.rgm.Entity
 	ent:ManipulateBoneAngles(pl.rgm.Bone, Angle(0, 0, 0))
 	ent:ManipulateBonePosition(pl.rgm.Bone, Vector(0, 0, 0))
+end)
+
+concommand.Add("ragdollmover_resetscale", function(pl)
+	ent = pl.rgm.Entity
+	ent:ManipulateBoneScale(pl.rgm.Bone, Vector(1, 1, 1))
 end)
 
 function TOOL:Deploy()
@@ -247,6 +278,12 @@ function TOOL:LeftClick(tr)
 		pl.rgm.StartAngle = WorldToLocal(collision.hitpos, Angle(0,0,0), apart:GetPos(), apart:GetAngles())
 		pl.rgm.NPhysBonePos = ent:GetManipulateBonePosition(pl.rgm.Bone)
 		pl.rgm.NPhysBoneAng = ent:GetManipulateBoneAngles(pl.rgm.Bone)
+		if ent:GetClass() ~= "prop_ragdoll" and pl.rgm.IsPhysBone then
+			pl.rgm.NPhysBoneScale = ent:GetManipulateBoneScale(0)
+			pl.rgm.Bone = 0
+		else
+			pl.rgm.NPhysBoneScale = ent:GetManipulateBoneScale(pl.rgm.Bone)
+		end
 
 		local dirnorm = (collision.hitpos-axis:GetPos())
 		dirnorm:Normalize()
@@ -338,12 +375,16 @@ function TOOL:Think()
 				pl.rgm.GizmoParent = nil
 			end
 			pl.rgm.GizmoPos = pos
+			pl.rgm.GizmoAng = ang
 			pl:rgmSyncClient("GizmoPos")
+			pl:rgmSyncClient("GizmoAng")
 			pl:rgmSyncClient("GizmoParent")
 		else
 			pl.rgm.GizmoPos = nil
+			pl.rgm.GizmoAng = nil
 			pl.rgm.GizmoParent = nil
 			pl:rgmSyncClient("GizmoPos")
+			pl:rgmSyncClient("GizmoAng")
 			pl:rgmSyncClient("GizmoParent")
 		end
 	end
@@ -368,6 +409,7 @@ if SERVER then
 
 	local moving = pl.rgm.Moving or false
 	local rotate = pl.rgm.Rotate or false
+	local scale = pl.rgm.Scale or false
 	if moving then
 
 		if not IsValid(axis) then return end
@@ -385,78 +427,90 @@ if SERVER then
 		local physbonecount = ent:GetBoneCount() - 1
 		if physbonecount == nil then return end
 
-		if pl.rgm.IsPhysBone then
+		if not scale then
+			if pl.rgm.IsPhysBone then
 
-			local isik,iknum = rgm.IsIKBone(self,ent,bone)
+				local isik,iknum = rgm.IsIKBone(self,ent,bone)
 
-			local pos,ang = apart:ProcessMovement(pl.rgmOffsetPos,pl.rgmOffsetAng,eyepos,eyeang,ent,bone,pl.rgmISPos,pl.rgmISDir, true)
+				local pos,ang = apart:ProcessMovement(pl.rgmOffsetPos,pl.rgmOffsetAng,eyepos,eyeang,ent,bone,pl.rgmISPos,pl.rgmISDir, true)
 
-			local obj = ent:GetPhysicsObjectNum(bone)
-			if not isik or iknum == 3 or (rotate and (iknum == 1 or iknum == 2)) then
-				obj:EnableMotion(true)
-				obj:Wake()
-				obj:SetPos(pos)
-				obj:SetAngles(ang)
-				obj:EnableMotion(false)
-				obj:Wake()
-			elseif iknum == 2 then
-				for k,v in pairs(ent.rgmIKChains) do
-					if v.knee == bone then
-						local intersect = apart:GetGrabPos(eyepos,eyeang)
-						local obj1 = ent:GetPhysicsObjectNum(v.hip)
-						local obj2 = ent:GetPhysicsObjectNum(v.foot)
-						local kd = (intersect-(obj2:GetPos()+(obj1:GetPos()-obj2:GetPos())))
-						kd:Normalize()
-						ent.rgmIKChains[k].ikkneedir = kd*1
+				local obj = ent:GetPhysicsObjectNum(bone)
+				if not isik or iknum == 3 or (rotate and (iknum == 1 or iknum == 2)) then
+					obj:EnableMotion(true)
+					obj:Wake()
+					obj:SetPos(pos)
+					obj:SetAngles(ang)
+					obj:EnableMotion(false)
+					obj:Wake()
+				elseif iknum == 2 then
+					for k,v in pairs(ent.rgmIKChains) do
+						if v.knee == bone then
+							local intersect = apart:GetGrabPos(eyepos,eyeang)
+							local obj1 = ent:GetPhysicsObjectNum(v.hip)
+							local obj2 = ent:GetPhysicsObjectNum(v.foot)
+							local kd = (intersect-(obj2:GetPos()+(obj1:GetPos()-obj2:GetPos())))
+							kd:Normalize()
+							ent.rgmIKChains[k].ikkneedir = kd*1
+						end
 					end
 				end
-			end
 
 
-			local postable = rgm.SetOffsets(self,ent,pl.rgmOffsetTable,{b = bone,p = obj:GetPos(),a = obj:GetAngles()}, pl.rgmAngLocks, pl.rgmPosLocks)
+				local postable = rgm.SetOffsets(self,ent,pl.rgmOffsetTable,{b = bone,p = obj:GetPos(),a = obj:GetAngles()}, pl.rgmAngLocks, pl.rgmPosLocks)
 
-			local sbik,sbiknum = rgm.IsIKBone(self,ent,bone)
-			if not sbik or sbiknum ~= 2 then
-				postable[bone].dontset = true
-			end
-			for i=0,ent:GetPhysicsObjectCount()-1 do
-				if postable[i] and not postable[i].dontset then
-					local obj = ent:GetPhysicsObjectNum(i)
-					local poslen = postable[i].pos:Length()
-					local anglen = Vector(postable[i].ang.p,postable[i].ang.y,postable[i].ang.r):Length()
-
-					--Temporary solution for INF and NaN decimals crashing the game (Even rounding doesnt fix it)
-					if poslen > 2 and anglen > 2 then
-						obj:EnableMotion(true)
-						obj:Wake()
-						obj:SetPos(postable[i].pos)
-						obj:SetAngles(postable[i].ang)
-						obj:EnableMotion(false)
-						obj:Wake()
-					end
+				local sbik,sbiknum = rgm.IsIKBone(self,ent,bone)
+				if not sbik or sbiknum ~= 2 then
+					postable[bone].dontset = true
 				end
-			end
+				for i=0,ent:GetPhysicsObjectCount()-1 do
+					if postable[i] and not postable[i].dontset then
+						local obj = ent:GetPhysicsObjectNum(i)
+						local poslen = postable[i].pos:Length()
+						local anglen = Vector(postable[i].ang.p,postable[i].ang.y,postable[i].ang.r):Length()
 
-			-- if not pl:GetNWBool("ragdollmover_keydown") then
-			if not pl:KeyDown(IN_ATTACK) then
-				if self:GetClientNumber("unfreeze",1) > 0 then
-					for i=0,ent:GetPhysicsObjectCount()-1 do
-						if pl.rgmOffsetTable[i].moving then
-							local obj = ent:GetPhysicsObjectNum(i)
+						--Temporary solution for INF and NaN decimals crashing the game (Even rounding doesnt fix it)
+						if poslen > 2 and anglen > 2 then
 							obj:EnableMotion(true)
+							obj:Wake()
+							obj:SetPos(postable[i].pos)
+							obj:SetAngles(postable[i].ang)
+							obj:EnableMotion(false)
 							obj:Wake()
 						end
 					end
 				end
 
-				pl.rgm.Moving = false
-				pl:rgmSyncOne("Moving")
+				-- if not pl:GetNWBool("ragdollmover_keydown") then
+				if not pl:KeyDown(IN_ATTACK) then
+					if self:GetClientNumber("unfreeze",1) > 0 then
+						for i=0,ent:GetPhysicsObjectCount()-1 do
+							if pl.rgmOffsetTable[i].moving then
+								local obj = ent:GetPhysicsObjectNum(i)
+								obj:EnableMotion(true)
+								obj:Wake()
+							end
+						end
+					end
+
+					pl.rgm.Moving = false
+					pl:rgmSyncOne("Moving")
+				end
+			else
+				local pos, ang = apart:ProcessMovement(pl.rgmOffsetPos,pl.rgmOffsetAng,eyepos,eyeang,ent,bone,pl.rgmISPos,pl.rgmISDir, false, pl.rgm.StartAngle, pl.rgm.NPhysBonePos, pl.rgm.NPhysBoneAng) -- if a bone is not physics one, we pass over "start angle" thing
+
+				ent:ManipulateBoneAngles(bone, ang)
+				ent:ManipulateBonePosition(bone, pos)
+
+				if not pl:KeyDown(IN_ATTACK) then -- don't think entity has to be unfrozen if you were working with non phys bones, that would be weird?
+					pl.rgm.Moving = false
+					pl:rgmSyncOne("Moving")
+				end
 			end
 		else
-			local pos, ang = apart:ProcessMovement(pl.rgmOffsetPos,pl.rgmOffsetAng,eyepos,eyeang,ent,bone,pl.rgmISPos,pl.rgmISDir, false, pl.rgm.StartAngle, pl.rgm.NPhysBonePos, pl.rgm.NPhysBoneAng) -- if a bone is not physics one, we pass over "start angle" thing
+			bone = pl.rgm.Bone
+			local sc, ang = apart:ProcessMovement(pl.rgmOffsetPos,pl.rgmOffsetAng,eyepos,eyeang,ent,bone,pl.rgmISPos,pl.rgmISDir, false, pl.rgm.StartAngle, pl.rgm.NPhysBonePos, pl.rgm.NPhysBoneAng, pl.rgm.NPhysBoneScale)
 
-			ent:ManipulateBoneAngles(bone, ang)
-			ent:ManipulateBonePosition(bone, pos)
+			ent:ManipulateBoneScale(bone, sc)
 
 			if not pl:KeyDown(IN_ATTACK) then -- don't think entity has to be unfrozen if you were working with non phys bones, that would be weird?
 				pl.rgm.Moving = false
@@ -488,6 +542,7 @@ language.Add("tool.ragdollmover.0","Left click to select and move bones. Click w
 local BONE_PHYSICAL = 1
 local BONE_NONPHYSICAL = 2
 local BONE_PROCEDURAL = 3
+local BONE_PARENTED = 4
 
 local function GetRecursiveBones(ent, boneid, tab)
 	for k, v in ipairs(ent:GetChildBones(boneid)) do
@@ -566,19 +621,36 @@ local function CBinder(cpanel)
 	parent:SetHeight(80)
 	cpanel:AddItem(parent)
 
-	local bind = vgui.Create("DBinder", parent)
-	bind.Label = vgui.Create("DLabel", parent)
-	bind:SetConVar("ragdollmover_rotatebutton")
-	bind:SetSize(100, 50)
-	bind:SetPos(80, 25)
+	local bindrot = vgui.Create("DBinder", parent)
+	bindrot.Label = vgui.Create("DLabel", parent)
+	bindrot:SetConVar("ragdollmover_rotatebutton")
+	bindrot:SetSize(100, 50)
+	bindrot:SetPos(25, 25)
 
-	bind.Label:SetText("Move/Rotate toggle button")
-	bind.Label:SetDark(true)
-	bind.Label:SizeToContents()
-	bind.Label:SetPos(65, 0)
+	bindrot.Label:SetText("Rotate toggle button")
+	bindrot.Label:SetDark(true)
+	bindrot.Label:SizeToContents()
+	bindrot.Label:SetPos(25, 0)
 
-	function bind:OnChange(keycode)
-		net.Start("rgmSetToggleKey")
+	function bindrot:OnChange(keycode)
+		net.Start("rgmSetToggleRot")
+		net.WriteInt(keycode, 32)
+		net.SendToServer()
+	end
+
+	local bindsc = vgui.Create("DBinder", parent)
+	bindsc.Label = vgui.Create("DLabel", parent)
+	bindsc:SetConVar("ragdollmover_scalebutton")
+	bindsc:SetSize(100, 50)
+	bindsc:SetPos(135, 25)
+
+	bindsc.Label:SetText("Scale toggle button")
+	bindsc.Label:SetDark(true)
+	bindsc.Label:SizeToContents()
+	bindsc.Label:SetPos(137, 0)
+
+	function bindsc:OnChange(keycode)
+		net.Start("rgmSetToggleScale")
 		net.WriteInt(keycode, 32)
 		net.SendToServer()
 	end
@@ -589,6 +661,13 @@ local function RGMResetBone()
 	if not pl.rgm then return end
 	if not IsValid(pl.rgm.Entity) then return end
 	RunConsoleCommand("ragdollmover_resetbone")
+end
+
+local function RGMResetScale()
+	local pl = LocalPlayer()
+	if not pl.rgm then return end
+	if not IsValid(pl.rgm.Entity) then return end
+	RunConsoleCommand("ragdollmover_resetscale")
 end
 
 local function RGMLockPBone(mode)
@@ -641,8 +720,10 @@ local function RGMBuildBoneMenu(ent, bonepanel)
 		nodes[v.id]:SetExpanded(true)
 		if nodes[v.id].Type == BONE_NONPHYSICAL then
 			nodes[v.id]:SetIcon("icon16/connect.png")
+			nodes[v.id].Label:SetToolTip("Nonphysical Bone")
 		elseif nodes[v.id].Type == BONE_PROCEDURAL then
 			nodes[v.id]:SetIcon("icon16/error.png")
+			nodes[v.id].Label:SetToolTip("Procedural Bone")
 		end
 
 		nodes[v.id].DoClick = function()
@@ -664,6 +745,12 @@ local function RGMBuildBoneMenu(ent, bonepanel)
 	net.Start("rgmAskForPhysbones")
 		net.WriteEntity(ent)
 	net.SendToServer()
+
+	if ent:GetClass() == "ent_bonemerged" then
+		net.Start("rgmAskForParented")
+			net.WriteEntity(ent)
+		net.SendToServer()
+	end
 end
 
 local function RGMBuildEntMenu(parent, children, entpanel)
@@ -719,6 +806,8 @@ function TOOL.BuildCPanel(CPanel)
 
 		CButton(Col4, "Reset Non-Physics Bone", RGMResetBone)
 
+		CButton(Col4, "Reset Bone Scale", RGMResetScale)
+
 		LockPosB = CButton(Col4, "Lock PhysBone Position", RGMLockPBone, 1)
 		LockPosB:SetVisible(false)
 
@@ -772,6 +861,21 @@ net.Receive("rgmAskForPhysbonesResponse", function(len)
 		if bone then
 			nodes[bone].Type = BONE_PHYSICAL
 			nodes[bone]:SetIcon("icon16/brick.png")
+			nodes[bone].Label:SetToolTip("Physical Bone")
+		end
+	end
+end)
+
+net.Receive("rgmAskForParentedResponse", function(len)
+	local count = net.ReadUInt(32)
+
+	for i = 1, count do
+		local bone = net.ReadUInt(32)
+
+		if bone then
+			nodes[bone].Type = BONE_PARENTED
+			nodes[bone]:SetIcon("icon16/stop.png")
+			nodes[bone].Label:SetToolTip("Parented Bone")
 		end
 	end
 end)
@@ -786,8 +890,10 @@ net.Receive("rgmLockBoneResponse", function(len)
 
 	if poslock or anglock then
 		nodes[boneid]:SetIcon("icon16/lock.png")
+		nodes[boneid].Label:SetToolTip("Locked Physical Bone")
 	else
 		nodes[boneid]:SetIcon("icon16/brick.png")
+		nodes[boneid].Label:SetToolTip("Physical Bone")
 	end
 
 	if nodes[boneid].poslock then
@@ -826,6 +932,8 @@ net.Receive("rgmSelectBoneResponse", function(len)
 		LockRotB:SetVisible(false)
 	end
 
+	BonePanel:SetSelectedItem(nodes[boneid])
+
 	Col4:InvalidateLayout()
 end)
 
@@ -842,7 +950,6 @@ function TOOL:DrawHUD()
 	--or if we're not allowed to draw it.
 	if IsValid(ent) and IsValid(axis) and bone then
 		local scale = self:GetClientNumber("scale",10)
-		local rotate = pl.rgm.Rotate or false
 		local moveaxis = pl.rgm.MoveAxis
 		if moving and IsValid(moveaxis) then
 			moveaxis:DrawLines(true,scale)
