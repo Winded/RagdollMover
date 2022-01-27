@@ -218,13 +218,7 @@ function ENT:Think()
 	local rotate = pl.rgm.Rotate or false
 	local scale = pl.rgm.Scale or false
 
-	if pl.rgm.IsPhysBone and scale then
-
-		local physobj = ent:GetPhysicsObjectNum(bone)
-		if physobj == nil then return end
-		pos = physobj:GetPos()
-
-	elseif pl.rgm.IsPhysBone then
+	if (pl.rgm.IsPhysBone and scale) or pl.rgm.IsPhysBone then
 
 		local physobj = ent:GetPhysicsObjectNum(bone)
 		if physobj == nil then return end
