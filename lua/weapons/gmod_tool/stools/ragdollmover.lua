@@ -289,7 +289,7 @@ function TOOL:LeftClick(tr)
 		pl.rgm.NPhysBonePos = ent:GetManipulateBonePosition(pl.rgm.Bone)
 		pl.rgm.NPhysBoneAng = ent:GetManipulateBoneAngles(pl.rgm.Bone)
 		pl.rgm.NPhysBoneScale = ent:GetManipulateBoneScale(pl.rgm.Bone)
-		
+
 
 		local dirnorm = (collision.hitpos-axis:GetPos())
 		dirnorm:Normalize()
@@ -878,7 +878,7 @@ net.Receive("rgmAskForParentedResponse", function(len)
 	for i = 1, count do
 		local bone = net.ReadUInt(32)
 
-		if bone then
+		if nodes[bone] then
 			nodes[bone].Type = BONE_PARENTED
 			nodes[bone]:SetIcon("icon16/stop.png")
 			nodes[bone].Label:SetToolTip("Parented Bone")
