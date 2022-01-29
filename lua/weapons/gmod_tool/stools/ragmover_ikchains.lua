@@ -1,5 +1,5 @@
 
-TOOL.Name = "Rag Mover - IK Chains"
+TOOL.Name = "#tool.ragmover_ikchains.name2"
 TOOL.Category = "Poser"
 TOOL.Command = nil
 TOOL.ConfigName = ""
@@ -7,10 +7,10 @@ TOOL.ConfigName = ""
 TOOL.ClientConVar["type"] = 1
 
 local ikchains_iktypes = {
-	"Left Leg",
-	"Right Leg",
-	"Left Arm",
-	"Right Arm"
+	"tool.ragmover_ikchains.ik1",
+	"tool.ragmover_ikchains.ik2",
+	"tool.ragmover_ikchains.ik3",
+	"tool.ragmover_ikchains.ik4"
 }
 
 local function Message(ply,text,icon,sound)
@@ -36,7 +36,7 @@ function TOOL:LeftClick(tr)
 			Type = math.ceil(Type)
 			tr.Entity.rgmIKChains[Type] = {hip = self.SelectedBone,knee = kneebone,foot = tr.PhysicsBone,type = Type}
 		else
-			Message(self:GetOwner(),"There can be only one knee bone.",1,"buttons/button8.wav")
+			Message(self:GetOwner(),"#tool.ragmover_ikchains.error",1,"buttons/button8.wav")
 		end
 		self:SetStage(0)
 		return true
@@ -71,26 +71,13 @@ end
 
 if CLIENT then
 
-language.Add("tool.ragmover_ikchains.name","Ragdoll Mover - IK Chains")
-language.Add("tool.ragmover_ikchains.desc","Make your own IK chains for ragdolls to be used with Ragdoll Mover.")
-language.Add("tool.ragmover_ikchains.0","Left click to select IK hip/upperarm bone.")
-language.Add("tool.ragmover_ikchains.1","Now left click again to select foot/hand bone.")
-
 function TOOL.BuildCPanel(CPanel)
 
-	CPanel:AddControl("Header",{Name = "#Tool_ragmover_ikchains_name","#Tool_ragmover_ikchains_desc"})
-
-	--[[ local mc = CPanel:MultiChoice("IK chain type","ragmover_ikchains_type")
-	mc:AddChoice("Left Leg")
-	mc:AddChoice("Right Leg")
-	mc:AddChoice("Left Arm")
-	mc:AddChoice("Right Arm") ]]
-
-	local s = CPanel:NumSlider("IK slot: "..ikchains_iktypes[1],"ragmover_ikchains_type",1,4,0)
+	local s = CPanel:NumSlider(language.GetPhrase("tool.ragmover_ikchains.ikslot") .. " " .. language.GetPhrase(ikchains_iktypes[1]),"ragmover_ikchains_type",1,4,0)
 	s:SetValue(0)
 	s.ValueChanged = function(self,val)
 		RunConsoleCommand("ragmover_ikchains_type",math.Round(self:GetValue()))
-		self:SetText("IK slot: "..ikchains_iktypes[math.Round(self:GetValue())])
+		self:SetText(language.GetPhrase("tool.ragmover_ikchains.ikslot") .. " " .. language.GetPhrase(ikchains_iktypes[math.Round(self:GetValue())]))
 	end
 
 end
@@ -103,15 +90,6 @@ function TOOL:DrawHUD()
 	if IsValid(tr.Entity) and (tr.Entity:GetClass() == "prop_ragdoll") then
 		local aimedbone = pl:GetNWInt("ragdollmoverik_aimedbone",0)
 		rgm.DrawBoneName(tr.Entity,aimedbone)
-		-- local name = tr.Entity:GetBoneName(aimedbone)
-		-- local _pos,_ang = tr.Entity:GetBonePosition(aimedbone)
-		-- if not _pos or not _ang then
-			-- _pos,_ang = tr.Entity:GetPos(),tr.Entity:GetAngles()
-		-- end
-		-- _pos = _pos:ToScreen()
-		-- local textpos = {x = _pos.x+5,y = _pos.y-5}
-		-- surface.DrawCircle(_pos.x,_pos.y,2.5,Color(0,200,0,255))
-		-- draw.SimpleText(name,"Default",textpos.x,textpos.y,Color(0,200,0,255),TEXT_ALIGN_LEFT,TEXT_ALIGN_BOTTOM)
 	end
 
 end

@@ -1,5 +1,5 @@
 
-TOOL.Name = "Ragdoll Mover"
+TOOL.Name = "#tool.ragdollmover.name"
 TOOL.Category = "Poser"
 TOOL.Command = nil
 TOOL.ConfigName = ""
@@ -541,10 +541,6 @@ end
 
 if CLIENT then
 
-language.Add("tool.ragdollmover.name","Ragdoll Mover")
-language.Add("tool.ragdollmover.desc","Allows advanced movement of ragdolls!")
-language.Add("tool.ragdollmover.0","Left click to select and move bones. Click with mid mouse button to toggle between move/rotate.")
-
 local BONE_PHYSICAL = 1
 local BONE_NONPHYSICAL = 2
 local BONE_PROCEDURAL = 3
@@ -633,7 +629,7 @@ local function CBinder(cpanel)
 	bindrot:SetSize(100, 50)
 	bindrot:SetPos(25, 25)
 
-	bindrot.Label:SetText("Rotate toggle button")
+	bindrot.Label:SetText("#tool.ragdollmover.bindrot")
 	bindrot.Label:SetDark(true)
 	bindrot.Label:SizeToContents()
 	bindrot.Label:SetPos(25, 0)
@@ -650,7 +646,7 @@ local function CBinder(cpanel)
 	bindsc:SetSize(100, 50)
 	bindsc:SetPos(135, 25)
 
-	bindsc.Label:SetText("Scale toggle button")
+	bindsc.Label:SetText("#tool.ragdollmover.bindscale")
 	bindsc.Label:SetDark(true)
 	bindsc.Label:SizeToContents()
 	bindsc.Label:SetPos(137, 0)
@@ -726,10 +722,10 @@ local function RGMBuildBoneMenu(ent, bonepanel)
 		nodes[v.id]:SetExpanded(true)
 		if nodes[v.id].Type == BONE_NONPHYSICAL then
 			nodes[v.id]:SetIcon("icon16/connect.png")
-			nodes[v.id].Label:SetToolTip("Nonphysical Bone")
+			nodes[v.id].Label:SetToolTip("#tool.ragdollmover.nonphysbone")
 		elseif nodes[v.id].Type == BONE_PROCEDURAL then
 			nodes[v.id]:SetIcon("icon16/error.png")
-			nodes[v.id].Label:SetToolTip("Procedural Bone")
+			nodes[v.id].Label:SetToolTip("#tool.ragdollmover.proceduralbone")
 		end
 
 		nodes[v.id].DoClick = function()
@@ -787,45 +783,45 @@ end
 
 function TOOL.BuildCPanel(CPanel)
 
-	local Col1 = CCol(CPanel,"Gizmo")
-		CCheckBox(Col1,"Localized position gizmo.","ragdollmover_localpos")
-		CCheckBox(Col1,"Localized angle gizmo.","ragdollmover_localang")
-		CNumSlider(Col1,"Scale","ragdollmover_scale",1.0,50.0,1)
-		CCheckBox(Col1,"Fully visible discs.","ragdollmover_fulldisc")
+	local Col1 = CCol(CPanel,"#tool.ragdollmover.gizmopanel")
+		CCheckBox(Col1,"#tool.ragdollmover.localpos","ragdollmover_localpos")
+		CCheckBox(Col1,"#tool.ragdollmover.localang","ragdollmover_localang")
+		CNumSlider(Col1,"#tool.ragdollmover.scale","ragdollmover_scale",1.0,50.0,1)
+		CCheckBox(Col1,"#tool.ragdollmover.fulldisc","ragdollmover_fulldisc")
 
-	local Col2 = CCol(CPanel,"IK Chains")
-		CCheckBox(Col2,"Left Hand IK","ragdollmover_ik_hand_L")
-		CCheckBox(Col2,"Right Hand IK","ragdollmover_ik_hand_R")
-		CCheckBox(Col2,"Left Leg IK","ragdollmover_ik_leg_L")
-		CCheckBox(Col2,"Right Leg IK","ragdollmover_ik_leg_R")
+	local Col2 = CCol(CPanel,"#tool.ragdollmover.ikpanel")
+		CCheckBox(Col2,"#tool.ragdollmover.ik3","ragdollmover_ik_hand_L")
+		CCheckBox(Col2,"#tool.ragdollmover.ik4","ragdollmover_ik_hand_R")
+		CCheckBox(Col2,"#tool.ragdollmover.ik1","ragdollmover_ik_leg_L")
+		CCheckBox(Col2,"#tool.ragdollmover.ik2","ragdollmover_ik_leg_R")
 
-	local Col3 = CCol(CPanel,"Misc")
-		local CB = CCheckBox(Col3,"Unfreeze on release.","ragdollmover_unfreeze")
-		CB:SetToolTip("Unfreeze bones that were unfrozen before grabbing the ragdoll.")
-		local DisFil = CCheckBox(Col3, "Disable entity filter.","ragdollmover_disablefilter")
-		DisFil:SetToolTip("Disable entity filter to select ANY entity. CAUTION - may be buggy")
-		CNumSlider(Col3,"Tool update rate.","ragdollmover_updaterate",0.01,1.0,2)
+	local Col3 = CCol(CPanel,"#tool.ragdollmover.miscpanel")
+		local CB = CCheckBox(Col3,"#tool.ragdollmover.unfreeze","ragdollmover_unfreeze")
+		CB:SetToolTip("#tool.ragdollmover.unfreezetip")
+		local DisFil = CCheckBox(Col3, "#tool.ragdollmover.disablefilter","ragdollmover_disablefilter")
+		DisFil:SetToolTip("#tool.ragdollmover.disablefiltertip")
+		CNumSlider(Col3,"#tool.ragdollmover.updaterate","ragdollmover_updaterate",0.01,1.0,2)
 
 	CBinder(CPanel)
 
-	Col4 = CCol(CPanel, "Bone Manipulation")
+	Col4 = CCol(CPanel, "#tool.ragdollmover.bonemanpanel")
 
-		CButton(Col4, "Reset Non-Physics Bone", RGMResetBone)
+		CButton(Col4, "#tool.ragdollmover.resetbone", RGMResetBone)
 
-		CButton(Col4, "Reset Bone Scale", RGMResetScale)
+		CButton(Col4, "#tool.ragdollmover.resetscale", RGMResetScale)
 
-		LockPosB = CButton(Col4, "Lock PhysBone Position", RGMLockPBone, 1)
+		LockPosB = CButton(Col4, "#tool.ragdollmover.lockpos", RGMLockPBone, 1)
 		LockPosB:SetVisible(false)
 
-		LockRotB = CButton(Col4, "Lock PhysBone Rotation", RGMLockPBone, 2)
+		LockRotB = CButton(Col4, "#tool.ragdollmover.lockang", RGMLockPBone, 2)
 		LockRotB:SetVisible(false)
 
-		local colbones = CCol(Col4, "Bone List")
+		local colbones = CCol(Col4, "#tool.ragdollmover.bonelist")
 			BonePanel = vgui.Create("DTree", colbones)
 			BonePanel:SetTall(600)
 			colbones:AddItem(BonePanel)
 
-	local colents = CCol(CPanel, "Entity Children")
+	local colents = CCol(CPanel, "#tool.ragdollmover.entchildren")
 
 		EntPanel = vgui.Create("DTree", colents)
 		EntPanel:SetTall(150)
@@ -867,7 +863,7 @@ net.Receive("rgmAskForPhysbonesResponse", function(len)
 		if bone then
 			nodes[bone].Type = BONE_PHYSICAL
 			nodes[bone]:SetIcon("icon16/brick.png")
-			nodes[bone].Label:SetToolTip("Physical Bone")
+			nodes[bone].Label:SetToolTip("#tool.ragdollmover.physbone")
 		end
 	end
 end)
@@ -881,7 +877,7 @@ net.Receive("rgmAskForParentedResponse", function(len)
 		if nodes[bone] then
 			nodes[bone].Type = BONE_PARENTED
 			nodes[bone]:SetIcon("icon16/stop.png")
-			nodes[bone].Label:SetToolTip("Parented Bone")
+			nodes[bone].Label:SetToolTip("#tool.ragdollmover.parentedbone")
 		end
 	end
 end)
@@ -896,21 +892,21 @@ net.Receive("rgmLockBoneResponse", function(len)
 
 	if poslock or anglock then
 		nodes[boneid]:SetIcon("icon16/lock.png")
-		nodes[boneid].Label:SetToolTip("Locked Physical Bone")
+		nodes[boneid].Label:SetToolTip("#tool.ragdollmover.lockedbone")
 	else
 		nodes[boneid]:SetIcon("icon16/brick.png")
-		nodes[boneid].Label:SetToolTip("Physical Bone")
+		nodes[boneid].Label:SetToolTip("#tool.ragdollmover.physbone")
 	end
 
 	if nodes[boneid].poslock then
-		LockPosB:SetText("Unlock PhysBone Position")
+		LockPosB:SetText("#tool.ragdollmover.unlockpos")
 	else
-		LockPosB:SetText("Lock PhysBone Position")
+		LockPosB:SetText("#tool.ragdollmover.lockpos")
 	end
 	if nodes[boneid].anglock then
-		LockRotB:SetText("Unlock PhysBone Rotation")
+		LockRotB:SetText("#tool.ragdollmover.unlockang")
 	else
-		LockRotB:SetText("Lock PhysBone Rotation")
+		LockRotB:SetText("#tool.ragdollmover.lockang")
 	end
 end)
 
@@ -924,14 +920,14 @@ net.Receive("rgmSelectBoneResponse", function(len)
 		LockRotB:SetVisible(true)
 
 		if nodes[boneid].poslock then
-			LockPosB:SetText("Unlock PhysBone Position")
+			LockPosB:SetText("#tool.ragdollmover.unlockpos")
 		else
-			LockPosB:SetText("Lock PhysBone Position")
+			LockPosB:SetText("#tool.ragdollmover.lockpos")
 		end
 		if nodes[boneid].anglock then
-			LockRotB:SetText("Unlock PhysBone Rotation")
+			LockRotB:SetText("#tool.ragdollmover.unlockang")
 		else
-			LockRotB:SetText("Lock PhysBone Rotation")
+			LockRotB:SetText("#tool.ragdollmover.lockang")
 		end
 	else
 		LockPosB:SetVisible(false)
