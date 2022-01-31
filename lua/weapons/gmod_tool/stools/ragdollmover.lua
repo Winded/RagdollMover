@@ -7,7 +7,7 @@ TOOL.ConfigName = ""
 TOOL.ClientConVar["localpos"] = 0
 TOOL.ClientConVar["localang"] = 1
 TOOL.ClientConVar["scale"] = 10
-TOOL.ClientConVar["fulldisc"] = 0
+TOOL.ClientConVar["width"] = 0.5
 TOOL.ClientConVar["disablefilter"] = 0
 TOOL.ClientConVar["disablechildbone"] = 0
 
@@ -314,9 +314,7 @@ function TOOL:LeftClick(tr)
 			entity.rgmbonecached = true
 		end
 
-		pl.rgm.PhysBone = tr.PhysicsBone
-		pl.rgm.Bone = entity:TranslatePhysBoneToBone(tr.PhysicsBone)
-		pl.rgm.IsPhysBone = true
+		RGMGetBone(pl, entity, entity:TranslatePhysBoneToBone(tr.PhysicsBone))	
 
 		if ent ~= pl.rgm.ParentEntity then
 			local children = rgmFindEntityChildren(pl.rgm.ParentEntity)
@@ -787,7 +785,7 @@ function TOOL.BuildCPanel(CPanel)
 		CCheckBox(Col1,"#tool.ragdollmover.localpos","ragdollmover_localpos")
 		CCheckBox(Col1,"#tool.ragdollmover.localang","ragdollmover_localang")
 		CNumSlider(Col1,"#tool.ragdollmover.scale","ragdollmover_scale",1.0,50.0,1)
-		CCheckBox(Col1,"#tool.ragdollmover.fulldisc","ragdollmover_fulldisc")
+		CNumSlider(Col1,"#tool.ragdollmover.width","ragdollmover_width",0.1,1,1)
 
 	local Col2 = CCol(CPanel,"#tool.ragdollmover.ikpanel")
 		CCheckBox(Col2,"#tool.ragdollmover.ik3","ragdollmover_ik_hand_L")
@@ -939,6 +937,16 @@ net.Receive("rgmSelectBoneResponse", function(len)
 	Col4:InvalidateLayout()
 end)
 
+local material = CreateMaterial("rgmGizmoMaterial", "UnlitGeneric", {
+	["$basetexture"] = 	"color/white",
+  	["$model"] = 		1,
+ 	["$alphatest"] = 	1,
+ 	["$vertexalpha"] = 	1,
+ 	["$vertexcolor"] = 	1,
+ 	["$ignorez"] = 		1,
+	["$nocull"] = 		1,
+})
+
 function TOOL:DrawHUD()
 
 	local pl = LocalPlayer()
@@ -952,9 +960,15 @@ function TOOL:DrawHUD()
 	--or if we're not allowed to draw it.
 	if IsValid(ent) and IsValid(axis) and bone then
 		local scale = self:GetClientNumber("scale",10)
+		local width = self:GetClientNumber("width",0.5)
 		local moveaxis = pl.rgm.MoveAxis
 		if moving and IsValid(moveaxis) then
-			moveaxis:DrawLines(true,scale)
+			cam.Start({type = "3D"})
+			render.SetMaterial(material)
+
+			moveaxis:DrawLines(true,scale,width)
+
+			cam.End()
 			if moveaxis:GetType() == 3 then
 				local intersect = moveaxis:GetGrabPos(rgm.EyePosAng(pl))
 				local fwd = (intersect-axis:GetPos())
@@ -965,7 +979,11 @@ function TOOL:DrawHUD()
 				axis:DrawAngleText(moveaxis, intersect, pl.rgm.StartAngle)
 			end
 		else
-			axis:DrawLines(scale)
+			cam.Start({type = "3D"})
+			render.SetMaterial(material)
+
+			axis:DrawLines(scale,width)
+			cam.End()
 		end
 		if collision then return end
 	end

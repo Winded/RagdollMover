@@ -63,13 +63,12 @@ net.Receive("rgmAxisUpdate",function(len)
 	self.TargetDiscAng = discang
 end)
 
-function ENT:DrawLines(scale)
+function ENT:DrawLines(scale,width)
 	local pl = LocalPlayer()
 
 	local rotate = pl.rgm.Rotate or false
 	local modescale = pl.rgm.Scale or false
 	local collision = self:TestCollision(LocalPlayer(),scale)
-	local ToScreen = {}
 	local Start,End = 1,6
 	if rotate then Start,End = 7,10 end
 	if modescale then Start, End = 11, 16 end
@@ -81,17 +80,7 @@ function ENT:DrawLines(scale)
 		if collision and moveaxis == collision.axis then
 			yellow = true
 		end
-		moveaxis:DrawLines(yellow,scale)
-		table.Add(ToScreen,lines)
-	end
-end
-
--- Deprecated
-function ENT:DrawLinesSingle(id,scale)
-	local ToScreen = self:GetNWEntity(TransTable[id]):DrawLines(true,scale)
-	for i,v in ipairs(ToScreen) do
-		surface.SetDrawColor(unpack(v[3]))
-		surface.DrawLine(v[1].x,v[1].y,v[2].x,v[2].y)
+		moveaxis:DrawLines(yellow,scale,width)
 	end
 end
 
