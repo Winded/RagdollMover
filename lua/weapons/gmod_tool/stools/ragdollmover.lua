@@ -8,6 +8,7 @@ TOOL.ClientConVar["localpos"] = 0
 TOOL.ClientConVar["localang"] = 1
 TOOL.ClientConVar["scale"] = 10
 TOOL.ClientConVar["width"] = 0.5
+TOOL.ClientConVar["fulldisc"] = 0
 TOOL.ClientConVar["disablefilter"] = 0
 TOOL.ClientConVar["disablechildbone"] = 0
 
@@ -786,6 +787,7 @@ function TOOL.BuildCPanel(CPanel)
 		CCheckBox(Col1,"#tool.ragdollmover.localang","ragdollmover_localang")
 		CNumSlider(Col1,"#tool.ragdollmover.scale","ragdollmover_scale",1.0,50.0,1)
 		CNumSlider(Col1,"#tool.ragdollmover.width","ragdollmover_width",0.1,1,1)
+		CCheckBox(Col1,"#tool.ragdollmover.fulldisc","ragdollmover_fulldisc")
 
 	local Col2 = CCol(CPanel,"#tool.ragdollmover.ikpanel")
 		CCheckBox(Col2,"#tool.ragdollmover.ik3","ragdollmover_ik_hand_L")

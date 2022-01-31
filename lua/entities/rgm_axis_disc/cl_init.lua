@@ -40,7 +40,11 @@ function ENT:DrawLines(yellow,scale,width)
 		if yellow then
 			col = Color(255,255,0,255)
 		end
-		table.insert(ToScreen,{points,col})
+		if GetConVar("ragdollmover_fulldisc"):GetBool() or (moving or
+		(points[1]:DistToSqr(eyepos) <= borderpos:DistToSqr(eyepos) and points[2]:DistToSqr(eyepos) <= borderpos:DistToSqr(eyepos) and 
+		points[3]:DistToSqr(eyepos) <= borderpos:DistToSqr(eyepos) and points[4]:DistToSqr(eyepos) <= borderpos:DistToSqr(eyepos))) then
+			table.insert(ToScreen,{points,col})
+		end
 	end
 	for i,v in ipairs(ToScreen) do
 		render.DrawQuad(v[1][1],v[1][2],v[1][3],v[1][4],v[2])
