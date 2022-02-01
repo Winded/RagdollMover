@@ -20,9 +20,9 @@ end
 
 if SERVER then
 
-local NumpadBindRot, NumpadBindScale
-local RotKey, ScaleKey
-local rgmMode = 1
+local NumpadBindRot, NumpadBindScale = {}, {}
+local RotKey, ScaleKey = {}, {}
+local rgmMode = {}
 
 util.AddNetworkString("rgmSetToggleRot")
 util.AddNetworkString("rgmSetToggleScale")
@@ -31,21 +31,22 @@ net.Receive("rgmSetToggleRot",function(len, pl)
 	local key = net.ReadInt(32)
 	if not key then return end
 
-	RotKey = key
-	if NumpadBindRot then numpad.Remove(NumpadBindRot) end
-	NumpadBindRot = numpad.OnDown(pl, key, "rgmAxisChangeStateRot")
+	RotKey[pl] = key
+	if NumpadBindRot[pl] then numpad.Remove(NumpadBindRot[pl]) end
+	NumpadBindRot[pl] = numpad.OnDown(pl, key, "rgmAxisChangeStateRot")
 end)
 
 numpad.Register("rgmAxisChangeStateRot", function(pl)
 	if not pl.rgm then pl.rgm = {} end
+	if not rgmMode[pl] then rgmMode[pl] = 1 end
 
 	if not pl.rgmToolActive then return end
-	if RotKey == ScaleKey then
-		rgmMode = rgmMode + 1
-		if rgmMode > 3 then rgmMode = 1 end
+	if RotKey[pl] == ScaleKey[pl] then
+		rgmMode[pl] = rgmMode[pl] + 1
+		if rgmMode[pl] > 3 then rgmMode[pl] = 1 end
 
-		pl.rgm.Rotate = rgmMode == 2
-		pl.rgm.Scale = rgmMode == 3
+		pl.rgm.Rotate = rgmMode[pl] == 2
+		pl.rgm.Scale = rgmMode[pl] == 3
 	else
 		pl.rgm.Rotate = not pl.rgm.Rotate
 		pl.rgm.Scale = false
@@ -61,16 +62,16 @@ net.Receive("rgmSetToggleScale",function(len, pl)
 	local key = net.ReadInt(32)
 	if not key then return end
 
-	ScaleKey = key
-	if NumpadBindScale then numpad.Remove(NumpadBindScale) end
-	NumpadBindScale = numpad.OnDown(pl, key, "rgmAxisChangeStateScale")
+	ScaleKey[pl] = key
+	if NumpadBindScale[pl] then numpad.Remove(NumpadBindScale[pl]) end
+	NumpadBindScale[pl] = numpad.OnDown(pl, key, "rgmAxisChangeStateScale")
 end)
 
 numpad.Register("rgmAxisChangeStateScale", function(pl)
 	if not pl.rgm then pl.rgm = {} end
 
 	if not pl.rgmToolActive then return end
-	if RotKey == ScaleKey then return end
+	if RotKey[pl] == ScaleKey[pl] then return end
 	pl.rgm.Scale = not pl.rgm.Scale
 	pl.rgm.Rotate = false
 
