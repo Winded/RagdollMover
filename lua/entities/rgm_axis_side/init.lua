@@ -18,8 +18,8 @@ function ENT:ProcessMovement(offpos,offang,eyepos,eyeang,ent,bone,ppos,pnorm, is
 			local matrix = ent:GetBoneMatrix(ent:GetBoneParent(bone))
 			boneang = matrix:GetAngles()
 		else
-			if IsValid(pl.rgm.EffectBase) then
-				boneang = pl.rgm.EffectBase:GetAngles()
+			if IsValid(ent) then
+				boneang = ent:GetAngles()
 			else
 				boneang = Angle(0,0,0)
 			end

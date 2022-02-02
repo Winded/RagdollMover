@@ -5,7 +5,9 @@ ENT.Base = "base_entity"
 local TransTable = {
 	"ArrowX", "ArrowY", "ArrowZ",
 	"ArrowXY", "ArrowXZ", "ArrowYZ",
-	"DiscP", "DiscY", "DiscR", "DiscLarge"
+	"DiscP", "DiscY", "DiscR", "DiscLarge",
+	"ScaleX", "ScaleY", "ScaleZ",
+	"ScaleXY", "ScaleXZ", "ScaleYZ"
 }
 
 function ENT:Initialize()
@@ -21,10 +23,13 @@ end
 function ENT:TestCollision(pl,scale)
 	-- PrintTable(self:GetTable())
 	local rotate = pl.rgm.Rotate or false
+	local modescale = pl.rgm.Scale or false
 	local Start,End = 1,6
 	if rotate then Start,End = 7,10 end
+	if modescale then Start, End = 11, 16 end
+
 	local cols = {}
-	if !self.Axises then return false end
+	if not self.Axises then return false end
 	for i=Start,End do
 		local e = self.Axises[i]
 		-- print(e)

@@ -8,9 +8,9 @@ function ENT:TestCollision(pl,scale)
 	local intersect = self:GetGrabPos(eyepos,eyeang)
 	local localized = self:WorldToLocal(intersect)
 	local distmin1 = Vector(-0.15*scale,scale*0.2,0)
-	local distmax1 = Vector(0.15*scale,scale*0.3,scale*0.25)
+	local distmax1 = Vector(0.15*scale,scale*0.3,scale*0.3)
 	local distmin2 = Vector(-0.15*scale,0,scale*0.2)
-	local distmax2 = Vector(0.15*scale,scale*0.25,scale*0.3)
+	local distmax2 = Vector(0.15*scale,scale*0.3,scale*0.3)
 	if (localized.x >= distmin1.x and localized.x <= distmax1.x
 	and localized.y >= distmin1.y and localized.y <= distmax1.y
 	and localized.z >= distmin1.z and localized.z <= distmax1.z)

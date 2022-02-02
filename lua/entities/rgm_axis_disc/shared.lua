@@ -6,7 +6,7 @@ function ENT:TestCollision(pl,scale,minmult,maxmult)
 	local eyepos,eyeang = rgm.EyePosAng(pl)
 	local intersect = self:GetGrabPos(eyepos,eyeang)
 	local distmin, distmax
-	if !minmult or !maxmult then
+	if not minmult or not maxmult then
 		distmin = 0.9*scale
 		distmax = 1.1*scale
 	else

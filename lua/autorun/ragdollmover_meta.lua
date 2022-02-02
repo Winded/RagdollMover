@@ -10,7 +10,7 @@ local TYPE_ANGLE	 = 4
 local TYPE_BOOL		 = 5
 
 local function Sync(self)
-	if CLIENT or !self.rgm then return end
+	if CLIENT or not self.rgm then return end
 
 	net.Start("rgmSync")
 
@@ -43,7 +43,7 @@ local function Sync(self)
 end
 
 local function SyncOne(self, name)
-	if CLIENT or !self.rgm then return end
+	if CLIENT or not self.rgm then return end
 
 	local v = self.rgm[name]
 	if v == nil then return end
@@ -77,7 +77,7 @@ local function SyncOne(self, name)
 end
 
 local function SyncOneClient(self, name)
-	if SERVER or !self.rgm then return end
+	if SERVER or not self.rgm then return end
 
 	local v = self.rgm[name]
 	if v == nil then return end
@@ -112,6 +112,11 @@ end
 hook.Add("PlayerSpawn","rgmSpawn",function(pl) --PlayerSpawn is a hook that runs only serverside btw
 	if pl.rgm == nil then
 		pl.rgm = {}
+		pl.rgmPosLocks = {}
+		pl.rgmAngLocks = {}
+		pl.rgm.Rotate = false
+		pl.rgm.Scale = false
+
 		pl.rgmSync = Sync
 		pl.rgmSyncOne = SyncOne
 		net.Start("rgmSetupClient")
@@ -127,7 +132,7 @@ util.AddNetworkString("rgmSetupClient")
 
 net.Receive("rgmSyncClient", function(len, ply)
 	local pl = ply
-	if !pl.rgm then pl.rgm = {} end
+	if not pl.rgm then pl.rgm = {} end
 
 	local count = net.ReadInt(32)
 
@@ -155,7 +160,7 @@ else
 
 net.Receive("rgmSync",function(len)
 	local pl = LocalPlayer()
-	if !pl.rgm then pl.rgm = {} end
+	if not pl.rgm then pl.rgm = {} end
 
 	local count = net.ReadInt(32)
 
