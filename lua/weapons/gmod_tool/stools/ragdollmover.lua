@@ -315,7 +315,7 @@ function TOOL:LeftClick(tr)
 			entity.rgmbonecached = true
 		end
 
-		RGMGetBone(pl, entity, entity:TranslatePhysBoneToBone(tr.PhysicsBone))	
+		RGMGetBone(pl, entity, entity:TranslatePhysBoneToBone(tr.PhysicsBone))
 
 		if ent ~= pl.rgm.ParentEntity then
 			local children = rgmFindEntityChildren(pl.rgm.ParentEntity)
@@ -679,6 +679,143 @@ local function RGMLockPBone(mode)
 		net.WriteUInt(mode, 2)
 	net.SendToServer()
 end
+local function AddHBar(self) -- There is no horizontal scrollbars in gmod, so I guess we'll override vertical one from GMod
+	self.HBar = vgui.Create("DVScrollBar")
+
+	self.HBar.btnUp.Paint = function(panel, w, h) derma.SkinHook("Paint", "ButtonLeft", panel, w, h) end
+	self.HBar.btnDown.Paint = function(panel, w, h) derma.SkinHook("Paint", "ButtonRight", panel, w, h) end
+
+	self.HBar.SetScroll = function(self, scrll)
+		if (not self.Enabled) then self.Scroll = 0 return end
+
+		self.Scroll = math.Clamp( scrll, 0, self.CanvasSize )
+
+		self:InvalidateLayout()
+
+		local func = self:GetParent().OnHScroll
+		if func then
+			func(self:GetParent(), self:GetOffset())
+		end
+	end
+
+	self.HBar.OnMousePressed = function(self)
+		local x, y = self:CursorPos()
+
+		local PageSize = self.BarSize
+
+		if (x > self.btnGrip.x) then
+			self:SetScroll(self:GetScroll() + PageSize)
+		else
+			self:SetScroll(self:GetScroll() - PageSize)
+		end
+	end
+
+	self.HBar.OnCursorMoved = function(self, x, y)
+		if (not self.Enabled) then return end
+		if (not self.Dragging) then return end
+
+		local x, y = self:ScreenToLocal(gui.MouseX(), 0)
+
+		x = x - self.btnUp:GetWide()
+		x = x - self.HoldPos
+
+		local BtnHeight = self:GetTall()
+		if (self:GetHideButtons()) then BtnHeight = 0 end
+
+		local TrackSize = self:GetWide() - BtnHeight * 2 - self.btnGrip:GetWide()
+
+		x = x / TrackSize
+
+		self:SetScroll(x * self.CanvasSize)
+	end
+
+	self.HBar.Grip = function(self)
+		if (!self.Enabled) then return end
+		if (self.BarSize == 0) then return end
+
+		self:MouseCapture(true)
+		self.Dragging = true
+
+		local x, y = self.btnGrip:ScreenToLocal(gui.MouseX(), 0)
+		self.HoldPos = x
+
+		self.btnGrip.Depressed = true
+	end
+
+	self.HBar.PerformLayout = function(self)
+		local Tall = self:GetTall()
+		local BtnHeight = Tall
+		if (self:GetHideButtons()) then BtnHeight = 0 end
+		local Scroll = self:GetScroll() / self.CanvasSize
+		local BarSize = math.max(self:BarScale() * (self:GetWide() - (BtnHeight * 2)), 10)
+		local Track = self:GetWide() - (BtnHeight * 2) - BarSize
+		Track = Track + 1
+
+		Scroll = Scroll * Track
+
+		self.btnGrip:SetPos(BtnHeight + Scroll, 0)
+		self.btnGrip:SetSize(BarSize, Tall)
+
+		if (BtnHeight > 0) then
+			self.btnUp:SetPos(0, 0)
+			self.btnUp:SetSize(BtnHeight, Tall)
+
+			self.btnDown:SetPos(self:GetWide() - BtnHeight, 0)
+			self.btnDown:SetSize(BtnHeight, Tall)
+
+			self.btnUp:SetVisible( true )
+			self.btnDown:SetVisible( true )
+		else
+			self.btnUp:SetVisible( false )
+			self.btnDown:SetVisible( false )
+			self.btnDown:SetSize(BtnHeight, Tall)
+			self.btnUp:SetSize(BtnHeight, Tall)
+		end
+	end
+
+	self.OnVScroll = function(self, iOffset)
+		local x = self.pnlCanvas:GetPos()
+		self.pnlCanvas:SetPos(x, iOffset)
+	end
+
+	self.OnHScroll = function(self, iOffset)
+		local _, y = self.pnlCanvas:GetPos()
+		self.pnlCanvas:SetPos(iOffset, y)
+	end
+
+	self.PerformLayoutInternal = function(self)
+		local HTall, VTall = self:GetTall(), self.pnlCanvas:GetTall()
+		local HWide, VWide = self.pnlCanvas:GetWide(), 600
+		local XPos, YPos = 0, 0
+
+		self:Rebuild()
+
+		self.VBar:SetUp(self:GetTall(), self.pnlCanvas:GetTall())
+		self.HBar:SetUp(self:GetWide(), self.pnlCanvas:GetWide())
+		YPos = self.VBar:GetOffset()
+		XPos = self.HBar:GetOffset()
+
+		if (self.VBar.Enabled) then VWide = VWide - self.VBar:GetWide() end
+		if (self.HBar.Enabled) then HTall = HTall - self.HBar:GetTall() end
+
+		self.pnlCanvas:SetPos(XPos, YPos)
+		self.pnlCanvas:SetSize(VWide, HTall)
+
+		self:Rebuild()
+
+		if (HWide ~= self.pnlCanvas:GetWide()) then
+			self.HBar:SetScroll(self.HBar:GetScroll())
+		end
+
+		if (VTall ~= self.pnlCanvas:GetTall()) then
+			self.VBar:SetScroll(self.VBar:GetScroll())
+		end
+	end
+
+	self.PerformLayout = function(self)
+		self:PerformLayoutInternal()
+	end
+end
 
 local BonePanel, EntPanel
 local LockRotB, LockPosB
@@ -819,7 +956,9 @@ function TOOL.BuildCPanel(CPanel)
 		local colbones = CCol(Col4, "#tool.ragdollmover.bonelist")
 			BonePanel = vgui.Create("DTree", colbones)
 			BonePanel:SetTall(600)
+			AddHBar(BonePanel)
 			colbones:AddItem(BonePanel)
+			colbones:AddItem(BonePanel.HBar)
 
 	local colents = CCol(CPanel, "#tool.ragdollmover.entchildren")
 
