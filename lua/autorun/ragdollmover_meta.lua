@@ -184,10 +184,14 @@ net.Receive("rgmSync",function(len)
 	end
 end)
 
-net.Receive("rgmSetupClient",function(len)
-	local pl = LocalPlayer()
+end
 
-	pl.rgmSyncClient = SyncOneClient
-end)
+if CLIENT then
+
+	net.Receive("rgmSetupClient",function(len)
+		local pl = LocalPlayer()
+
+		pl.rgmSyncClient = SyncOneClient
+	end)
 
 end
