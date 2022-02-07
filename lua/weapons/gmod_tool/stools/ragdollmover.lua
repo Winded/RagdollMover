@@ -213,14 +213,7 @@ function TOOL:Deploy()
 			axis.Owner = pl
 			pl.rgm.Axis = axis
 		end
-		pl.rgmToolActive = true
 	end
-end
-
-function TOOL:Holster()
-	if CLIENT then return end
-	local pl = self:GetOwner()
-	pl.rgmToolActive = false
 end
 
 local function rgmFindEntityChildren(parent)
@@ -1060,8 +1053,8 @@ net.Receive("rgmSelectBoneResponse", function(len)
 	local ent = net.ReadEntity()
 	local boneid = net.ReadUInt(32)
 
-	if IsValid(LockPosB) and IsValid(LockRotB) then
-		if ent:GetClass() == "prop_ragdoll" and isphys then
+	if IsValid(LockPosB) and IsValid(LockRotB) and nodes then
+		if ent:GetClass() == "prop_ragdoll" and isphys and nodes[boneid] then
 			LockPosB:SetVisible(true)
 			LockRotB:SetVisible(true)
 
