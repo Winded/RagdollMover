@@ -184,6 +184,12 @@ end
 concommand.Add("ragdollmover_resetroot", function(pl)
 	RGMGetBone(pl, pl.rgm.Entity, 0)
 	pl:rgmSync()
+
+	net.Start("rgmSelectBoneResponse")
+		net.WriteBool(pl.rgm.IsPhysBone)
+		net.WriteEntity(pl.rgm.Entity)
+		net.WriteUInt(pl.rgm.Bone, 32)
+	net.Send(pl)
 end)
 
 concommand.Add("ragdollmover_resetbone", function(pl)
@@ -207,14 +213,7 @@ function TOOL:Deploy()
 			axis.Owner = pl
 			pl.rgm.Axis = axis
 		end
-		pl.rgmToolActive = true
 	end
-end
-
-function TOOL:Holster()
-	if CLIENT then return end
-	local pl = self:GetOwner()
-	pl.rgmToolActive = false
 end
 
 local function rgmFindEntityChildren(parent)
@@ -1054,28 +1053,32 @@ net.Receive("rgmSelectBoneResponse", function(len)
 	local ent = net.ReadEntity()
 	local boneid = net.ReadUInt(32)
 
-	if ent:GetClass() == "prop_ragdoll" and isphys then
-		LockPosB:SetVisible(true)
-		LockRotB:SetVisible(true)
+	if IsValid(LockPosB) and IsValid(LockRotB) and nodes then
+		if ent:GetClass() == "prop_ragdoll" and isphys and nodes[boneid] then
+			LockPosB:SetVisible(true)
+			LockRotB:SetVisible(true)
 
-		if nodes[boneid].poslock then
-			LockPosB:SetText("#tool.ragdollmover.unlockpos")
+			if nodes[boneid].poslock then
+				LockPosB:SetText("#tool.ragdollmover.unlockpos")
+			else
+				LockPosB:SetText("#tool.ragdollmover.lockpos")
+			end
+			if nodes[boneid].anglock then
+				LockRotB:SetText("#tool.ragdollmover.unlockang")
+			else
+				LockRotB:SetText("#tool.ragdollmover.lockang")
+			end
 		else
-			LockPosB:SetText("#tool.ragdollmover.lockpos")
+			LockPosB:SetVisible(false)
+			LockRotB:SetVisible(false)
 		end
-		if nodes[boneid].anglock then
-			LockRotB:SetText("#tool.ragdollmover.unlockang")
-		else
-			LockRotB:SetText("#tool.ragdollmover.lockang")
-		end
-	else
-		LockPosB:SetVisible(false)
-		LockRotB:SetVisible(false)
 	end
 
-	BonePanel:SetSelectedItem(nodes[boneid])
+	if IsValid(BonePanel) and nodes then
+		BonePanel:SetSelectedItem(nodes[boneid])
 
-	Col4:InvalidateLayout()
+		Col4:InvalidateLayout()
+	end
 end)
 
 local material = CreateMaterial("rgmGizmoMaterial", "UnlitGeneric", {
