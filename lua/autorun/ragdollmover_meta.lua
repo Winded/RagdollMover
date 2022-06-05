@@ -3,6 +3,8 @@
 	Other functionality that isn't part of the rgm module.
 ]]
 
+resource.AddSingleFile("resource/localization/en/ragdollmover_tools.properties")
+
 local TYPE_ENTITY	 = 1
 local TYPE_NUMBER	 = 2
 local TYPE_VECTOR	 = 3

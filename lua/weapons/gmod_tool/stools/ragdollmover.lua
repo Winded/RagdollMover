@@ -77,6 +77,13 @@ util.AddNetworkString("rgmLockBoneResponse")
 
 util.AddNetworkString("rgmSelectEntity")
 
+util.AddNetworkString("rgmResetBone")
+util.AddNetworkString("rgmResetScale")
+util.AddNetworkString("rgmScaleZero")
+util.AddNetworkString("rgmAdjustBone")
+
+util.AddNetworkString("rgmUpdateSliders")
+
 net.Receive("rgmAskForPhysbones", function(len, pl)
 	local ent = net.ReadEntity()
 	if not IsValid(ent) then return end
@@ -179,6 +186,62 @@ net.Receive("rgmSelectEntity", function(len, pl)
 	net.Send(pl)
 end)
 
+net.Receive("rgmResetBone", function(len, pl)
+	ent = pl.rgm.Entity
+	ent:ManipulateBoneAngles(pl.rgm.Bone, Angle(0, 0, 0))
+	ent:ManipulateBonePosition(pl.rgm.Bone, Vector(0, 0, 0))
+
+	net.Start("rgmUpdateSliders")
+	net.Send(pl)
+end)
+
+net.Receive("rgmResetScale", function(len, pl)
+	ent = pl.rgm.Entity
+	ent:ManipulateBoneScale(pl.rgm.Bone, Vector(1, 1, 1))
+
+	net.Start("rgmUpdateSliders")
+	net.Send(pl)
+end)
+
+net.Receive("rgmScaleZero", function(len, pl)
+	ent = pl.rgm.Entity
+	ent:ManipulateBoneScale(pl.rgm.Bone, Vector(0, 0, 0))
+
+	net.Start("rgmUpdateSliders")
+	net.Send(pl)
+end)
+
+net.Receive("rgmAdjustBone", function(len, pl)
+	local ManipulateBone = {}
+	local ent = pl.rgm.Entity
+	if not IsValid(ent) then return end
+
+	ManipulateBone[1] = function(axis, value)
+		local Change = ent:GetManipulateBonePosition(pl.rgm.Bone)
+		Change[axis] = value
+
+		ent:ManipulateBonePosition(pl.rgm.Bone, Change)
+	end
+
+	ManipulateBone[2] = function(axis, value)
+		local Change = ent:GetManipulateBoneAngles(pl.rgm.Bone)
+		Change[axis] = value
+
+		ent:ManipulateBoneAngles(pl.rgm.Bone, Change)
+	end
+
+	ManipulateBone[3] = function(axis, value)
+		local Change = ent:GetManipulateBoneScale(pl.rgm.Bone)
+		Change[axis] = value
+
+		ent:ManipulateBoneScale(pl.rgm.Bone, Change)
+	end
+
+	local mode, axis, value = net.ReadInt(32), net.ReadInt(32), net.ReadFloat()
+
+	ManipulateBone[mode](axis, value)
+end)
+
 end
 
 concommand.Add("ragdollmover_resetroot", function(pl)
@@ -190,17 +253,6 @@ concommand.Add("ragdollmover_resetroot", function(pl)
 		net.WriteEntity(pl.rgm.Entity)
 		net.WriteUInt(pl.rgm.Bone, 32)
 	net.Send(pl)
-end)
-
-concommand.Add("ragdollmover_resetbone", function(pl)
-	ent = pl.rgm.Entity
-	ent:ManipulateBoneAngles(pl.rgm.Bone, Angle(0, 0, 0))
-	ent:ManipulateBonePosition(pl.rgm.Bone, Vector(0, 0, 0))
-end)
-
-concommand.Add("ragdollmover_resetscale", function(pl)
-	ent = pl.rgm.Entity
-	ent:ManipulateBoneScale(pl.rgm.Bone, Vector(1, 1, 1))
 end)
 
 function TOOL:Deploy()
@@ -508,6 +560,8 @@ if SERVER then
 				if not pl:KeyDown(IN_ATTACK) then -- don't think entity has to be unfrozen if you were working with non phys bones, that would be weird?
 					pl.rgm.Moving = false
 					pl:rgmSyncOne("Moving")
+					net.Start("rgmUpdateSliders")
+					net.Send(pl)
 				end
 			end
 		else
@@ -519,6 +573,8 @@ if SERVER then
 			if not pl:KeyDown(IN_ATTACK) then -- don't think entity has to be unfrozen if you were working with non phys bones, that would be weird?
 				pl.rgm.Moving = false
 				pl:rgmSyncOne("Moving")
+				net.Start("rgmUpdateSliders")
+				net.Send(pl)
 			end
 		end
 
@@ -591,6 +647,31 @@ local function CNumSlider(cpanel,text,cvar,min,max,dec)
 
 	return SL
 end
+local function CManipSlider(cpanel, text, mode, axis, min, max, dec)
+	local slider = vgui.Create("DNumSlider",cpanel)
+	slider:SetText(text)
+	slider:SetDecimals(dec)
+	slider:SetMinMax(min,max)
+	slider:SetDark(true)
+	slider:SetValue(0)
+	if mode == 3 then
+		slider:SetDefaultValue(1)
+	else
+		slider:SetDefaultValue(0)
+	end
+
+	function slider:OnValueChanged(value)
+		net.Start("rgmAdjustBone")
+		net.WriteInt(mode, 32)
+		net.WriteInt(axis, 32)
+		net.WriteFloat(value)
+		net.SendToServer()
+	end
+
+	cpanel:AddItem(slider)
+
+	return slider
+end
 local function CButton(cpanel, text, func, arg)
 	local butt = vgui.Create("DButton", cpanel)
 	butt:SetText(text)
@@ -600,7 +681,7 @@ local function CButton(cpanel, text, func, arg)
 	cpanel:AddItem(butt)
 	return butt
 end
-local function CCol(cpanel,text)
+local function CCol(cpanel,text, notexpanded)
 	local cat = vgui.Create("DCollapsibleCategory",cpanel)
 	cat:SetExpanded(1)
 	cat:SetLabel(text)
@@ -614,6 +695,7 @@ local function CCol(cpanel,text)
 		surface.DrawRect(0, 0, 500, 500)
 	end
 	cat:SetContents(col)
+	cat:SetExpanded(not notexpanded)
 	return col, cat
 end
 local function CBinder(cpanel)
@@ -660,14 +742,24 @@ local function RGMResetBone()
 	local pl = LocalPlayer()
 	if not pl.rgm then return end
 	if not IsValid(pl.rgm.Entity) then return end
-	RunConsoleCommand("ragdollmover_resetbone")
+	net.Start("rgmResetBone")
+	net.SendToServer()
 end
 
 local function RGMResetScale()
 	local pl = LocalPlayer()
 	if not pl.rgm then return end
 	if not IsValid(pl.rgm.Entity) then return end
-	RunConsoleCommand("ragdollmover_resetscale")
+	net.Start("rgmResetScale")
+	net.SendToServer()
+end
+
+local function RGMScaleZero()
+	local pl = LocalPlayer()
+	if not pl.rgm then return end
+	if not IsValid(pl.rgm.Entity) then return end
+	net.Start("rgmScaleZero")
+	net.SendToServer()
 end
 
 local function RGMLockPBone(mode)
@@ -817,6 +909,7 @@ local function AddHBar(self) -- There is no horizontal scrollbars in gmod, so I 
 end
 
 local BonePanel, EntPanel
+local Pos1, Pos2, Pos3, Rot1, Rot2, Rot3, Scale1, Scale2, Scale3
 local LockRotB, LockPosB
 local nodes, entnodes
 local HoveredBone
@@ -942,9 +1035,31 @@ function TOOL.BuildCPanel(CPanel)
 
 	Col4 = CCol(CPanel, "#tool.ragdollmover.bonemanpanel")
 
+		local ColManip = CCol(Col4, "#tool.ragdollmover.bonemanip", true)
+			-- Position
+			Pos1 = CManipSlider(ColManip, "#tool.ragdollmover.pos1", 1, 1, -300, 300, 2) --x
+			Pos2 = CManipSlider(ColManip, "#tool.ragdollmover.pos2", 1, 2, -300, 300, 2) --y
+			Pos3 = CManipSlider(ColManip, "#tool.ragdollmover.pos3", 1, 3, -300, 300, 2) --z
+			Pos1:SetVisible(false)
+			Pos2:SetVisible(false)
+			Pos3:SetVisible(false)
+			-- Angles
+			Rot1 = CManipSlider(ColManip, "#tool.ragdollmover.rot1", 2, 1, -180, 180, 2) --pitch
+			Rot2 = CManipSlider(ColManip, "#tool.ragdollmover.rot2", 2, 2, -180, 180, 2) --yaw
+			Rot3 = CManipSlider(ColManip, "#tool.ragdollmover.rot3", 2, 3, -180, 180, 2) --roll
+			Rot1:SetVisible(false)
+			Rot2:SetVisible(false)
+			Rot3:SetVisible(false)
+			--Scale
+			Scale1 = CManipSlider(ColManip, "#tool.ragdollmover.scale1", 3, 1, -100, 100, 2) --x
+			Scale2 = CManipSlider(ColManip, "#tool.ragdollmover.scale2", 3, 2, -100, 100, 2) --y
+			Scale3 = CManipSlider(ColManip, "#tool.ragdollmover.scale3", 3, 3, -100, 100, 2) --z
+
 		CButton(Col4, "#tool.ragdollmover.resetbone", RGMResetBone)
 
 		CButton(Col4, "#tool.ragdollmover.resetscale", RGMResetScale)
+		
+		CButton(Col4, "#tool.ragdollmover.scalezero", RGMScaleZero)
 
 		LockPosB = CButton(Col4, "#tool.ragdollmover.lockpos", RGMLockPBone, 1)
 		LockPosB:SetVisible(false)
@@ -967,6 +1082,25 @@ function TOOL.BuildCPanel(CPanel)
 		colents:AddItem(EntPanel)
 
 end
+
+local function UpdateManipulationSliders(boneid, ent)
+	Pos1:SetValue(ent:GetManipulateBonePosition(boneid)[1])
+	Pos2:SetValue(ent:GetManipulateBonePosition(boneid)[2])
+	Pos3:SetValue(ent:GetManipulateBonePosition(boneid)[3])
+
+	Rot1:SetValue(ent:GetManipulateBoneAngles(boneid)[1])
+	Rot2:SetValue(ent:GetManipulateBoneAngles(boneid)[2])
+	Rot3:SetValue(ent:GetManipulateBoneAngles(boneid)[3])
+
+	Scale1:SetValue(ent:GetManipulateBoneScale(boneid)[1])
+	Scale2:SetValue(ent:GetManipulateBoneScale(boneid)[2])
+	Scale3:SetValue(ent:GetManipulateBoneScale(boneid)[3])
+end
+
+net.Receive("rgmUpdateSliders", function(len)
+	pl = LocalPlayer()
+	UpdateManipulationSliders(pl.rgm.Bone, pl.rgm.Entity)
+end)
 
 net.Receive("rgmUpdateLists", function(len)
 	local ent = net.ReadEntity()
@@ -1049,14 +1183,30 @@ net.Receive("rgmLockBoneResponse", function(len)
 end)
 
 net.Receive("rgmSelectBoneResponse", function(len)
+	local function SetVisiblePhysControls(bool)
+		local inverted = not bool
+
+		LockPosB:SetVisible(bool)
+		LockRotB:SetVisible(bool)
+		Pos1:SetVisible(inverted)
+		Pos2:SetVisible(inverted)
+		Pos3:SetVisible(inverted)
+		Rot1:SetVisible(inverted)
+		Rot2:SetVisible(inverted)
+		Rot3:SetVisible(inverted)
+	end
+
 	local isphys = net.ReadBool()
 	local ent = net.ReadEntity()
 	local boneid = net.ReadUInt(32)
 
+	if IsValid(ent) and boneid then
+		UpdateManipulationSliders(boneid, ent)
+	end
+
 	if IsValid(LockPosB) and IsValid(LockRotB) and nodes then
 		if ent:GetClass() == "prop_ragdoll" and isphys and nodes[boneid] then
-			LockPosB:SetVisible(true)
-			LockRotB:SetVisible(true)
+			SetVisiblePhysControls(true)
 
 			if nodes[boneid].poslock then
 				LockPosB:SetText("#tool.ragdollmover.unlockpos")
@@ -1069,8 +1219,7 @@ net.Receive("rgmSelectBoneResponse", function(len)
 				LockRotB:SetText("#tool.ragdollmover.lockang")
 			end
 		else
-			LockPosB:SetVisible(false)
-			LockRotB:SetVisible(false)
+			SetVisiblePhysControls(false)
 		end
 	end
 
