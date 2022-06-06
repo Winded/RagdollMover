@@ -245,6 +245,8 @@ end)
 end
 
 concommand.Add("ragdollmover_resetroot", function(pl)
+	if not IsValid(pl.rgm.Entity) then return end
+
 	RGMGetBone(pl, pl.rgm.Entity, 0)
 	pl:rgmSync()
 
