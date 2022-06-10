@@ -43,19 +43,21 @@ hook.Add("InitPostEntity", "rgmClientSetup", function()
 
 	pl.rgmSyncClient = SyncOneClient
 
-	if ConVarExists("ragdollmover_rotatebutton") then
-		local BindRot = GetConVar("ragdollmover_rotatebutton"):GetInt()
+	timer.Simple(1, function()
+		if ConVarExists("ragdollmover_rotatebutton") then
+			local BindRot = GetConVar("ragdollmover_rotatebutton"):GetInt()
 
-		net.Start("rgmSetToggleRot")
-		net.WriteInt(BindRot, 32)
-		net.SendToServer()
-	end
+			net.Start("rgmSetToggleRot")
+			net.WriteInt(BindRot, 32)
+			net.SendToServer()
+		end
 
-	if ConVarExists("ragdollmover_scalebutton") then
-		local BindScale = GetConVar("ragdollmover_scalebutton"):GetInt()
+		if ConVarExists("ragdollmover_scalebutton") then
+			local BindScale = GetConVar("ragdollmover_scalebutton"):GetInt()
 
-		net.Start("rgmSetToggleScale")
-		net.WriteInt(BindScale, 32)
-		net.SendToServer()
-	end
+			net.Start("rgmSetToggleScale")
+			net.WriteInt(BindScale, 32)
+			net.SendToServer()
+		end
+	end)
 end)
