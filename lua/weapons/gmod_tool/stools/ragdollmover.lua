@@ -242,6 +242,12 @@ net.Receive("rgmAdjustBone", function(len, pl)
 	ManipulateBone[mode](axis, value)
 end)
 
+hook.Add("PlayerDisconnected", "RGMCleanupGizmos", function(pl)
+	if IsValid(pl.rgm.Axis) then
+		pl.rgm.Axis:Remove()
+	end
+end)
+
 end
 
 concommand.Add("ragdollmover_resetroot", function(pl)
