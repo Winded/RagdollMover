@@ -275,7 +275,11 @@ function ENT:Think()
 
 	self:SetPos(pos)
 
-	local localstate = rotate and self.localizedang or self.localizedpos
+	local localstate = self.localizedpos
+	if rotate then 
+		localstate = self.localizedang
+	end
+
 	if not pl.rgm.Moving then -- Prevent whole thing from rotating when we do localized rotation - needed for proper angle reading
 		if localstate or scale or not pl.rgm.IsPhysBone then -- Non phys bones don't go well with world coordinates. Well, I didn't make them to behave with those
 			self:SetAngles(ang or Angle(0,0,0))
