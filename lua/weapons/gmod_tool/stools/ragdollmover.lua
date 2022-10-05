@@ -1092,6 +1092,7 @@ function TOOL.BuildCPanel(CPanel)
 end
 
 local function UpdateManipulationSliders(boneid, ent)
+	if not IsValid(Pos1) then return end
 	Pos1:SetValue(ent:GetManipulateBonePosition(boneid)[1])
 	Pos2:SetValue(ent:GetManipulateBonePosition(boneid)[2])
 	Pos3:SetValue(ent:GetManipulateBonePosition(boneid)[3])
