@@ -362,7 +362,7 @@ function FindKnee(pHip,pAnkle,fThigh,fShin,vKneeDir)
 	local vB = pAnkle-pHip
     local LB = vB:Length()
     local aa = (LB*LB+fThigh*fThigh-fShin*fShin)/2/LB
-    local bb = math.sqrt(fThigh*fThigh-aa*aa)
+    local bb = math.sqrt(math.abs(fThigh*fThigh-aa*aa))
     local vF = vB:Cross(vKneeDir:Cross(vB))
 	vB:Normalize()
 	vF:Normalize()
