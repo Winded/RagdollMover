@@ -313,9 +313,6 @@ function TOOL:LeftClick(tr)
 		pl.rgm.Axis = axis
 		return false
 	end
-	if not axis.Axises then
-		axis:Setup()
-	end
 
 	local collision = axis:TestCollision(pl,self:GetClientNumber("scale",10))
 	local ent = pl.rgm.Entity

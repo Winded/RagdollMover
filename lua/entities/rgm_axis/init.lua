@@ -10,6 +10,7 @@ local TYPE_ARROW = 1
 local TYPE_ARROWSIDE = 2
 local TYPE_DISC = 3
 
+util.AddNetworkString("rgmAxisRequest")
 util.AddNetworkString("rgmAxis")
 util.AddNetworkString("rgmAxisUpdate")
 
@@ -178,29 +179,41 @@ function ENT:Setup()
 		self.ScaleYZ,
 	}
 
-	timer.Create("rgmAxis", 1, 1, function()
+end
+
+net.Receive("rgmAxisRequest", function(len, pl)
+	timer.Simple(0.5, function()
+
+	local Axis = pl.rgm.Axis
+
+	if not Axis.Axises then
+		Axis:Setup()
+	end
+
+	timer.Simple(0.5, function()
 		net.Start("rgmAxis")
-		net.WriteEntity(self)
-		net.WriteEntity(self.ArrowX)
-		net.WriteEntity(self.ArrowY)
-		net.WriteEntity(self.ArrowZ)
-		net.WriteEntity(self.ArrowXY)
-		net.WriteEntity(self.ArrowXZ)
-		net.WriteEntity(self.ArrowYZ)
-		net.WriteEntity(self.DiscP)
-		net.WriteEntity(self.DiscY)
-		net.WriteEntity(self.DiscR)
-		net.WriteEntity(self.DiscLarge)
-		net.WriteEntity(self.ScaleX)
-		net.WriteEntity(self.ScaleY)
-		net.WriteEntity(self.ScaleZ)
-		net.WriteEntity(self.ScaleXY)
-		net.WriteEntity(self.ScaleXZ)
-		net.WriteEntity(self.ScaleYZ)
-		net.Send(self.Owner)
+			net.WriteEntity(Axis)
+			net.WriteEntity(Axis.ArrowX)
+			net.WriteEntity(Axis.ArrowY)
+			net.WriteEntity(Axis.ArrowZ)
+			net.WriteEntity(Axis.ArrowXY)
+			net.WriteEntity(Axis.ArrowXZ)
+			net.WriteEntity(Axis.ArrowYZ)
+			net.WriteEntity(Axis.DiscP)
+			net.WriteEntity(Axis.DiscY)
+			net.WriteEntity(Axis.DiscR)
+			net.WriteEntity(Axis.DiscLarge)
+			net.WriteEntity(Axis.ScaleX)
+			net.WriteEntity(Axis.ScaleY)
+			net.WriteEntity(Axis.ScaleZ)
+			net.WriteEntity(Axis.ScaleXY)
+			net.WriteEntity(Axis.ScaleXZ)
+			net.WriteEntity(Axis.ScaleYZ)
+		net.Send(pl)
 	end)
 
-end
+	end)
+end)
 
 function ENT:Think()
 	local pl = self.Owner
@@ -208,7 +221,7 @@ function ENT:Think()
 
 	local ent = pl.rgm.Entity
 	local bone = pl.rgm.PhysBone
-	if not IsValid(ent) or not pl.rgm.Bone then return end
+	if not IsValid(ent) or not pl.rgm.Bone or not self.Axises then return end
 
 	local OldPos = self:GetPos()
 	local OldAng = self:GetAngles()
