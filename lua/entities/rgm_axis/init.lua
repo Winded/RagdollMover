@@ -14,6 +14,32 @@ util.AddNetworkString("rgmAxisRequest")
 util.AddNetworkString("rgmAxis")
 util.AddNetworkString("rgmAxisUpdate")
 
+local function SendAxisToPlayer(Axis, pl)
+
+	timer.Simple(0.5, function()
+		net.Start("rgmAxis")
+			net.WriteEntity(Axis)
+			net.WriteEntity(Axis.ArrowX)
+			net.WriteEntity(Axis.ArrowY)
+			net.WriteEntity(Axis.ArrowZ)
+			net.WriteEntity(Axis.ArrowXY)
+			net.WriteEntity(Axis.ArrowXZ)
+			net.WriteEntity(Axis.ArrowYZ)
+			net.WriteEntity(Axis.DiscP)
+			net.WriteEntity(Axis.DiscY)
+			net.WriteEntity(Axis.DiscR)
+			net.WriteEntity(Axis.DiscLarge)
+			net.WriteEntity(Axis.ScaleX)
+			net.WriteEntity(Axis.ScaleY)
+			net.WriteEntity(Axis.ScaleZ)
+			net.WriteEntity(Axis.ScaleXY)
+			net.WriteEntity(Axis.ScaleXZ)
+			net.WriteEntity(Axis.ScaleYZ)
+		net.Send(pl)
+	end)
+
+end
+
 function ENT:Setup()
 
 	--Arrows
@@ -179,6 +205,8 @@ function ENT:Setup()
 		self.ScaleYZ,
 	}
 
+	SendAxisToPlayer(self, self.Owner)
+
 end
 
 net.Receive("rgmAxisRequest", function(len, pl)
@@ -190,27 +218,7 @@ net.Receive("rgmAxisRequest", function(len, pl)
 		Axis:Setup()
 	end
 
-	timer.Simple(0.5, function()
-		net.Start("rgmAxis")
-			net.WriteEntity(Axis)
-			net.WriteEntity(Axis.ArrowX)
-			net.WriteEntity(Axis.ArrowY)
-			net.WriteEntity(Axis.ArrowZ)
-			net.WriteEntity(Axis.ArrowXY)
-			net.WriteEntity(Axis.ArrowXZ)
-			net.WriteEntity(Axis.ArrowYZ)
-			net.WriteEntity(Axis.DiscP)
-			net.WriteEntity(Axis.DiscY)
-			net.WriteEntity(Axis.DiscR)
-			net.WriteEntity(Axis.DiscLarge)
-			net.WriteEntity(Axis.ScaleX)
-			net.WriteEntity(Axis.ScaleY)
-			net.WriteEntity(Axis.ScaleZ)
-			net.WriteEntity(Axis.ScaleXY)
-			net.WriteEntity(Axis.ScaleXZ)
-			net.WriteEntity(Axis.ScaleYZ)
-		net.Send(pl)
-	end)
+	SendAxisToPlayer(Axis, pl)
 
 	end)
 end)
