@@ -279,9 +279,6 @@ end
 local function rgmFindEntityChildren(parent)
 	local children = {}
 
-	if parent:GetClass() == "prop_effect" and IsValid(parent.AttachedEntity) then
-		table.insert(children, parent.AttachedEntity)
-	end
 	for k, ent in pairs(parent:GetChildren()) do
 		if not IsValid(ent) then continue end
 
