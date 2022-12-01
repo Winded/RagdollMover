@@ -73,7 +73,15 @@ function ENT:DrawLines(scale,width)
 	if rotate then Start,End = 7,10 end
 	if modescale then Start, End = 11, 16 end
 	-- print(self.Axises)
-	if not self.Axises then return end
+
+	if not self.Axises then
+		if self.RequestedAxis then return end
+		self.RequestedAxis = true
+		net.Start("rgmAxisRequest")
+		net.SendToServer()
+		return
+	end
+
 	for i=Start,End do
 		local moveaxis = self.Axises[i]
 		local yellow = false

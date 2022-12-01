@@ -24,6 +24,21 @@ local NumpadBindRot, NumpadBindScale = {}, {}
 local RotKey, ScaleKey = {}, {}
 local rgmMode = {}
 
+if game.SinglePlayer() then
+
+
+saverestore.AddSaveHook("RGMbinds", function(save)
+	saverestore.WriteTable(NumpadBindRot, save)
+	saverestore.WriteTable(NumpadBindScale, save)
+end)
+
+saverestore.AddRestoreHook("RGMbinds", function(save)
+	NumpadBindRot = saverestore.ReadTable(save)
+	NumpadBindScale = saverestore.ReadTable(save)
+end)
+
+end
+
 util.AddNetworkString("rgmSetToggleRot")
 util.AddNetworkString("rgmSetToggleScale")
 
