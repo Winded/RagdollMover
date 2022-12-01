@@ -280,7 +280,7 @@ local function rgmFindEntityChildren(parent)
 	local children = {}
 
 	for k, ent in pairs(parent:GetChildren()) do
-		if not IsValid(ent) then continue end
+		if not IsValid(ent) or ent:IsWorld() or not isstring(ent:GetModel()) then continue end
 
 		table.insert(children, ent)
 	end
