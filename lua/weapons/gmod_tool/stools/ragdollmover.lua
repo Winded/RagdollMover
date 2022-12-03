@@ -280,7 +280,7 @@ local function rgmFindEntityChildren(parent)
 	local children = {}
 
 	for k, ent in pairs(parent:GetChildren()) do
-		if not IsValid(ent) or ent:IsWorld() or not isstring(ent:GetModel()) then continue end
+		if not IsValid(ent) or ent:IsWorld() or ent:IsConstraint() or not isstring(ent:GetModel()) or not util.IsValidModel(ent:GetModel()) then continue end
 
 		table.insert(children, ent)
 	end
@@ -1003,6 +1003,8 @@ local function RGMBuildEntMenu(parent, children, entpanel)
 	end
 
 	for k, v in ipairs(children) do
+		if not IsValid(v) or not isstring(v:GetModel()) then continue end
+
 		entnodes[v] = entnodes[parent]:AddNode(GetModelName(v))
 
 		entnodes[v].DoClick = function()
