@@ -279,14 +279,10 @@ end
 local function rgmFindEntityChildren(parent)
 	local children = {}
 
-	if parent:GetClass() == "prop_effect" and IsValid(parent.AttachedEntity) then
-		table.insert(children, parent.AttachedEntity)
-	end
 	for k, ent in pairs(parent:GetChildren()) do
-		if !IsValid(ent) then continue end
-		if ent:GetClass() == "ent_bonemerged" then
-			table.insert(children, ent)
-		end
+		if not IsValid(ent) or ent:IsWorld() or ent:IsConstraint() or not isstring(ent:GetModel()) or not util.IsValidModel(ent:GetModel()) then continue end
+
+		table.insert(children, ent)
 	end
 
 	return children
@@ -984,7 +980,7 @@ local function RGMBuildBoneMenu(ent, bonepanel)
 		net.WriteEntity(ent)
 	net.SendToServer()
 
-	if ent:GetClass() == "ent_bonemerged" then
+	if ent:IsEffectActive(EF_BONEMERGE) then
 		net.Start("rgmAskForParented")
 			net.WriteEntity(ent)
 		net.SendToServer()
@@ -1007,6 +1003,8 @@ local function RGMBuildEntMenu(parent, children, entpanel)
 	end
 
 	for k, v in ipairs(children) do
+		if not IsValid(v) or not isstring(v:GetModel()) then continue end
+
 		entnodes[v] = entnodes[parent]:AddNode(GetModelName(v))
 
 		entnodes[v].DoClick = function()
