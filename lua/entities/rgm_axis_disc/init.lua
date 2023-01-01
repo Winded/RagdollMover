@@ -67,7 +67,6 @@ function ENT:ProcessMovement(offpos,offang,eyepos,eyeang,ent,bone,ppos,pnorm, is
 			_a[self.axistype] = rotateang
 		end
 
-
 		_p = ent:GetManipulateBonePosition(bone)
 	end
 
