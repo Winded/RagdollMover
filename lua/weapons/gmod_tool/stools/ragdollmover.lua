@@ -473,12 +473,15 @@ if SERVER then
 	if moving then
 
 		if not pl:KeyDown(IN_ATTACK) then
-			if self:GetClientNumber("unfreeze",1) > 0 then
-				for i=0,ent:GetPhysicsObjectCount()-1 do
-					if pl.rgmOffsetTable[i].moving then
-						local obj = ent:GetPhysicsObjectNum(i)
-						obj:EnableMotion(true)
-						obj:Wake()
+
+			if pl.rgm.IsPhysBone then
+				if self:GetClientNumber("unfreeze",1) > 0 then
+					for i=0,ent:GetPhysicsObjectCount()-1 do
+						if pl.rgmOffsetTable[i].moving then
+							local obj = ent:GetPhysicsObjectNum(i)
+							obj:EnableMotion(true)
+							obj:Wake()
+						end
 					end
 				end
 			end
