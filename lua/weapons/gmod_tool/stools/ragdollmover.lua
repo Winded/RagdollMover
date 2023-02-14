@@ -472,6 +472,25 @@ if SERVER then
 	local scale = pl.rgm.Scale or false
 	if moving then
 
+		if not pl:KeyDown(IN_ATTACK) then
+
+			if pl.rgm.IsPhysBone then
+				if self:GetClientNumber("unfreeze",1) > 0 then
+					for i=0,ent:GetPhysicsObjectCount()-1 do
+						if pl.rgmOffsetTable[i].moving then
+							local obj = ent:GetPhysicsObjectNum(i)
+							obj:EnableMotion(true)
+							obj:Wake()
+						end
+					end
+				end
+			end
+
+			pl.rgm.Moving = false
+			pl:rgmSyncOne("Moving")
+			return
+		end
+
 		if not IsValid(axis) then return end
 
 		local eyepos,eyeang = rgm.EyePosAng(pl)
@@ -541,32 +560,12 @@ if SERVER then
 				end
 
 				-- if not pl:GetNWBool("ragdollmover_keydown") then
-				if not pl:KeyDown(IN_ATTACK) then
-					if self:GetClientNumber("unfreeze",1) > 0 then
-						for i=0,ent:GetPhysicsObjectCount()-1 do
-							if pl.rgmOffsetTable[i].moving then
-								local obj = ent:GetPhysicsObjectNum(i)
-								obj:EnableMotion(true)
-								obj:Wake()
-							end
-						end
-					end
-
-					pl.rgm.Moving = false
-					pl:rgmSyncOne("Moving")
-				end
 			else
 				local pos, ang = apart:ProcessMovement(pl.rgmOffsetPos,pl.rgmOffsetAng,eyepos,eyeang,ent,bone,pl.rgmISPos,pl.rgmISDir, false, pl.rgm.StartAngle, pl.rgm.NPhysBonePos, pl.rgm.NPhysBoneAng) -- if a bone is not physics one, we pass over "start angle" thing
 
 				ent:ManipulateBoneAngles(bone, ang)
 				ent:ManipulateBonePosition(bone, pos)
 
-				if not pl:KeyDown(IN_ATTACK) then -- don't think entity has to be unfrozen if you were working with non phys bones, that would be weird?
-					pl.rgm.Moving = false
-					pl:rgmSyncOne("Moving")
-					net.Start("rgmUpdateSliders")
-					net.Send(pl)
-				end
 			end
 		else
 			bone = pl.rgm.Bone
@@ -574,12 +573,6 @@ if SERVER then
 
 			ent:ManipulateBoneScale(bone, sc)
 
-			if not pl:KeyDown(IN_ATTACK) then -- don't think entity has to be unfrozen if you were working with non phys bones, that would be weird?
-				pl.rgm.Moving = false
-				pl:rgmSyncOne("Moving")
-				net.Start("rgmUpdateSliders")
-				net.Send(pl)
-			end
 		end
 
 	end
