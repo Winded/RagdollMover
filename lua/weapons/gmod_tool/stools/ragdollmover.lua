@@ -6,6 +6,8 @@ TOOL.ConfigName = ""
 
 TOOL.ClientConVar["localpos"] = 0
 TOOL.ClientConVar["localang"] = 1
+TOOL.ClientConVar["localoffset"] = 1
+TOOL.ClientConVar["relativerotate"] = 0
 TOOL.ClientConVar["scale"] = 10
 TOOL.ClientConVar["width"] = 0.5
 TOOL.ClientConVar["fulldisc"] = 0
@@ -50,7 +52,7 @@ local function RGMGetBone(pl, ent, bone)
 	local bonen = phys or bone
 
 	pl.rgm.PhysBone = bonen
-	if pl.rgm.IsPhysBone then
+	if pl.rgm.IsPhysBone and not (ent:GetClass() == "prop_physics") then -- physics props only have 1 phys object which is tied to bone -1, and that bone doesn't really exist
 		pl.rgm.Bone = ent:TranslatePhysBoneToBone(bonen)
 	else
 		pl.rgm.Bone = bonen
@@ -77,10 +79,16 @@ util.AddNetworkString("rgmLockBoneResponse")
 
 util.AddNetworkString("rgmSelectEntity")
 
+util.AddNetworkString("rgmResetGizmo")
+util.AddNetworkString("rgmOperationSwitch")
+util.AddNetworkString("rgmSetGizmoToBone")
+util.AddNetworkString("rgmUpdateGizmo")
+
 util.AddNetworkString("rgmResetBone")
 util.AddNetworkString("rgmResetScale")
 util.AddNetworkString("rgmScaleZero")
 util.AddNetworkString("rgmAdjustBone")
+util.AddNetworkString("rgmGizmoOffset")
 
 util.AddNetworkString("rgmUpdateSliders")
 
@@ -186,6 +194,45 @@ net.Receive("rgmSelectEntity", function(len, pl)
 	net.Send(pl)
 end)
 
+net.Receive("rgmResetGizmo", function(len, pl)
+	if not pl.rgm then return end
+	pl.rgm.GizmoOffset = Vector(0,0,0)
+
+	net.Start("rgmUpdateGizmo")
+	net.WriteVector(pl.rgm.GizmoOffset)
+	net.Send(pl)
+end)
+
+net.Receive("rgmOperationSwitch", function(len, pl)
+	local tool = pl:GetTool("ragdollmover")
+	if not tool then return end
+
+	tool:SetOperation(1)
+end)
+
+net.Receive("rgmSetGizmoToBone", function(len, pl)
+	local vector = net.ReadVector()
+	if not vector or not pl.rgm then return end
+	local axis = pl.rgm.Axis
+	local ent = pl.rgm.Entity
+
+	if ent:GetClass() == "prop_ragdoll" and pl.rgm.IsPhysBone then
+		ent = ent:GetPhysicsObjectNum(pl.rgm.PhysBone)
+	end
+
+	if axis.localizedoffset then
+		vector = WorldToLocal(vector, Angle(0,0,0), ent:GetPos(), ent:GetAngles())
+	else
+		vector = WorldToLocal(vector, Angle(0,0,0), ent:GetPos(), Angle(0,0,0))
+	end
+
+	pl.rgm.GizmoOffset = vector
+
+	net.Start("rgmUpdateGizmo")
+	net.WriteVector(pl.rgm.GizmoOffset)
+	net.Send(pl)
+end)
+
 net.Receive("rgmResetBone", function(len, pl)
 	ent = pl.rgm.Entity
 	ent:ManipulateBoneAngles(pl.rgm.Bone, Angle(0, 0, 0))
@@ -237,9 +284,16 @@ net.Receive("rgmAdjustBone", function(len, pl)
 		ent:ManipulateBoneScale(pl.rgm.Bone, Change)
 	end
 
-	local mode, axis, value = net.ReadInt(32), net.ReadInt(32), net.ReadFloat()
+	local mode, axis, value = net.ReadInt(3), net.ReadInt(3), net.ReadFloat()
 
 	ManipulateBone[mode](axis, value)
+end)
+
+net.Receive("rgmGizmoOffset", function(len, pl)
+	local axis = net.ReadUInt(3)
+	local value = net.ReadFloat()
+
+	pl.rgm.GizmoOffset[axis] = value
 end)
 
 hook.Add("PlayerDisconnected", "RGMCleanupGizmos", function(pl)
@@ -293,6 +347,40 @@ local function EntityFilter(ent)
 end
 
 function TOOL:LeftClick(tr)
+
+	if self:GetOperation() == 1 then
+
+		if SERVER then
+			local pl = self:GetOwner()
+			local axis, ent = pl.rgm.Axis, pl.rgm.Entity
+			local offset = Vector(0,0,0)
+
+			if not IsValid(axis) or not IsValid(ent) then self:SetOperation(0) return true end
+			offset = tr.HitPos
+
+			if ent:GetClass() == "prop_ragdoll" and pl.rgm.IsPhysBone then
+				ent = ent:GetPhysicsObjectNum(pl.rgm.PhysBone)
+			elseif ent:GetClass() == "prop_physics" then
+				ent = ent:GetPhysicsObjectNum(0)
+			end
+
+			if axis.localizedoffset then
+				offset = WorldToLocal(offset, Angle(0,0,0), ent:GetPos(), ent:GetAngles())
+			else
+				offset = WorldToLocal(offset, Angle(0,0,0), ent:GetPos(), Angle(0,0,0))
+			end
+
+			pl.rgm.GizmoOffset = offset
+
+			net.Start("rgmUpdateGizmo")
+			net.WriteVector(pl.rgm.GizmoOffset)
+			net.Send(pl)
+		end
+
+		self:SetOperation(0)
+		return true
+
+	end
 
 	if CLIENT then return false end
 
@@ -400,11 +488,58 @@ function TOOL:LeftClick(tr)
 end
 
 function TOOL:RightClick(tr)
+
+	if self:GetOperation() == 1 then
+
+		if SERVER then
+			local pl = self:GetOwner()
+			local axis = pl.rgm.Axis
+			local ent, rgment = tr.Entity, pl.rgm.Entity
+			local offset = Vector(0,0,0)
+
+			if not IsValid(axis) or not IsValid(rgment) then self:SetOperation(0) return true end
+
+			if IsValid(ent) then
+				local object = ent:GetPhysicsObjectNum(tr.PhysicsBone)
+				if not object then object = ent end
+				offset = object:GetPos()
+			else
+				offset = tr.HitPos
+			end
+
+			if rgment:GetClass() == "prop_ragdoll" and pl.rgm.IsPhysBone then
+				rgment = rgment:GetPhysicsObjectNum(pl.rgm.PhysBone)
+			elseif rgment:GetClass() == "prop_physics" then
+				rgment = rgment:GetPhysicsObjectNum(0)
+			end
+
+			if axis.localizedoffset then
+				offset = WorldToLocal(offset, Angle(0,0,0), rgment:GetPos(), rgment:GetAngles())
+			else
+				offset = WorldToLocal(offset, Angle(0,0,0), rgment:GetPos(), Angle(0,0,0))
+			end
+
+			pl.rgm.GizmoOffset = offset
+
+			net.Start("rgmUpdateGizmo")
+			net.WriteVector(pl.rgm.GizmoOffset)
+			net.Send(pl)
+		end
+
+		self:SetOperation(0)
+		return true
+
+	end
+
 	return false
 end
 
 function TOOL:Reload()
 	if CLIENT then return false end
+	if self:GetOperation() == 1 then
+		self:SetOperation(0)
+		return false
+	end
 
 	local pl = self:GetOwner()
 		RunConsoleCommand("ragdollmover_resetroot")
@@ -464,6 +599,12 @@ if SERVER then
 		end
 		if axis.localizedang ~= tobool(self:GetClientNumber("localang",1)) then
 			axis.localizedang = tobool(self:GetClientNumber("localang",1))
+		end
+		if axis.localizedoffset ~= tobool(self:GetClientNumber("localoffset",1)) then
+			axis.localizedoffset = tobool(self:GetClientNumber("localoffset",1))
+		end
+		if axis.relativerotate ~= tobool(self:GetClientNumber("relativerotate",1)) then
+			axis.relativerotate = tobool(self:GetClientNumber("relativerotate",1))
 		end
 	end
 
@@ -592,6 +733,15 @@ end
 
 if CLIENT then
 
+	TOOL.Information = {
+		{ name = "left_gizmomode", op = 1 },
+		{ name = "right_gizmomode", op = 1 },
+		{ name = "reload_gizmomode", op = 1 },
+		{ name = "left_default", op = 0 },
+		{ name = "info_default", op = 0 },
+		{ name = "reload_default", op = 0 },
+	}
+
 local BONE_PHYSICAL = 1
 local BONE_NONPHYSICAL = 2
 local BONE_PROCEDURAL = 3
@@ -659,8 +809,28 @@ local function CManipSlider(cpanel, text, mode, axis, min, max, dec)
 
 	function slider:OnValueChanged(value)
 		net.Start("rgmAdjustBone")
-		net.WriteInt(mode, 32)
-		net.WriteInt(axis, 32)
+		net.WriteInt(mode, 3)
+		net.WriteInt(axis, 3)
+		net.WriteFloat(value)
+		net.SendToServer()
+	end
+
+	cpanel:AddItem(slider)
+
+	return slider
+end
+local function CGizmoSlider(cpanel, text, axis, min, max, dec)
+	local slider = vgui.Create("DNumSlider", cpanel)
+	slider:SetText(text)
+	slider:SetDecimals(dec)
+	slider:SetMinMax(min,max)
+	slider:SetDark(true)
+	slider:SetValue(0)
+	slider:SetDefaultValue(0)
+
+	function slider:OnValueChanged(value)
+		net.Start("rgmGizmoOffset")
+		net.WriteInt(axis, 3)
 		net.WriteFloat(value)
 		net.SendToServer()
 	end
@@ -733,6 +903,20 @@ local function CBinder(cpanel)
 		net.WriteInt(keycode, 32)
 		net.SendToServer()
 	end
+end
+
+local function RGMResetGizmo()
+	local pl = LocalPlayer()
+	if not pl.rgm then return end
+	net.Start("rgmResetGizmo")
+	net.SendToServer()
+end
+
+local function RGMGizmoMode()
+	local pl = LocalPlayer()
+	if not pl.rgm then return end
+	net.Start("rgmOperationSwitch")
+	net.SendToServer()
 end
 
 local function RGMResetBone()
@@ -907,6 +1091,7 @@ end
 
 local BonePanel, EntPanel
 local Pos1, Pos2, Pos3, Rot1, Rot2, Rot3, Scale1, Scale2, Scale3
+local Gizmo1, Gizmo2, Gizmo3
 local LockRotB, LockPosB
 local nodes, entnodes
 local HoveredBone
@@ -958,6 +1143,29 @@ local function RGMBuildBoneMenu(ent, bonepanel)
 				net.WriteEntity(ent)
 				net.WriteUInt(v.id, 32)
 			net.SendToServer()
+		end
+
+		nodes[v.id].DoRightClick = function()
+			local bonemenu = DermaMenu(false, bonepanel)
+
+			bonemenu:AddOption("Put Gizmo offset here", function()
+				local pl = LocalPlayer()
+				if not pl.rgm or not IsValid(pl.rgm.Entity) then return end
+
+				local ent = pl.rgm.Entity
+				local bone = v.id
+				local pos = ent:GetBonePosition(bone)
+				if pos == ent:GetPos() then
+					local matrix = ent:GetBoneMatrix(bone)
+					pos = matrix:GetTranslation()
+				end
+
+				net.Start("rgmSetGizmoToBone")
+				net.WriteVector(pos)
+				net.SendToServer()
+			end)
+
+			bonemenu:Open()
 		end
 
 		nodes[v.id].Label.OnCursorEntered = function()
@@ -1016,6 +1224,15 @@ function TOOL.BuildCPanel(CPanel)
 		CNumSlider(Col1,"#tool.ragdollmover.scale","ragdollmover_scale",1.0,50.0,2)
 		CNumSlider(Col1,"#tool.ragdollmover.width","ragdollmover_width",0.1,1.0,2)
 		CCheckBox(Col1,"#tool.ragdollmover.fulldisc","ragdollmover_fulldisc")
+
+		local GizmoOffset = CCol(Col1, "#tool.ragdollmover.gizmooffsetpanel", true)
+		CCheckBox(GizmoOffset,"#tool.ragdollmover.gizmolocaloffset","ragdollmover_localoffset")
+		CCheckBox(GizmoOffset,"#tool.ragdollmover.gizmorelativerotate","ragdollmover_relativerotate")
+		Gizmo1 = CGizmoSlider(GizmoOffset, "#tool.ragdollmover.xoffset", 1, -300, 300, 2)
+		Gizmo2 = CGizmoSlider(GizmoOffset, "#tool.ragdollmover.yoffset", 2, -300, 300, 2)
+		Gizmo3 = CGizmoSlider(GizmoOffset, "#tool.ragdollmover.zoffset", 3, -300, 300, 2)
+		CButton(GizmoOffset, "#tool.ragdollmover.resetoffset", RGMResetGizmo)
+		CButton(GizmoOffset, "#tool.ragdollmover.setoffset", RGMGizmoMode)
 
 	local Col2 = CCol(CPanel,"#tool.ragdollmover.ikpanel")
 		CCheckBox(Col2,"#tool.ragdollmover.ik3","ragdollmover_ik_hand_L")
@@ -1119,6 +1336,13 @@ net.Receive("rgmUpdateLists", function(len)
 	end
 end)
 
+net.Receive("rgmUpdateGizmo", function(len)
+	local vector = net.ReadVector()
+	if not IsValid(Gizmo1) then return end
+	Gizmo1:SetValue(vector.x)
+	Gizmo2:SetValue(vector.y)
+	Gizmo3:SetValue(vector.z)
+end)
 
 net.Receive("rgmUpdateBones", function(len)
 	local ent = net.ReadEntity()

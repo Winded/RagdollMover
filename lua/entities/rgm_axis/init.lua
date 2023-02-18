@@ -233,6 +233,7 @@ function ENT:Think()
 	local pos, ang
 	local rotate = pl.rgm.Rotate or false
 	local scale = pl.rgm.Scale or false
+	local offset, offsetlocal = pl.rgm.GizmoOffset, self.localizedoffset
 
 	if pl.rgm.IsPhysBone then
 
@@ -289,7 +290,13 @@ function ENT:Think()
 		end
 	end
 
-	self:SetPos(pos)
+	if not pl.rgm.Moving or not rotate then
+		if offsetlocal then 
+			self:SetPos(LocalToWorld(offset, Angle(0, 0, 0), pos, ang))
+		else
+			self:SetPos(pos + offset)
+		end
+	end
 
 	local localstate = self.localizedpos
 	if rotate then 
@@ -311,6 +318,8 @@ function ENT:Think()
 			self.DiscP:SetLocalAngles(Angle(0, 90, 0))
 			self.DiscR:SetLocalAngles(Angle(0, 0, 0))
 		end
+		self.LocalAngles = ang
+		self.BonePos = pos
 	end
 
 	local pos, poseye = self:GetPos(), pl:EyePos()
