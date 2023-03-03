@@ -134,6 +134,8 @@ end)
 net.Receive("rgmSelectBone", function(len, pl)
 	local ent = net.ReadEntity()
 	local bone = net.ReadUInt(32)
+
+	pl.rgm.BoneToResetTo = 0
 	RGMGetBone(pl, ent, bone)
 	pl:rgmSync()
 
@@ -178,6 +180,7 @@ net.Receive("rgmSelectEntity", function(len, pl)
 	if not IsValid(ent) then return end
 
 	pl.rgm.Entity = ent
+	pl.rgm.BoneToResetTo = 0
 
 	if not ent.rgmbonecached then -- also taken from locrotscale. some hacky way to cache the bones?
 		local p = pl.rgmSwep:GetParent()
@@ -306,8 +309,11 @@ end
 
 concommand.Add("ragdollmover_resetroot", function(pl)
 	if not IsValid(pl.rgm.Entity) then return end
+	local bone = pl.rgm.Bone
 
-	RGMGetBone(pl, pl.rgm.Entity, 0)
+	RGMGetBone(pl, pl.rgm.Entity, pl.rgm.BoneToResetTo)
+	pl.rgm.BoneToResetTo = bone
+
 	pl:rgmSync()
 
 	net.Start("rgmSelectBoneResponse")
@@ -459,6 +465,7 @@ function TOOL:LeftClick(tr)
 		end
 
 		RGMGetBone(pl, entity, entity:TranslatePhysBoneToBone(tr.PhysicsBone))
+		pl.rgm.BoneToResetTo = 0 -- used for quickswitching to root bone and back
 
 		if ent ~= pl.rgm.ParentEntity then
 			local children = rgmFindEntityChildren(pl.rgm.ParentEntity)
@@ -629,6 +636,8 @@ if SERVER then
 
 			pl.rgm.Moving = false
 			pl:rgmSyncOne("Moving")
+			net.Start("rgmUpdateSliders")
+			net.Send(pl)
 			return
 		end
 
@@ -1301,17 +1310,21 @@ end
 
 local function UpdateManipulationSliders(boneid, ent)
 	if not IsValid(Pos1) then return end
-	Pos1:SetValue(ent:GetManipulateBonePosition(boneid)[1])
-	Pos2:SetValue(ent:GetManipulateBonePosition(boneid)[2])
-	Pos3:SetValue(ent:GetManipulateBonePosition(boneid)[3])
+	local pos, rot, scale = ent:GetManipulateBonePosition(boneid), ent:GetManipulateBoneAngles(boneid), ent:GetManipulateBoneScale(boneid)
+	rot:Normalize()
 
-	Rot1:SetValue(ent:GetManipulateBoneAngles(boneid)[1])
-	Rot2:SetValue(ent:GetManipulateBoneAngles(boneid)[2])
-	Rot3:SetValue(ent:GetManipulateBoneAngles(boneid)[3])
+	Pos1:SetValue(pos[1])
+	Pos2:SetValue(pos[2])
+	Pos3:SetValue(pos[3])
 
-	Scale1:SetValue(ent:GetManipulateBoneScale(boneid)[1])
-	Scale2:SetValue(ent:GetManipulateBoneScale(boneid)[2])
-	Scale3:SetValue(ent:GetManipulateBoneScale(boneid)[3])
+	Rot1:SetValue(rot[1])
+	Rot2:SetValue(rot[2])
+	Rot3:SetValue(rot[3])
+
+	Scale1:SetValue(scale[1])
+	Scale2:SetValue(scale[2])
+	Scale3:SetValue(scale[3])
+
 end
 
 net.Receive("rgmUpdateSliders", function(len)
