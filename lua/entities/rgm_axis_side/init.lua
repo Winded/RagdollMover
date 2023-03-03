@@ -5,13 +5,19 @@ AddCSLuaFile("shared.lua")
 
 function ENT:ProcessMovement(offpos,offang,eyepos,eyeang,ent,bone,ppos,pnorm, isphys, startGrab, NPhysPos)
 	local intersect = self:GetGrabPos(eyepos,eyeang,ppos,pnorm)
+	local axis = self:GetParent()
+	local offset = axis.Owner.rgm.GizmoOffset
+	if axis.localizedoffset then
+		offset = LocalToWorld(offset, Angle(0, 0, 0), axis:GetPos(), axis.LocalAngles)
+		offset =  offset - axis:GetPos()
+	end
 	local pos, ang
 	local pl = self:GetParent().Owner
 
 	if isphys then
 		local obj = ent:GetPhysicsObjectNum(bone)
 		ang = obj:GetAngles()
-		pos = LocalToWorld(offpos,Angle(0,0,0),intersect,self:GetAngles())
+		pos = LocalToWorld(offpos,Angle(0,0,0),intersect - offset,self:GetAngles())
 	else
 		local localized, startmove, finalpos, boneang
 		if ent:GetBoneParent(bone) ~= -1 then

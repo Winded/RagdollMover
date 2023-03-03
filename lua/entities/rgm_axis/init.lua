@@ -12,7 +12,6 @@ local TYPE_DISC = 3
 
 util.AddNetworkString("rgmAxisRequest")
 util.AddNetworkString("rgmAxis")
-util.AddNetworkString("rgmAxisUpdate")
 
 local function SendAxisToPlayer(Axis, pl)
 
@@ -231,13 +230,10 @@ function ENT:Think()
 	local bone = pl.rgm.PhysBone
 	if not IsValid(ent) or not pl.rgm.Bone or not self.Axises then return end
 
-	local OldPos = self:GetPos()
-	local OldAng = self:GetAngles()
-	local OldDiscPos = self.DiscLarge:GetLocalPos()
-	local OldDiscAng = self.DiscLarge:GetLocalAngles()
 	local pos, ang
 	local rotate = pl.rgm.Rotate or false
 	local scale = pl.rgm.Scale or false
+	local offset, offsetlocal = pl.rgm.GizmoOffset, self.localizedoffset
 
 	if pl.rgm.IsPhysBone then
 
@@ -294,7 +290,13 @@ function ENT:Think()
 		end
 	end
 
-	self:SetPos(pos)
+	if not pl.rgm.Moving or not rotate then
+		if offsetlocal then 
+			self:SetPos(LocalToWorld(offset, Angle(0, 0, 0), pos, ang))
+		else
+			self:SetPos(pos + offset)
+		end
+	end
 
 	local localstate = self.localizedpos
 	if rotate then 
@@ -316,28 +318,25 @@ function ENT:Think()
 			self.DiscP:SetLocalAngles(Angle(0, 90, 0))
 			self.DiscR:SetLocalAngles(Angle(0, 0, 0))
 		end
+		self.LocalAngles = ang
+		self.BonePos = pos
 	end
 
+	local pos, poseye = self:GetPos(), pl:EyePos()
 	local disc = self.DiscLarge
-	local ang = (self:GetPos()-pl:EyePos()):Angle()
+	local ang = (pos - poseye):Angle()
 	ang = self:WorldToLocalAngles(ang)
 	disc:SetLocalAngles(ang)
 
-	local NewPos = self:GetPos()
-	local NewAng = self:GetAngles()
-	local NewDiscPos = self.DiscLarge:GetLocalPos()
-	local NewDiscAng = self.DiscLarge:GetLocalAngles()
-
-	if NewPos ~= OldPos or NewAng ~= OldAng
-	or NewDiscPos ~= OldDiscPos or NewDiscAng ~= OldDiscAng then
-		net.Start("rgmAxisUpdate")
-		net.WriteEntity(self)
-		net.WriteVector(self:GetPos())
-		net.WriteAngle(self:GetAngles())
-		net.WriteVector(disc:GetLocalPos())
-		net.WriteAngle(disc:GetLocalAngles())
-		net.Send(self.Owner)
-	end
+	pos, poseye = self:WorldToLocal(pos), self:WorldToLocal(poseye)
+	local xangle, yangle = (Vector(pos.y, pos.z, 0) - Vector(poseye.y, poseye.z, 0)):Angle(), (Vector(pos.x, pos.z, 0) - Vector(poseye.x, poseye.z, 0)):Angle()
+	local XAng, YAng, ZAng = Angle(0, 0, xangle.y + 90) + Vector(1,0,0):Angle(), Angle(0, 90, 90) - Angle(0,0,yangle.y), Angle(0, ang.y, 0) + Vector(0,0,1):Angle()
+	self.ArrowX:SetLocalAngles(XAng)
+	self.ScaleX:SetLocalAngles(XAng)
+	self.ArrowY:SetLocalAngles(YAng)
+	self.ScaleY:SetLocalAngles(YAng)
+	self.ArrowZ:SetLocalAngles(ZAng)
+	self.ScaleZ:SetLocalAngles(ZAng)
 
 	self:NextThink(CurTime()+0.001)
 	return true

@@ -33,19 +33,27 @@ function ENT:ProcessMovement(offpos,offang,eyepos,eyeang,ent,bone,ppos,pnorm, is
 
 
 	if isphys then
+		local axis = self:GetParent()
+		local offset = axis.Owner.rgm.GizmoOffset
+		if axis.localizedoffset and not axis.relativerotate then
+			offset = LocalToWorld(offset, Angle(0,0,0), axis:GetPos(), axis.LocalAngles)
+			offset = offset - axis:GetPos()
+		end
+
 		localized = Vector(localized.y,localized.z,0):Angle()
 		local pos = self:GetPos()
 		local ang = self:LocalToWorldAngles(Angle(0,0,localized.y))
-		_p,_a = LocalToWorld(Vector(0,0,0),offang,pos,ang)
-		_p = pos
+		if axis.relativerotate then
+			offset = WorldToLocal(axis.BonePos, Angle(0, 0, 0), axis:GetPos(), axis.LocalAngles)
+			_p,_a = LocalToWorld(Vector(0,0,0),offang,pos,ang)
+			_p = LocalToWorld(offset, _a, pos, _a)
+		else
+			_p,_a = LocalToWorld(Vector(0,0,0),offang,pos,ang)
+			_p = pos - offset
+		end
 	else
 		local rotateang, axisangle
 		axisangle = axistable[self.axistype]
---[[	_a = ent:GetManipulateBoneAngles(bone)
-		localized = WorldToLocal(localized, localized:Angle(), Vector(0, 0, 0), startAngle:Angle())
-		localized = Vector(localized.x, localized.z, 0):Angle()
-		rotateang = NPhysAngle[self.axistype] + localized.y -- putting it in another variable to avoid constant adding onto the angle variable
-		_a[self.axistype] = rotateang]]
 
 		local _, boneang = ent:GetBonePosition(bone)
 		local startlocal = LocalToWorld(startAngle, startAngle:Angle(), Vector(0,0,0), axisangle) -- first we get our vectors into world coordinates, relative to the axis angles

@@ -47,22 +47,6 @@ net.Receive("rgmAxis",function(len)
 	}
 end)
 
-net.Receive("rgmAxisUpdate",function(len)
-	local self = net.ReadEntity()
-	local pos = net.ReadVector()
-	local ang = net.ReadAngle()
-
-	local discpos = net.ReadVector()
-	local discang = net.ReadAngle()
-
-	if not self.Axises then return end
-
-	self.TargetPos = pos
-	self.TargetAng = ang
-	self.TargetDiscPos = discpos
-	self.TargetDiscAng = discang
-end)
-
 function ENT:DrawLines(scale,width)
 	local pl = LocalPlayer()
 
