@@ -12,7 +12,7 @@ TOOL.ClientConVar["scale"] = 10
 TOOL.ClientConVar["width"] = 0.5
 TOOL.ClientConVar["fulldisc"] = 0
 TOOL.ClientConVar["disablefilter"] = 0
-TOOL.ClientConVar["disablechildbone"] = 0
+TOOL.ClientConVar["scalechildren"] = 0
 
 TOOL.ClientConVar["ik_leg_L"] = 0
 TOOL.ClientConVar["ik_leg_R"] = 0
@@ -113,12 +113,12 @@ end)
 
 net.Receive("rgmAskForParented", function(len, pl)
 	local ent = net.ReadEntity()
-	if not IsValid(ent) or not IsValid(pl.rgm.ParentEntity) then return end
+	if not IsValid(ent) or not IsValid(ent:GetParent()) then return end
 
 	local parented = {}
 
 	for i = 0, ent:GetBoneCount() - 1 do
-		if pl.rgm.ParentEntity:LookupBone(ent:GetBoneName(i)) then
+		if ent:GetParent():LookupBone(ent:GetBoneName(i)) then
 			table.insert(parented, i)
 		end
 	end
@@ -151,10 +151,11 @@ end)
 net.Receive("rgmLockBone", function(len, pl)
 	local mode = net.ReadUInt(2)
 	local ent = pl.rgm.Entity
-	local bone = ent:TranslateBoneToPhysBone(net.ReadUInt(8))
+	local bone = net.ReadUInt(8)
 
-	if not IsValid(ent) or bone == -1 then return end
+	if not IsValid(ent) or ent:TranslateBoneToPhysBone(bone) == -1 then return end
 	if ent:GetClass() ~= "prop_ragdoll" then return end
+	bone = ent:TranslateBoneToPhysBone(bone)
 
 	if mode == 1 then
 		if not pl.rgmPosLocks[bone] then
@@ -345,10 +346,27 @@ net.Receive("rgmAdjustBone", function(len, pl)
 	end
 
 	ManipulateBone[3] = function(axis, value)
-		local Change = ent:GetManipulateBoneScale(pl.rgm.Bone)
+		local rgmaxis, bone = pl.rgm.Axis, pl.rgm.Bone
+		local PrevScale = ent:GetManipulateBoneScale(bone)
+		local Change = ent:GetManipulateBoneScale(bone)
 		Change[axis] = value
 
-		ent:ManipulateBoneScale(pl.rgm.Bone, Change)
+		if rgmaxis.scalechildren then
+			local scalediff = Change - PrevScale
+
+			local function RecursiveBoneScale(ent, bone, scale)
+				local oldscale = ent:GetManipulateBoneScale(bone)
+				ent:ManipulateBoneScale(bone, oldscale + scale)
+
+				for _, cbone in ipairs(ent:GetChildBones(bone)) do
+					RecursiveBoneScale(ent, cbone, scale)
+				end
+			end
+
+			RecursiveBoneScale(ent, bone, scalediff)
+		else
+			ent:ManipulateBoneScale(bone, Change)
+		end
 	end
 
 	local mode, axis, value = net.ReadInt(3), net.ReadInt(3), net.ReadFloat()
@@ -403,11 +421,16 @@ end
 local function rgmFindEntityChildren(parent)
 	local children = {}
 
-	for k, ent in pairs(parent:GetChildren()) do
-		if not IsValid(ent) or ent:IsWorld() or ent:IsConstraint() or not isstring(ent:GetModel()) or not util.IsValidModel(ent:GetModel()) then continue end
+	local function RecursiveFindChildren(entity)
+		for k, ent in pairs(entity:GetChildren()) do
+			if not IsValid(ent) or ent:IsWorld() or ent:IsConstraint() or not isstring(ent:GetModel()) or not util.IsValidModel(ent:GetModel()) then continue end
 
-		table.insert(children, ent)
+			table.insert(children, ent)
+			RecursiveFindChildren(ent)
+		end
 	end
+
+	RecursiveFindChildren(parent)
 
 	return children
 end
@@ -494,6 +517,10 @@ function TOOL:LeftClick(tr)
 		if obj then 
 			_p,pl.rgmOffsetAng = WorldToLocal(apart:GetPos(),obj:GetAngles(),apart:GetPos(),grabang)
 			pl.rgmOffsetTable = rgm.GetOffsetTable(self, ent, pl.rgm.Rotate)
+		end
+		if IsValid(ent:GetParent()) and not (ent:GetClass() == "prop_ragdoll") then -- ragdolls don't seem to care about parenting
+			local pang = ent:GetParent():LocalToWorldAngles(ent:GetLocalAngles())
+			_, pl.rgmOffsetAng = WorldToLocal(apart:GetPos(),pang,apart:GetPos(),grabang)
 		end
 
 		pl.rgm.StartAngle = WorldToLocal(collision.hitpos, Angle(0,0,0), apart:GetPos(), apart:GetAngles())
@@ -677,6 +704,9 @@ if SERVER then
 		if axis.relativerotate ~= tobool(self:GetClientNumber("relativerotate",1)) then
 			axis.relativerotate = tobool(self:GetClientNumber("relativerotate",1))
 		end
+		if axis.scalechildren ~= tobool(self:GetClientNumber("scalechildren",1)) then
+			axis.scalechildren = tobool(self:GetClientNumber("scalechildren",1))
+		end
 	end
 
 	local moving = pl.rgm.Moving or false
@@ -721,11 +751,15 @@ if SERVER then
 		if physbonecount == nil then return end
 
 		if not scale then
-			if pl.rgm.IsPhysBone then
+			if IsValid(ent:GetParent()) and bone == 0 and not ent:IsEffectActive(EF_BONEMERGE) and not (ent:GetClass() == "prop_ragdoll") then
+				local pos, ang = apart:ProcessMovement(pl.rgmOffsetPos,pl.rgmOffsetAng,eyepos,eyeang,ent,bone,pl.rgmISPos,pl.rgmISDir,0)
+				ent:SetLocalPos(pos)
+				ent:SetLocalAngles(ang)
+			elseif pl.rgm.IsPhysBone then
 
 				local isik,iknum = rgm.IsIKBone(self,ent,bone)
 
-				local pos,ang = apart:ProcessMovement(pl.rgmOffsetPos,pl.rgmOffsetAng,eyepos,eyeang,ent,bone,pl.rgmISPos,pl.rgmISDir, true)
+				local pos,ang = apart:ProcessMovement(pl.rgmOffsetPos,pl.rgmOffsetAng,eyepos,eyeang,ent,bone,pl.rgmISPos,pl.rgmISDir, 1)
 
 				local obj = ent:GetPhysicsObjectNum(bone)
 				if not isik or iknum == 3 or (rotate and (iknum == 1 or iknum == 2)) then
@@ -775,17 +809,32 @@ if SERVER then
 
 				-- if not pl:GetNWBool("ragdollmover_keydown") then
 			else
-				local pos, ang = apart:ProcessMovement(pl.rgmOffsetPos,pl.rgmOffsetAng,eyepos,eyeang,ent,bone,pl.rgmISPos,pl.rgmISDir, false, pl.rgm.StartAngle, pl.rgm.NPhysBonePos, pl.rgm.NPhysBoneAng) -- if a bone is not physics one, we pass over "start angle" thing
+				local pos, ang = apart:ProcessMovement(pl.rgmOffsetPos,pl.rgmOffsetAng,eyepos,eyeang,ent,bone,pl.rgmISPos,pl.rgmISDir, 2, pl.rgm.StartAngle, pl.rgm.NPhysBonePos, pl.rgm.NPhysBoneAng) -- if a bone is not physics one, we pass over "start angle" thing
 
 				ent:ManipulateBoneAngles(bone, ang)
 				ent:ManipulateBonePosition(bone, pos)
-
 			end
 		else
 			bone = pl.rgm.Bone
-			local sc, ang = apart:ProcessMovement(pl.rgmOffsetPos,pl.rgmOffsetAng,eyepos,eyeang,ent,bone,pl.rgmISPos,pl.rgmISDir, false, pl.rgm.StartAngle, pl.rgm.NPhysBonePos, pl.rgm.NPhysBoneAng, pl.rgm.NPhysBoneScale)
+			local prevscale = ent:GetManipulateBoneScale(bone)
+			local sc, ang = apart:ProcessMovement(pl.rgmOffsetPos,pl.rgmOffsetAng,eyepos,eyeang,ent,bone,pl.rgmISPos,pl.rgmISDir, 2, pl.rgm.StartAngle, pl.rgm.NPhysBonePos, pl.rgm.NPhysBoneAng, pl.rgm.NPhysBoneScale)
 
-			ent:ManipulateBoneScale(bone, sc)
+			if axis.scalechildren then
+				local scalediff = sc - prevscale
+
+				local function RecursiveBoneScale(ent, bone, scale)
+					local oldscale = ent:GetManipulateBoneScale(bone)
+					ent:ManipulateBoneScale(bone, oldscale + scale)
+
+					for _, cbone in ipairs(ent:GetChildBones(bone)) do
+						RecursiveBoneScale(ent, cbone, scale)
+					end
+				end
+
+				RecursiveBoneScale(ent, bone, scalediff)
+			else
+				ent:ManipulateBoneScale(bone, sc)
+			end
 
 		end
 
@@ -1377,17 +1426,35 @@ local function RGMBuildEntMenu(parent, children, entpanel)
 		net.SendToServer()
 	end
 
-	for k, v in ipairs(children) do
-		if not IsValid(v) or not isstring(v:GetModel()) then continue end
+	local sortchildren = {}
 
-		entnodes[v] = entnodes[parent]:AddNode(GetModelName(v))
-
-		entnodes[v].DoClick = function()
-			net.Start("rgmSelectEntity")
-				net.WriteEntity(v)
-			net.SendToServer()
+	local function RecursiveChildrenSort(parent, sorttable)
+		for k, v in ipairs(children) do
+			if v:GetParent() ~= parent then continue end
+			table.insert(sorttable, v)
+			sorttable[v] = {}
+			RecursiveChildrenSort(v, sorttable[v])
 		end
 	end
+
+	RecursiveChildrenSort(parent, sortchildren)
+
+	local function MakeChildrenList(parent, sorttable)
+		for k, v in ipairs(sorttable) do
+			if not IsValid(v) or not isstring(v:GetModel()) then continue end
+			entnodes[v] = entnodes[parent]:AddNode(GetModelName(v))
+			entnodes[v]:SetExpanded(true)
+
+			entnodes[v].DoClick = function()
+				net.Start("rgmSelectEntity")
+					net.WriteEntity(v)
+				net.SendToServer()
+			end
+			MakeChildrenList(v, sorttable[v])
+		end
+	end
+
+	MakeChildrenList(parent, sortchildren)
 end
 
 function TOOL.BuildCPanel(CPanel)
@@ -1444,6 +1511,8 @@ function TOOL.BuildCPanel(CPanel)
 			Scale1 = CManipSlider(ColManip, "#tool.ragdollmover.scale1", 3, 1, -100, 100, 2) --x
 			Scale2 = CManipSlider(ColManip, "#tool.ragdollmover.scale2", 3, 2, -100, 100, 2) --y
 			Scale3 = CManipSlider(ColManip, "#tool.ragdollmover.scale3", 3, 3, -100, 100, 2) --z
+
+		CCheckBox(Col4,"#tool.ragdollmover.scalechildren","ragdollmover_scalechildren")
 
 		local colbones = CCol(Col4, "#tool.ragdollmover.bonelist")
 			BonePanel = vgui.Create("DTree", colbones)

@@ -3,7 +3,7 @@ include("shared.lua")
 AddCSLuaFile("cl_init.lua")
 AddCSLuaFile("shared.lua")
 
-function ENT:ProcessMovement(offpos,offang,eyepos,eyeang,ent,bone,ppos,pnorm, isphys, StartGrab, garbage, garbage, NPhysScale)
+function ENT:ProcessMovement(offpos,offang,eyepos,eyeang,ent,bone,ppos,pnorm, movetype, StartGrab, garbage, garbage, NPhysScale)
 	local intersect = self:GetGrabPos(eyepos,eyeang,ppos)
 	local localized = self:WorldToLocal(intersect)
 	local pos, ang
