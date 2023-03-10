@@ -67,6 +67,8 @@ util.AddNetworkString("rgmUpdateBones")
 
 util.AddNetworkString("rgmAskForPhysbones")
 util.AddNetworkString("rgmAskForPhysbonesResponse")
+util.AddNetworkString("rgmAskForNodeUpdatePhysics")
+util.AddNetworkString("rgmAskForNodeUpdatePhysicsResponse")
 
 util.AddNetworkString("rgmAskForParented")
 util.AddNetworkString("rgmAskForParentedResponse")
@@ -105,7 +107,29 @@ net.Receive("rgmAskForPhysbones", function(len, pl)
 			for i = 0, count do
 				local bone = ent:TranslatePhysBoneToBone(i)
 				if bone == -1 then bone = 0 end
-				net.WriteUInt(bone, 32)
+				net.WriteUInt(bone, 8)
+			end
+		net.Send(pl)
+	end
+end)
+
+net.Receive("rgmAskForNodeUpdatePhysics", function(len, pl)
+	local isphys = net.ReadBool()
+	local ent = net.ReadEntity()
+
+	if not IsValid(ent) then return end
+
+	local count = ent:GetPhysicsObjectCount() - 1
+	if count ~= -1 then
+		net.Start("rgmAskForNodeUpdatePhysicsResponse")
+			net.WriteBool(isphys)
+			net.WriteEntity(ent)
+
+			net.WriteUInt(count, 8)
+			for i = 0, count do
+				local bone = ent:TranslatePhysBoneToBone(i)
+				if bone == -1 then bone = 0 end
+				net.WriteUInt(bone, 8)
 			end
 		net.Send(pl)
 	end
@@ -875,18 +899,30 @@ local function GetRecursiveBones(ent, boneid, tab)
 
 		if ent:BoneHasFlag(v, 4) then -- BONE_ALWAYS_PROCEDURAL flag
 			bone.Type = BONE_PROCEDURAL
-		else
-			for i = 0, ent:GetPhysicsObjectCount() - 1 do
-				local b = ent:TranslatePhysBoneToBone(i)
-				if v == b then
-					bone.Type = BONE_PHYSICAL
-					break
-				end
-			end
 		end
 
 		table.insert(tab, bone)
 		GetRecursiveBones(ent, v, tab)
+	end
+end
+
+local function GetRecursiveBonesExclusive(ent, boneid, lastvalidbone, tab, physcheck, isphys)
+	for k, v in ipairs(ent:GetChildBones(boneid)) do
+		local bone = {id = v, Type = BONE_NONPHYSICAL, parent = lastvalidbone}
+		local newlastvalid = lastvalidbone
+
+		if ent:BoneHasFlag(v, 4) then -- BONE_ALWAYS_PROCEDURAL flag
+			bone.Type = BONE_PROCEDURAL
+		elseif physcheck[v] then
+			bone.Type = BONE_PHYSICAL
+		end
+
+		if (isphys and bone.Type == BONE_PHYSICAL) or (not isphys and bone.Type ~= BONE_PHYSICAL) then 
+			newlastvalid = v
+			table.insert(tab, bone)
+		end
+
+		GetRecursiveBonesExclusive(ent, v, newlastvalid, tab, physcheck, isphys)
 	end
 end
 
@@ -1186,25 +1222,7 @@ local nodes, entnodes
 local HoveredBone
 local Col4
 
-local function RGMBuildBoneMenu(ent, bonepanel)
-	bonepanel:Clear()
-	if not IsValid(ent) then return end
-	local sortedbones = {}
-
-	local num = ent:GetBoneCount() - 1 -- first we find all rootbones and their children
-	for v = 0, num do
-		if ent:GetBoneName(v) == "__INVALIDBONE__" then continue end
-
-		if ent:GetBoneParent(v) == -1 then
-			local bone = { id = v, Type = BONE_NONPHYSICAL }
-			if ent:BoneHasFlag(v, 4) then -- BONE_ALWAYS_PROCEDURAL flag
-				bone.Type = BONE_PROCEDURAL
-			end
-
-			table.insert(sortedbones, bone)
-			local bonesadd = GetRecursiveBones(ent, v, sortedbones)
-		end
-	end
+local function SetBoneNodes(bonepanel, ent, sortedbones)
 
 	nodes = {}
 
@@ -1225,6 +1243,9 @@ local function RGMBuildBoneMenu(ent, bonepanel)
 		elseif nodes[v.id].Type == BONE_PROCEDURAL then
 			nodes[v.id]:SetIcon("icon16/error.png")
 			nodes[v.id].Label:SetToolTip("#tool.ragdollmover.proceduralbone")
+		elseif nodes[v.id].Type == BONE_PHYSICAL then
+			nodes[v.id]:SetIcon("icon16/brick.png")
+			nodes[v.id].Label:SetToolTip("#tool.ragdollmover.physbone")
 		end
 
 		nodes[v.id].DoClick = function()
@@ -1400,9 +1421,82 @@ local function RGMBuildBoneMenu(ent, bonepanel)
 		end
 	end
 
+end
+
+local function RGMBuildBoneMenu(ent, bonepanel)
+	bonepanel:Clear()
+	if not IsValid(ent) then return end
+	local sortedbones = {}
+
+	local num = ent:GetBoneCount() - 1 -- first we find all rootbones and their children
+	for v = 0, num do
+		if ent:GetBoneName(v) == "__INVALIDBONE__" then continue end
+
+		if ent:GetBoneParent(v) == -1 then
+			local bone = { id = v, Type = BONE_NONPHYSICAL }
+			if ent:BoneHasFlag(v, 4) then -- BONE_ALWAYS_PROCEDURAL flag
+				bone.Type = BONE_PROCEDURAL
+			end
+
+			table.insert(sortedbones, bone)
+			GetRecursiveBones(ent, v, sortedbones)
+		end
+	end
+
+	SetBoneNodes(bonepanel, ent, sortedbones)
+
 	net.Start("rgmAskForPhysbones")
 		net.WriteEntity(ent)
 	net.SendToServer()
+
+	if ent:IsEffectActive(EF_BONEMERGE) then
+		net.Start("rgmAskForParented")
+			net.WriteEntity(ent)
+		net.SendToServer()
+	end
+end
+
+local function ShowOnlyPhysNodes(ent, bonepanel)
+	bonepanel:Clear()
+	if not IsValid(ent) then return end
+
+	net.Start("rgmAskForNodeUpdatePhysics")
+		net.WriteBool(true)
+		net.WriteEntity(ent)
+	net.SendToServer()
+end
+
+local function ShowOnlyNonPhysNodes(ent, bonepanel)
+	bonepanel:Clear()
+	if not IsValid(ent) then return end
+
+	net.Start("rgmAskForNodeUpdatePhysics")
+		net.WriteBool(false)
+		net.WriteEntity(ent)
+	net.SendToServer()
+end
+
+local function UpdateBoneNodes(ent, bonepanel, physIDs, isphys)
+	local sortedbones = {}
+
+	local num = ent:GetBoneCount() - 1
+	for v = 0, num do
+		if ent:GetBoneName(v) == "__INVALIDBONE__" then continue end
+
+		if ent:GetBoneParent(v) == -1 then
+			local bone = { id = v, Type = BONE_NONPHYSICAL }
+			if ent:BoneHasFlag(v, 4) then
+				bone.Type = BONE_PROCEDURAL
+			elseif physIDs[v] then
+				bone.Type = BONE_PHYSICAL
+			end
+
+			table.insert(sortedbones, bone)
+			GetRecursiveBonesExclusive(ent, v, v, sortedbones, physIDs, isphys)
+		end
+	end
+
+	SetBoneNodes(bonepanel, ent, sortedbones)
 
 	if ent:IsEffectActive(EF_BONEMERGE) then
 		net.Start("rgmAskForParented")
@@ -1455,6 +1549,44 @@ local function RGMBuildEntMenu(parent, children, entpanel)
 	end
 
 	MakeChildrenList(parent, sortchildren)
+end
+
+local function RGMMakeBoneButtonPanel(cat, cpanel)
+	local parentpanel = vgui.Create("Panel", cat)
+	parentpanel:SetSize(100, 30)
+	cat:AddItem(parentpanel)
+
+	parentpanel.ShowAll = vgui.Create("DButton", parentpanel)
+	parentpanel.ShowAll:Dock(FILL)
+	parentpanel.ShowAll:SetZPos(0)
+	parentpanel.ShowAll:SetText("#tool.ragdollmover.listshowall")
+	parentpanel.ShowAll.DoClick = function()
+		local ent = LocalPlayer().rgm.Entity
+		if not IsValid(ent) or not IsValid(BonePanel) then return end
+		RGMBuildBoneMenu(ent, BonePanel)
+	end
+
+	parentpanel.ShowPhys = vgui.Create("DButton", parentpanel)
+	parentpanel.ShowPhys:Dock(LEFT)
+	parentpanel.ShowPhys:SetZPos(1)
+	parentpanel.ShowPhys:SetText("#tool.ragdollmover.listshowphys")
+	parentpanel.ShowPhys.DoClick = function()
+		local ent = LocalPlayer().rgm.Entity
+		if not IsValid(ent) or not IsValid(BonePanel) then return end
+		ShowOnlyPhysNodes(ent, BonePanel)
+	end
+
+	parentpanel.ShowNonphys = vgui.Create("DButton", parentpanel)
+	parentpanel.ShowNonphys:Dock(RIGHT)
+	parentpanel.ShowNonphys:SetZPos(1)
+	parentpanel.ShowNonphys:SetText("#tool.ragdollmover.listshownonphys")
+	parentpanel.ShowNonphys.DoClick = function()
+		local ent = LocalPlayer().rgm.Entity
+		if not IsValid(ent) or not IsValid(BonePanel) then return end
+		ShowOnlyNonPhysNodes(ent, BonePanel)
+	end
+
+	return parentpanel
 end
 
 function TOOL.BuildCPanel(CPanel)
@@ -1515,6 +1647,7 @@ function TOOL.BuildCPanel(CPanel)
 		CCheckBox(Col4,"#tool.ragdollmover.scalechildren","ragdollmover_scalechildren")
 
 		local colbones = CCol(Col4, "#tool.ragdollmover.bonelist")
+			RGMMakeBoneButtonPanel(colbones, CPanel)
 			BonePanel = vgui.Create("DTree", colbones)
 			BonePanel:SetTall(600)
 			AddHBar(BonePanel)
@@ -1590,7 +1723,7 @@ end)
 net.Receive("rgmAskForPhysbonesResponse", function(len)
 	local count = net.ReadUInt(8)
 	for i = 0, count do
-		local bone = net.ReadUInt(32)
+		local bone = net.ReadUInt(8)
 		if bone then
 			nodes[bone].Type = BONE_PHYSICAL
 			nodes[bone]:SetIcon("icon16/brick.png")
@@ -1663,6 +1796,19 @@ net.Receive("rgmSelectBoneResponse", function(len)
 
 		Col4:InvalidateLayout()
 	end
+end)
+
+net.Receive("rgmAskForNodeUpdatePhysicsResponse", function(len)
+	local isphys = net.ReadBool()
+	local ent = net.ReadEntity()
+	local physIDs = {}
+
+	for i = 0, net.ReadUInt(8) do
+		physIDs[net.ReadUInt(8)] = true
+	end
+
+	if not IsValid(ent) or not IsValid(BonePanel) then return end
+	UpdateBoneNodes(ent, BonePanel, physIDs, isphys)
 end)
 
 local material = CreateMaterial("rgmGizmoMaterial", "UnlitGeneric", {
