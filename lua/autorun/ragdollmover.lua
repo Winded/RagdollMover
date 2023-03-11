@@ -525,8 +525,8 @@ function DrawEntName(ent)
 	local pos
 
 	if name == "prop_ragdoll" then
-		local obj = ent:GetPhysicsObjectNum(0)
-		pos = obj:GetPos()
+		pos = ent:GetBonePosition(0)
+		if not pos then pos = ent:GetPos() end
 	elseif IsValid(ent:GetParent()) then
 		local parent = ent:GetParent()
 		pos = parent:LocalToWorld(ent:GetLocalPos())
