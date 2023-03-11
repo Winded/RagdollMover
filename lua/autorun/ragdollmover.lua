@@ -510,12 +510,91 @@ end
 
 function DrawBoneName(ent,bone)
 	local name = ent:GetBoneName(bone)
-	local _pos,_ang = ent:GetBonePosition(bone)
-	if not _pos or not _ang then
-		_pos,_ang = ent:GetPos(),ent:GetAngles()
+	local _pos = ent:GetBonePosition(bone)
+	if not _pos then
+		_pos = ent:GetPos()
 	end
 	_pos = _pos:ToScreen()
 	local textpos = {x = _pos.x+5,y = _pos.y-5}
-	surface.DrawCircle(_pos.x,_pos.y,2.5,Color(0,200,0,255))
+	surface.DrawCircle(_pos.x,_pos.y,3.5,Color(0,200,0,255))
 	draw.SimpleText(name,"Default",textpos.x,textpos.y,Color(0,200,0,255),TEXT_ALIGN_LEFT,TEXT_ALIGN_BOTTOM)
+end
+
+function DrawEntName(ent)
+	local name = ent:GetClass()
+	local pos
+
+	if name == "prop_ragdoll" then
+		local obj = ent:GetPhysicsObjectNum(0)
+		pos = obj:GetPos()
+	elseif IsValid(ent:GetParent()) then
+		local parent = ent:GetParent()
+		pos = parent:LocalToWorld(ent:GetLocalPos())
+	else
+		pos = ent:GetPos()
+	end
+
+	pos = pos:ToScreen()
+	local textpos = { x = pos.x+5, y = pos.y-5 }
+	surface.DrawCircle(pos.x, pos.y, 3.5, Color(0, 200, 0, 255))
+	draw.SimpleText(name,"Default",textpos.x,textpos.y,Color(0,200,0,255),TEXT_ALIGN_LEFT,TEXT_ALIGN_BOTTOM)
+end
+
+function DrawBoneConnections(ent, bone)
+	local mainpos = ent:GetBonePosition(bone)
+	if not mainpos then
+		mainpos = ent:GetPos()
+	end
+	mainpos = mainpos:ToScreen()
+
+	surface.SetDrawColor( 0, 200, 0, 255 )
+	for _, childbone in ipairs(ent:GetChildBones(bone)) do
+		local pos = ent:GetBonePosition(childbone)
+		pos = pos:ToScreen()
+
+		surface.DrawLine(mainpos.x, mainpos.y, pos.x, pos.y)
+	end
+
+	if ent:GetBoneParent(bone) ~= -1 then
+		surface.SetDrawColor( 0, 0, 200, 255 )
+		local pos = ent:GetBonePosition(ent:GetBoneParent(bone))
+		pos = pos:ToScreen()
+
+		surface.DrawLine(mainpos.x, mainpos.y, pos.x, pos.y)
+	end
+end
+
+local function DrawRecursiveBones(ent, bone)
+	local mainpos = ent:GetBonePosition(bone)
+	mainpos = mainpos:ToScreen()
+
+	for _, boneid in ipairs(ent:GetChildBones(bone)) do
+		local pos = ent:GetBonePosition(boneid)
+		pos = pos:ToScreen()
+
+		surface.SetDrawColor( 255, 255, 255, 255 )
+		surface.DrawLine(mainpos.x, mainpos.y, pos.x, pos.y)
+		DrawRecursiveBones(ent, boneid)
+		surface.DrawCircle(pos.x, pos.y, 2.5, Color(0, 200, 0, 255))
+	end
+end
+
+function DrawSkeleton(ent)
+	local num = ent:GetBoneCount() - 1
+	for v = 0, num do
+		if ent:GetBoneName(v) == "__INVALIDBONE__" then continue end
+
+		if ent:GetBoneParent(v) == -1 then
+			local pos = ent:GetBonePosition(v)
+			if not pos then
+				pos = ent:GetPos()
+			end
+
+			DrawRecursiveBones(ent, v)
+
+			pos = pos:ToScreen()
+			surface.DrawCircle(pos.x, pos.y, 2.5, Color(0, 200, 0, 255))
+		end
+	end
+
 end

@@ -13,6 +13,7 @@ TOOL.ClientConVar["width"] = 0.5
 TOOL.ClientConVar["fulldisc"] = 0
 TOOL.ClientConVar["disablefilter"] = 0
 TOOL.ClientConVar["scalechildren"] = 0
+TOOL.ClientConVar["drawskeleton"] = 0
 
 TOOL.ClientConVar["ik_leg_L"] = 0
 TOOL.ClientConVar["ik_leg_R"] = 0
@@ -1219,7 +1220,7 @@ local BonePanel, EntPanel
 local Pos1, Pos2, Pos3, Rot1, Rot2, Rot3, Scale1, Scale2, Scale3
 local Gizmo1, Gizmo2, Gizmo3
 local nodes, entnodes
-local HoveredBone
+local HoveredBone, HoveredEnt
 local Col4
 
 local function SetBoneNodes(bonepanel, ent, sortedbones)
@@ -1520,6 +1521,14 @@ local function RGMBuildEntMenu(parent, children, entpanel)
 		net.SendToServer()
 	end
 
+	entnodes[parent].Label.OnCursorEntered = function()
+		HoveredEnt = parent
+	end
+
+	entnodes[parent].Label.OnCursorExited = function()
+		HoveredEnt = nil
+	end
+
 	local sortchildren = {}
 
 	local function RecursiveChildrenSort(parent, sorttable)
@@ -1544,6 +1553,15 @@ local function RGMBuildEntMenu(parent, children, entpanel)
 					net.WriteEntity(v)
 				net.SendToServer()
 			end
+
+			entnodes[v].Label.OnCursorEntered = function()
+				HoveredEnt = v
+			end
+
+			entnodes[v].Label.OnCursorExited = function()
+				HoveredEnt = nil
+			end
+
 			MakeChildrenList(v, sorttable[v])
 		end
 	end
@@ -1618,6 +1636,7 @@ function TOOL.BuildCPanel(CPanel)
 		CB:SetToolTip("#tool.ragdollmover.unfreezetip")
 		local DisFil = CCheckBox(Col3, "#tool.ragdollmover.disablefilter","ragdollmover_disablefilter")
 		DisFil:SetToolTip("#tool.ragdollmover.disablefiltertip")
+		CCheckBox(Col3, "#tool.ragdollmover.drawskeleton", "ragdollmover_drawskeleton")
 		CNumSlider(Col3,"#tool.ragdollmover.updaterate","ragdollmover_updaterate",0.01,1.0,2)
 
 	CBinder(CPanel)
@@ -1859,14 +1878,21 @@ function TOOL:DrawHUD()
 			axis:DrawLines(scale,width)
 			cam.End()
 		end
-		if collision then return end
 	end
 
 	local tr = pl:GetEyeTrace()
-	local aimedbone = pl.rgm.AimedBone or 0
-	if IsValid(pl.rgm.Entity) and EntityFilter(pl.rgm.Entity) and HoveredBone then
-		rgm.DrawBoneName(pl.rgm.Entity,HoveredBone)
+	local aimedbone = IsValid(tr.Entity) and (tr.Entity:GetClass() == "prop_ragdoll" and pl.rgm.AimedBone or 0) or 0
+	if IsValid(ent) and EntityFilter(ent) and tobool(self:GetClientNumber("drawskeleton",0)) then
+		rgm.DrawSkeleton(ent)
+	end
+
+	if IsValid(ent) and EntityFilter(ent) and HoveredBone then
+		rgm.DrawBoneConnections(ent, HoveredBone)
+		rgm.DrawBoneName(ent,HoveredBone)
+	elseif IsValid(HoveredEnt) and EntityFilter(HoveredEnt) then
+		rgm.DrawEntName(HoveredEnt)
 	elseif IsValid(tr.Entity) and EntityFilter(tr.Entity) and (not bone or aimedbone ~= bone or tr.Entity ~= pl.rgm.Entity) and not moving then
+		rgm.DrawBoneConnections(tr.Entity, aimedbone)
 		rgm.DrawBoneName(tr.Entity,aimedbone)
 	end
 
