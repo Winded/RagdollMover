@@ -83,6 +83,7 @@ hook.Add("PlayerSpawn","rgmSpawn",function(pl) --PlayerSpawn is a hook that runs
 		pl.rgm = {}
 		pl.rgmPosLocks = {}
 		pl.rgmAngLocks = {}
+		pl.rgmBoneLocks = {}
 		pl.rgm.Rotate = false
 		pl.rgm.Scale = false
 		pl.rgm.GizmoOffset = Vector(0, 0, 0)
