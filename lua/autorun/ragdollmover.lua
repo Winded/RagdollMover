@@ -571,7 +571,7 @@ function DrawBoneConnections(ent, bone)
 	mainpos = mainpos:ToScreen()
 
 	surface.SetDrawColor( 0, 200, 0, 255 )
-	for _, childbone in ipairs(ent:GetChildBones(bone)) do
+	for _, childbone in ipairs(ent:GetChildBones(bone) or {}) do
 		local pos = ent:GetBonePosition(childbone)
 		pos = pos:ToScreen()
 

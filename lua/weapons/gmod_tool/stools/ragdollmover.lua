@@ -192,7 +192,7 @@ net.Receive("rgmLockBone", function(len, pl)
 
 	if not IsValid(ent) or ent:TranslateBoneToPhysBone(bone) == -1 then return end
 	if ent:GetClass() ~= "prop_ragdoll" then return end
-	bone = ent:TranslateBoneToPhysBone(bone)
+	bone = BoneToPhysBone(ent,bone)
 
 	if mode == 1 then
 		if not pl.rgmPosLocks[bone] then
@@ -245,8 +245,8 @@ net.Receive("rgmLockToBone", function(len, pl)
 	end
 
 	if not RecursiveFindIfParent(ent, lockedbone, lockorigin) then
-		local bone = ent:TranslateBoneToPhysBone(lockedbone)
-		lockorigin = ent:TranslateBoneToPhysBone(lockorigin)
+		local bone = rgm.BoneToPhysBone(ent,lockedbone)
+		lockorigin = rgm.BoneToPhysBone(ent,lockorigin)
 
 		pl.rgmBoneLocks[bone] = lockorigin
 		pl.rgmPosLocks[bone] = nil
@@ -265,7 +265,7 @@ end)
 net.Receive("rgmUnlockToBone", function(len, pl)
 	local unlockbone = net.ReadUInt(8)
 	local ent = pl.rgm.Entity
-	local bone = ent:TranslateBoneToPhysBone(unlockbone)
+	local bone = rgm.BoneToPhysBone(ent,unlockbone)
 
 	pl.rgmBoneLocks[bone] = nil
 
