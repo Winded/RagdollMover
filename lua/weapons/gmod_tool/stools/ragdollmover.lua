@@ -192,7 +192,7 @@ net.Receive("rgmLockBone", function(len, pl)
 
 	if not IsValid(ent) or ent:TranslateBoneToPhysBone(bone) == -1 then return end
 	if ent:GetClass() ~= "prop_ragdoll" then return end
-	bone = BoneToPhysBone(ent,bone)
+	bone = rgm.BoneToPhysBone(ent,bone)
 
 	if mode == 1 then
 		if not pl.rgmPosLocks[bone] then
