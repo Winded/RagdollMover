@@ -313,6 +313,7 @@ function GetOffsetTable(tool,ent,rotate, bonelocks)
 end
 
 local function RecursiveSetParent(ostable, sbone, rlocks, plocks, RTable, bone)
+
 	local parent = ostable[bone].parent
 	if not RTable[parent] then RecursiveSetParent(ostable, sbone, rlocks, plocks, RTable, parent) end
 
@@ -357,6 +358,19 @@ local function SetBoneOffsets(tool, ent,ostable,sbone, rlocks, plocks)
 
 			local footdata = ostable[v.foot]
 			if footdata ~= nil and (footdata.parent ~= v.knee and footdata.parent ~= v.hip) and not RTable[footdata.parent] then 
+				RecursiveSetParent(ostable, sbone, rlocks, plocks, RTable, footdata.parent)
+			end
+
+			local RT = ProcessIK(ent,v,sbone,RTable, footdata)
+			table.Merge(RTable,RT)
+		end
+	end
+
+	for k,v in pairs(ent.rgmIKChains) do -- calculating IKs twice for proper bone locking stuff to IKs, perhaps there is a simpler way to do these
+		if tobool(tool:GetClientNumber(DefIKnames[v.type],0)) then
+
+			local footdata = ostable[v.foot]
+			if not RTable[footdata.parent] then
 				RecursiveSetParent(ostable, sbone, rlocks, plocks, RTable, footdata.parent)
 			end
 
