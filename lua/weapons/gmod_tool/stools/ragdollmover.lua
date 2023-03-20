@@ -28,8 +28,17 @@ TOOL.ClientConVar["updaterate"] = 0.01
 TOOL.ClientConVar["rotatebutton"] = MOUSE_MIDDLE
 TOOL.ClientConVar["scalebutton"] = MOUSE_RIGHT
 
-local RGM_NOTIFY_BONELOCK_FAILED = 0
-local RGM_NOTIFY_BONELOCK_SUCCESS = 1
+local ConstrainedAllowed
+
+local RGM_NOTIFY = {
+	BONELOCK_FAILED = {id = 0, iserror = true},
+	BONELOCK_SUCCESS = {id = 1, iserror = false},
+	BONELOCK_FAILED_NOTPHYS = {id = 2, iserror = true},
+	BONELOCK_FAILED_SAME = {id = 3, iserror = true},
+	ENTLOCK_FAILED_NONPHYS = {id = 4, iserror = true},
+	ENTLOCK_FAILED_NOTALLOWED = {id = 5,iserror = true},
+	ENTLOCK_SUCCESS = {id = 6, iserror = false},
+}
 
 local function RGMGetBone(pl, ent, bone)
 	--------------------------------------------------------- yeah this part is from locrotscale
@@ -63,11 +72,48 @@ local function RGMGetBone(pl, ent, bone)
 	end
 end
 
+local function rgmFindEntityChildren(parent)
+	local children = {}
+
+	local function RecursiveFindChildren(entity)
+		for k, ent in pairs(entity:GetChildren()) do
+			if not IsValid(ent) or ent:IsWorld() or ent:IsConstraint() or not isstring(ent:GetModel()) or not util.IsValidModel(ent:GetModel()) then continue end
+
+			table.insert(children, ent)
+			RecursiveFindChildren(ent)
+		end
+	end
+
+	RecursiveFindChildren(parent)
+
+	return children
+end
+
+local function rgmGetConstrainedEntities(parent)
+	local conents = {}
+	local children = {}
+
+	conents = constraint.GetAllConstrainedEntities(parent)
+	conents[parent] = nil
+
+	local count = 1
+
+	for _, ent in pairs(conents) do
+		if not IsValid(ent) or ent:IsWorld() or ent:IsConstraint() or not util.IsValidModel(ent:GetModel()) then continue end
+		if ent:GetPhysicsObjectCount() > 0 then
+			children[count] = ent
+			count = count + 1
+		end
+	end
+
+	return children
+end
+
 if SERVER then
 
 util.AddNetworkString("rgmUpdateLists")
 
-util.AddNetworkString("rgmUpdateBones")
+util.AddNetworkString("rgmUpdateEntInfo")
 
 util.AddNetworkString("rgmAskForPhysbones")
 util.AddNetworkString("rgmAskForPhysbonesResponse")
@@ -86,6 +132,9 @@ util.AddNetworkString("rgmLockToBone")
 util.AddNetworkString("rgmLockToBoneResponse")
 util.AddNetworkString("rgmUnlockToBone")
 util.AddNetworkString("rgmUnlockToBoneResponse")
+util.AddNetworkString("rgmLockConstrained")
+util.AddNetworkString("rgmLockConstrainedResponse")
+util.AddNetworkString("rgmUnlockConstrained")
 
 util.AddNetworkString("rgmSelectEntity")
 
@@ -105,6 +154,8 @@ util.AddNetworkString("rgmGizmoOffset")
 util.AddNetworkString("rgmUpdateSliders")
 
 util.AddNetworkString("rgmNotification")
+
+ConstrainedAllowed = CreateConVar("sv_ragdollmover_allow_constrained_locking", 1, FCVAR_ARCHIVE + FCVAR_NOTIFY, "Allow usage of locking constrained entities to Ragdoll Mover's selected entity (Can be abused by attempting to move a lot of entities)", 0, 1)
 
 net.Receive("rgmAskForPhysbones", function(len, pl)
 	local ent = net.ReadEntity()
@@ -237,9 +288,14 @@ net.Receive("rgmLockToBone", function(len, pl)
 
 	if not IsValid(ent) or not (ent:GetClass() == "prop_ragdoll") then return end
 
-	if not rgm.BoneToPhysBone(ent, lockedbone) or not rgm.BoneToPhysBone(ent, lockorigin) or lockedbone == lockorigin then
+	local physcheck = not rgm.BoneToPhysBone(ent, lockedbone) or not rgm.BoneToPhysBone(ent, lockorigin)
+	local samecheck = lockedbone == lockorigin
+
+	if physcheck or samecheck then
+		local err = samecheck and RGM_NOTIFY.BONELOCK_FAILED_SAME.id or RGM_NOTIFY.BONELOCK_FAILED_NOTPHYS.id
+
 		net.Start("rgmNotification")
-			net.WriteUInt(RGM_NOTIFY_BONELOCK_FAILED, 2)
+			net.WriteUInt(err, 4)
 		net.Send(pl)
 		return
 	end
@@ -257,7 +313,7 @@ net.Receive("rgmLockToBone", function(len, pl)
 		net.Send(pl)
 	else
 		net.Start("rgmNotification")
-			net.WriteUInt(RGM_NOTIFY_BONELOCK_FAILED, 2)
+			net.WriteUInt(RGM_NOTIFY.BONELOCK_FAILED.id, 4)
 		net.Send(pl)
 	end
 end)
@@ -274,12 +330,65 @@ net.Receive("rgmUnlockToBone", function(len, pl)
 	net.Send(pl)
 end)
 
+net.Receive("rgmLockConstrained", function(len, pl)
+	local ent = pl.rgm.Entity
+	local lockent = net.ReadEntity()
+	local physbone = 0
+
+	local convar = ConstrainedAllowed:GetBool()
+	if not convar then
+		net.Start("rgmNotification")
+			net.WriteUInt(RGM_NOTIFY.ENTLOCK_FAILED_NOTALLOWED.id, 4)
+		net.Send(pl)
+		return
+	end
+
+	if not IsValid(ent) or not IsValid(lockent) then return end
+
+	if net.ReadBool() then
+		local boneid = net.ReadUInt(8)
+		if not rgm.BoneToPhysBone(ent, boneid) then
+			net.Start("rgmNotification")
+				net.WriteUInt(RGM_NOTIFY.ENTLOCK_FAILED_NONPHYS.id, 4)
+			net.Send(pl)
+			return
+		end
+
+		physbone = rgm.BoneToPhysBone(ent, boneid)
+	end
+
+	pl.rgmEntLocks[lockent] = physbone
+
+	net.Start("rgmLockConstrainedResponse")
+		net.WriteBool(true)
+		net.WriteEntity(lockent)
+	net.Send(pl)
+end)
+
+net.Receive("rgmUnlockConstrained", function(len, pl)
+	local ent = pl.rgm.Entity
+	local lockent = net.ReadEntity()
+
+	if not IsValid(ent) or not IsValid(lockent) then return end
+
+	pl.rgmEntLocks[lockent] = nil
+
+	net.Start("rgmLockConstrainedResponse")
+		net.WriteBool(false)
+		net.WriteEntity(lockent)
+	net.Send(pl)
+end)
+
 net.Receive("rgmSelectEntity", function(len, pl)
 	local ent = net.ReadEntity()
 	if not IsValid(ent) then return end
 
 	pl.rgm.Entity = ent
 	pl.rgm.BoneToResetTo = 0
+	pl.rgmPosLocks = {}
+	pl.rgmAngLocks = {}
+	pl.rgmBoneLocks = {}
+	pl.rgmEntLocks = {}
 
 	if not ent.rgmbonecached then -- also taken from locrotscale. some hacky way to cache the bones?
 		local p = pl.rgmSwep:GetParent()
@@ -291,8 +400,15 @@ net.Receive("rgmSelectEntity", function(len, pl)
 	RGMGetBone(pl, pl.rgm.Entity, 0)
 	pl:rgmSync()
 
-	net.Start("rgmUpdateBones")
+	local physchildren = rgmGetConstrainedEntities(pl.rgm.Entity)
+
+	net.Start("rgmUpdateEntInfo")
 		net.WriteEntity(ent)
+
+		net.WriteUInt(#physchildren, 32)
+		for _, ent in ipairs(physchildren) do
+			net.WriteEntity(ent)
+		end
 	net.Send(pl)
 end)
 
@@ -512,23 +628,6 @@ function TOOL:Deploy()
 	end
 end
 
-local function rgmFindEntityChildren(parent)
-	local children = {}
-
-	local function RecursiveFindChildren(entity)
-		for k, ent in pairs(entity:GetChildren()) do
-			if not IsValid(ent) or ent:IsWorld() or ent:IsConstraint() or not isstring(ent:GetModel()) or not util.IsValidModel(ent:GetModel()) then continue end
-
-			table.insert(children, ent)
-			RecursiveFindChildren(ent)
-		end
-	end
-
-	RecursiveFindChildren(parent)
-
-	return children
-end
-
 local function EntityFilter(ent)
 	return (ent:GetClass() == "prop_ragdoll" or ent:GetClass() == "prop_physics" or ent:GetClass() == "prop_effect") or (tobool(GetConVar("ragdollmover_disablefilter"):GetBool()) and not ent:IsWorld())
 end
@@ -610,7 +709,7 @@ function TOOL:LeftClick(tr)
 		local _p
 		if obj then 
 			_p,pl.rgmOffsetAng = WorldToLocal(apart:GetPos(),obj:GetAngles(),apart:GetPos(),grabang)
-			pl.rgmOffsetTable = rgm.GetOffsetTable(self, ent, pl.rgm.Rotate, pl.rgmBoneLocks)
+			pl.rgmOffsetTable = rgm.GetOffsetTable(self, ent, pl.rgm.Rotate, pl.rgmBoneLocks, pl.rgmEntLocks)
 		end
 		if IsValid(ent:GetParent()) and not (ent:GetClass() == "prop_ragdoll") then -- ragdolls don't seem to care about parenting
 			local pang = ent:GetParent():LocalToWorldAngles(ent:GetLocalAngles())
@@ -654,6 +753,7 @@ function TOOL:LeftClick(tr)
 
 		if ent ~= pl.rgm.ParentEntity then
 			local children = rgmFindEntityChildren(pl.rgm.ParentEntity)
+			local physchildren = rgmGetConstrainedEntities(pl.rgm.ParentEntity)
 
 			net.Start("rgmUpdateLists")
 				net.WriteEntity(pl.rgm.Entity)
@@ -661,11 +761,17 @@ function TOOL:LeftClick(tr)
 				for k, v in ipairs(children) do
 					net.WriteEntity(v)
 				end
+
+				net.WriteUInt(#physchildren, 32)
+				for _, ent in ipairs(physchildren) do
+					net.WriteEntity(ent)
+				end
 			net.Send(pl)
 
 			pl.rgmPosLocks = {}
 			pl.rgmAngLocks = {}
 			pl.rgmBoneLocks = {}
+			pl.rgmEntLocks = {}
 		end
 
 		pl:rgmSync()
@@ -819,6 +925,17 @@ if SERVER then
 							obj:EnableMotion(true)
 							obj:Wake()
 						end
+						if ConstrainedAllowed:GetBool() then
+							for lockent, bonetable in pairs(pl.rgmOffsetTable[i].locked) do
+								for j=0, lockent:GetPhysicsObjectCount()-1 do
+									if  bonetable[j].moving then
+										local obj = lockent:GetPhysicsObjectNum(j)
+										obj:EnableMotion(true)
+										obj:Wake()
+									end
+								end
+							end
+						end
 					end
 				end
 			end
@@ -898,6 +1015,29 @@ if SERVER then
 							obj:SetAngles(postable[i].ang)
 							obj:EnableMotion(false)
 							obj:Wake()
+						end
+					end
+
+					if postable[i] and postable[i].locked and ConstrainedAllowed:GetBool() then
+						for lockent, bones in pairs(postable[i].locked) do
+							for j=0,lockent:GetPhysicsObjectCount()-1 do
+								if bones[j] then
+									local obj = lockent:GetPhysicsObjectNum(j)
+									local poslen = bones[j].pos:Length()
+									local anglen = Vector(bones[j].ang.p,bones[j].ang.y,bones[j].ang.r):Length()
+
+									--Temporary solution for INF and NaN decimals crashing the game (Even rounding doesnt fix it)
+									if poslen > 2 and anglen > 2 then
+										obj:EnableMotion(true)
+										obj:Wake()
+										obj:SetPos(bones[j].pos)
+										obj:SetAngles(bones[j].ang)
+										obj:EnableMotion(false)
+										obj:Wake()
+									end
+
+								end
+							end
 						end
 					end
 				end
@@ -1286,10 +1426,10 @@ local function AddHBar(self) -- There is no horizontal scrollbars in gmod, so I 
 	end
 end
 
-local BonePanel, EntPanel
+local BonePanel, EntPanel, ConEntPanel
 local Pos1, Pos2, Pos3, Rot1, Rot2, Rot3, Scale1, Scale2, Scale3
 local Gizmo1, Gizmo2, Gizmo3
-local nodes, entnodes
+local nodes, entnodes, conentnodes
 local HoveredBone, HoveredEnt
 local Col4
 local LockMode, LockTo = false, nil
@@ -1328,10 +1468,18 @@ local function SetBoneNodes(bonepanel, ent, sortedbones)
 					net.WriteUInt(v.id, 32)
 				net.SendToServer()
 			else
-				net.Start("rgmLockToBone")
-					net.WriteUInt(v.id, 8)
-					net.WriteUInt(LockTo, 8)
-				net.SendToServer()
+				if LockMode == 1 then
+					net.Start("rgmLockToBone")
+						net.WriteUInt(v.id, 8)
+						net.WriteUInt(LockTo, 8)
+					net.SendToServer()
+				elseif LockMode == 2 then
+					net.Start("rgmLockConstrained")
+						net.WriteEntity(LockTo) -- In this case it isn't really "LockTo", more of "LockThis" but i was lazy so used same variables. Probably once I get to C++ stuff trying to do the same thing would be baaad
+						net.WriteBool(true)
+						net.WriteUInt(v.id, 8)
+					net.SendToServer()
+				end
 
 				LockMode = false
 				LockTo = nil
@@ -1485,7 +1633,7 @@ local function SetBoneNodes(bonepanel, ent, sortedbones)
 				option = bonemenu:AddOption("#tool.ragdollmover.lockbone", function()
 					if not pl.rgm then return end
 					if not IsValid(pl.rgm.Entity) then return end
-					LockMode = true
+					LockMode = 1
 					LockTo = v.id
 				end)
 				option:SetIcon("icon16/lock.png")
@@ -1676,6 +1824,57 @@ local function RGMBuildEntMenu(parent, children, entpanel)
 	MakeChildrenList(parent, sortchildren)
 end
 
+local function RGMBuildConstrainedEnts(parent, children, entpanel)
+	entpanel:Clear()
+	if not IsValid(parent) then return end
+
+	conentnodes = {}
+
+	conentnodes[parent] = entpanel:AddNode(GetModelName(parent))
+	conentnodes[parent]:SetIcon("icon16/brick.png")
+	conentnodes[parent]:SetExpanded(true)
+
+	conentnodes[parent].Label.OnCursorEntered = function()
+		HoveredEnt = parent
+	end
+
+	conentnodes[parent].Label.OnCursorExited = function()
+		HoveredEnt = nil
+	end
+
+	for _, ent in ipairs(children) do
+		conentnodes[ent] = conentnodes[parent]:AddNode(GetModelName(ent))
+		conentnodes[ent]:SetIcon("icon16/brick_link.png")
+		conentnodes[ent].Locked = false
+
+		conentnodes[ent].DoClick = function()
+			if conentnodes[ent].Locked then
+				net.Start("rgmUnlockConstrained")
+					net.WriteEntity(ent)
+				net.SendToServer()
+			else
+				if parent:GetClass() ~= "prop_ragdoll" then
+					net.Start("rgmLockConstrained")
+						net.WriteEntity(ent)
+						net.WriteBool(false)
+					net.SendToServer()
+				else
+					LockMode = 2
+					LockTo = ent
+				end
+			end
+		end
+
+		conentnodes[ent].Label.OnCursorEntered = function()
+			HoveredEnt = ent
+		end
+
+		conentnodes[ent].Label.OnCursorExited = function()
+			HoveredEnt = nil
+		end
+	end
+end
+
 local function RGMMakeBoneButtonPanel(cat, cpanel)
 	local parentpanel = vgui.Create("Panel", cat)
 	parentpanel:SetSize(100, 30)
@@ -1718,14 +1917,18 @@ local function rgmDoNotification(message)
 
 	local MessageTable = {}
 
-	MessageTable[RGM_NOTIFY_BONELOCK_FAILED] = function()
-		notification.AddLegacy("#tool.ragdollmover.lockboneerror", NOTIFY_ERROR, 5)
-		surface.PlaySound("buttons/button10.wav")
-	end
-
-	MessageTable[RGM_NOTIFY_BONELOCK_SUCCESS] = function()
-		notification.AddLegacy("#tool.ragdollmover.lockbonesuccess", NOTIFY_GENERIC, 5)
-		surface.PlaySound("buttons/button14.wav")
+	for key, data in pairs(RGM_NOTIFY) do
+		if not data.iserror then
+			MessageTable[data.id] = function()
+				notification.AddLegacy("#tool.ragdollmover.message" .. data.id, NOTIFY_GENERIC, 5)
+				surface.PlaySound("buttons/button14.wav")
+			end
+		else
+			MessageTable[data.id] = function()
+				notification.AddLegacy("#tool.ragdollmover.message" .. data.id, NOTIFY_ERROR, 5)
+				surface.PlaySound("buttons/button10.wav")
+			end
+		end
 	end
 
 	MessageTable[message]()
@@ -1789,20 +1992,34 @@ function TOOL.BuildCPanel(CPanel)
 
 		CCheckBox(Col4,"#tool.ragdollmover.scalechildren","ragdollmover_scalechildren")
 
-		local colbones = CCol(Col4, "#tool.ragdollmover.bonelist")
-			RGMMakeBoneButtonPanel(colbones, CPanel)
-			BonePanel = vgui.Create("DTree", colbones)
+		local ColBones = CCol(Col4, "#tool.ragdollmover.bonelist")
+			RGMMakeBoneButtonPanel(ColBones, CPanel)
+			BonePanel = vgui.Create("DTree", ColBones)
 			BonePanel:SetTall(600)
 			AddHBar(BonePanel)
-			colbones:AddItem(BonePanel)
-			colbones:AddItem(BonePanel.HBar)
+			ColBones:AddItem(BonePanel)
+			ColBones:AddItem(BonePanel.HBar)
 
-	local colents = CCol(CPanel, "#tool.ragdollmover.entchildren")
+	local ColEnts = CCol(CPanel, "#tool.ragdollmover.entchildren")
 
-		EntPanel = vgui.Create("DTree", colents)
+		EntPanel = vgui.Create("DTree", ColEnts)
 		EntPanel:SetTall(150)
+		AddHBar(EntPanel)
 		EntPanel:SetShowIcons(false)
-		colents:AddItem(EntPanel)
+		ColEnts:AddItem(EntPanel)
+		ColEnts:AddItem(EntPanel.HBar)
+	
+	local ColConsEnts = CCol(CPanel, "#tool.ragdollmover.conents")
+
+		ConEntPanel = vgui.Create("DTree", ColConsEnts)
+		ConEntPanel:SetTall(150)
+		ColConsEnts:AddItem(ConEntPanel)
+		local ConstrainedHelp = vgui.Create("DLabel", ColConsEnts)
+		ConstrainedHelp:SetWrap(true)
+		ConstrainedHelp:SetAutoStretchVertical(true)
+		ConstrainedHelp:SetText("#tool.ragdollmover.conentshelp")
+		ConstrainedHelp:SetDark(true)
+		ColConsEnts:AddItem(ConstrainedHelp)
 
 end
 
@@ -1832,11 +2049,15 @@ end)
 
 net.Receive("rgmUpdateLists", function(len)
 	local ent = net.ReadEntity()
-	local children = {}
+	local children, physchildren = {}, {}
 	local pl = LocalPlayer()
 
 	for i = 1, net.ReadUInt(32) do
-		table.insert(children, net.ReadEntity())
+		children[i] = net.ReadEntity()
+	end
+
+	for i = 1, net.ReadUInt(32) do
+		physchildren[i] = net.ReadEntity()
 	end
 
 	if IsValid(BonePanel) then
@@ -1844,6 +2065,9 @@ net.Receive("rgmUpdateLists", function(len)
 	end
 	if IsValid(EntPanel) then
 		RGMBuildEntMenu(ent, children, EntPanel)
+	end
+	if IsValid(ConEntPanel) then
+		RGMBuildConstrainedEnts(ent, physchildren, ConEntPanel)
 	end
 end)
 
@@ -1855,11 +2079,19 @@ net.Receive("rgmUpdateGizmo", function(len)
 	Gizmo3:SetValue(vector.z)
 end)
 
-net.Receive("rgmUpdateBones", function(len)
+net.Receive("rgmUpdateEntInfo", function(len)
 	local ent = net.ReadEntity()
+	local physchildren = {}
+
+	for i = 1, net.ReadUInt(32) do
+		physchildren[i] = net.ReadEntity()
+	end
 
 	if IsValid(BonePanel) then
 		RGMBuildBoneMenu(ent, BonePanel)
+	end
+	if IsValid(ConEntPanel) then
+		RGMBuildConstrainedEnts(ent, physchildren, ConEntPanel)
 	end
 end)
 
@@ -1932,7 +2164,7 @@ net.Receive("rgmLockToBoneResponse", function(len)
 		nodes[lockbone]:SetIcon("icon16/lock_go.png")
 		nodes[lockbone].Label:SetToolTip("#tool.ragdollmover.lockedbonetobone")
 
-		rgmDoNotification(RGM_NOTIFY_BONELOCK_SUCCESS)
+		rgmDoNotification(RGM_NOTIFY.BONELOCK_SUCCESS.id)
 	end
 end)
 
@@ -1943,6 +2175,21 @@ net.Receive("rgmUnlockToBoneResponse", function(len)
 		nodes[unlockbone].bonelock = false
 		nodes[unlockbone]:SetIcon("icon16/brick.png")
 		nodes[unlockbone].Label:SetToolTip("#tool.ragdollmover.physbone")
+	end
+end)
+
+net.Receive("rgmLockConstrainedResponse", function(len)
+	local lock = net.ReadBool()
+	local lockent = net.ReadEntity()
+
+	if conentnodes[lockent] then
+		conentnodes[lockent].Locked = lock
+		if lock then
+			conentnodes[lockent]:SetIcon("icon16/lock.png")
+			rgmDoNotification(RGM_NOTIFY.ENTLOCK_SUCCESS.id)
+		else
+			conentnodes[lockent]:SetIcon("icon16/brick_link.png")
+		end
 	end
 end)
 
@@ -1996,7 +2243,7 @@ net.Receive("rgmAskForNodeUpdatePhysicsResponse", function(len)
 end)
 
 net.Receive("rgmNotification", function(len)
-	local message = net.ReadUInt(2)
+	local message = net.ReadUInt(4)
 
 	rgmDoNotification(message)
 end)

@@ -232,7 +232,7 @@ local DefIKnames = {
 }
 
 --Get bone offsets from parent bones, and update IK data.
-function GetOffsetTable(tool,ent,rotate, bonelocks)
+function GetOffsetTable(tool,ent,rotate, bonelocks, entlocks)
 	local RTable = {}
 	if not ent.rgmIKChains then
 		CreateDefaultIKs(tool,ent)
@@ -307,6 +307,27 @@ function GetOffsetTable(tool,ent,rotate, bonelocks)
 		ent.rgmIKChains[k].thighlength = obj1:GetPos():Distance(obj2:GetPos())
 		ent.rgmIKChains[k].shinlength = obj2:GetPos():Distance(obj3:GetPos())
 
+	end
+
+	for lockent, pb in pairs(entlocks) do -- getting offsets from physical entities that are locked to our bones
+		if not RTable[pb].locked then
+			RTable[pb].locked = {}
+		end
+
+		local locktable = {}
+
+		for i=0, lockent:GetPhysicsObjectCount() - 1 do
+			local obj1 = lockent:GetPhysicsObjectNum(i)
+			local obj2 = ent:GetPhysicsObjectNum(pb)
+			local pos1,ang1 = obj1:GetPos(),obj1:GetAngles()
+			local pos2,ang2 = obj2:GetPos(),obj2:GetAngles()
+			local pos3,ang3 = WorldToLocal(pos1,ang1,pos2,ang2)
+			local mov = obj1:IsMoveable()
+
+			locktable[i] = {pos = pos3, ang = ang3, moving = mov,parent = -1}
+		end
+
+		RTable[pb].locked[lockent] = locktable
 	end
 
 	return RTable
@@ -385,6 +406,25 @@ local function SetBoneOffsets(tool, ent,ostable,sbone, rlocks, plocks)
 			RecursiveSetParent(ostable, sbone, rlocks, plocks, RTable, pb)
 		end
 	end
+
+	for i=0,ent:GetPhysicsObjectCount()-1 do
+		if not ostable[i].locked then continue end
+
+		for lockent, bones in pairs(ostable[i].locked) do
+			if not RTable[i].locked then
+				RTable[i].locked = {}
+			end
+			RTable[i].locked[lockent] = {}
+			RTable[i].locked[lockent][-1] = {pos = RTable[i].pos, ang = RTable[i].ang}
+
+			for j=0,lockent:GetPhysicsObjectCount()-1 do
+				if bones[j] and not RTable[i].locked[lockent][j] then
+					RecursiveSetParent(bones, {}, {}, {}, RTable[i].locked[lockent],j)
+				end
+			end
+		end
+	end
+
 	return RTable
 end
 
