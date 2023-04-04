@@ -414,7 +414,7 @@ end)
 
 net.Receive("rgmResetGizmo", function(len, pl)
 	if not pl.rgm then return end
-	pl.rgm.GizmoOffset = Vector(0,0,0)
+	pl.rgm.GizmoOffset = vector_origin
 
 	net.Start("rgmUpdateGizmo")
 	net.WriteVector(pl.rgm.GizmoOffset)
@@ -439,9 +439,9 @@ net.Receive("rgmSetGizmoToBone", function(len, pl)
 	end
 
 	if axis.localizedoffset then
-		vector = WorldToLocal(vector, Angle(0,0,0), ent:GetPos(), ent:GetAngles())
+		vector = WorldToLocal(vector, angle_zero, ent:GetPos(), ent:GetAngles())
 	else
-		vector = WorldToLocal(vector, Angle(0,0,0), ent:GetPos(), Angle(0,0,0))
+		vector = WorldToLocal(vector, angle_zero, ent:GetPos(), angle_zero)
 	end
 
 	pl.rgm.GizmoOffset = vector
@@ -466,13 +466,13 @@ net.Receive("rgmResetAll", function(len, pl)
 
 	if net.ReadBool() then
 		RecursiveBoneFunc(bone, ent, function(bon)
-			ent:ManipulateBonePosition(bon, Vector(0, 0, 0))
-			ent:ManipulateBoneAngles(bon, Angle(0, 0, 0))
+			ent:ManipulateBonePosition(bon, vector_origin)
+			ent:ManipulateBoneAngles(bon, angle_zero)
 			ent:ManipulateBoneScale(bon, Vector(1, 1, 1))
 		end)
 	else
-		ent:ManipulateBonePosition(bone, Vector(0, 0, 0))
-		ent:ManipulateBoneAngles(bone, Angle(0, 0, 0))
+		ent:ManipulateBonePosition(bone, vector_origin)
+		ent:ManipulateBoneAngles(bone, angle_zero)
 		ent:ManipulateBoneScale(bone, Vector(1, 1, 1))
 	end
 
@@ -485,9 +485,9 @@ net.Receive("rgmResetPos", function(len, pl)
 	local ent = pl.rgm.Entity
 
 	if net.ReadBool() then
-		RecursiveBoneFunc(net.ReadUInt(8), ent, function(bone, param) ent:ManipulateBonePosition(bone, param) end, Vector(0, 0, 0))
+		RecursiveBoneFunc(net.ReadUInt(8), ent, function(bone, param) ent:ManipulateBonePosition(bone, param) end, vector_origin)
 	else
-		ent:ManipulateBonePosition(net.ReadUInt(8), Vector(0, 0, 0))
+		ent:ManipulateBonePosition(net.ReadUInt(8), vector_origin)
 	end
 
 	net.Start("rgmUpdateSliders")
@@ -499,9 +499,9 @@ net.Receive("rgmResetAng", function(len, pl)
 	local ent = pl.rgm.Entity
 
 	if net.ReadBool() then
-		RecursiveBoneFunc(net.ReadUInt(8), ent, function(bone, param) ent:ManipulateBoneAngles(bone, param) end, Angle(0, 0, 0))
+		RecursiveBoneFunc(net.ReadUInt(8), ent, function(bone, param) ent:ManipulateBoneAngles(bone, param) end, angle_zero)
 	else
-		ent:ManipulateBoneAngles(net.ReadUInt(8), Angle(0, 0, 0))
+		ent:ManipulateBoneAngles(net.ReadUInt(8), angle_zero)
 	end
 
 	net.Start("rgmUpdateSliders")
@@ -527,9 +527,9 @@ net.Receive("rgmScaleZero", function(len, pl)
 	local ent = pl.rgm.Entity
 
 	if net.ReadBool() then
-		RecursiveBoneFunc(net.ReadUInt(8), ent, function(bone, param) ent:ManipulateBoneScale(bone, param) end, Vector(0, 0, 0))
+		RecursiveBoneFunc(net.ReadUInt(8), ent, function(bone, param) ent:ManipulateBoneScale(bone, param) end, vector_origin)
 	else
-		ent:ManipulateBoneScale(net.ReadUInt(8), Vector(0, 0, 0))
+		ent:ManipulateBoneScale(net.ReadUInt(8), vector_origin)
 	end
 
 	net.Start("rgmUpdateSliders")
@@ -639,7 +639,7 @@ function TOOL:LeftClick(tr)
 		if SERVER then
 			local pl = self:GetOwner()
 			local axis, ent = pl.rgm.Axis, pl.rgm.Entity
-			local offset = Vector(0,0,0)
+			local offset = vector_origin
 
 			if not IsValid(axis) or not IsValid(ent) then self:SetOperation(0) return true end
 			offset = tr.HitPos
@@ -651,9 +651,9 @@ function TOOL:LeftClick(tr)
 			end
 
 			if axis.localizedoffset then
-				offset = WorldToLocal(offset, Angle(0,0,0), ent:GetPos(), ent:GetAngles())
+				offset = WorldToLocal(offset, angle_zero, ent:GetPos(), ent:GetAngles())
 			else
-				offset = WorldToLocal(offset, Angle(0,0,0), ent:GetPos(), Angle(0,0,0))
+				offset = WorldToLocal(offset, angle_zero, ent:GetPos(), angle_zero)
 			end
 
 			pl.rgm.GizmoOffset = offset
@@ -716,7 +716,7 @@ function TOOL:LeftClick(tr)
 			_, pl.rgmOffsetAng = WorldToLocal(apart:GetPos(),pang,apart:GetPos(),grabang)
 		end
 
-		pl.rgm.StartAngle = WorldToLocal(collision.hitpos, Angle(0,0,0), apart:GetPos(), apart:GetAngles())
+		pl.rgm.StartAngle = WorldToLocal(collision.hitpos, angle_zero, apart:GetPos(), apart:GetAngles())
 		if ent:GetClass() ~= "prop_ragdoll" and pl.rgm.IsPhysBone then
 			pl.rgm.Bone = 0
 		end
@@ -794,7 +794,7 @@ function TOOL:RightClick(tr)
 			local pl = self:GetOwner()
 			local axis = pl.rgm.Axis
 			local ent, rgment = tr.Entity, pl.rgm.Entity
-			local offset = Vector(0,0,0)
+			local offset = vector_origin
 
 			if not IsValid(axis) or not IsValid(rgment) then self:SetOperation(0) return true end
 
@@ -813,9 +813,9 @@ function TOOL:RightClick(tr)
 			end
 
 			if axis.localizedoffset then
-				offset = WorldToLocal(offset, Angle(0,0,0), rgment:GetPos(), rgment:GetAngles())
+				offset = WorldToLocal(offset, angle_zero, rgment:GetPos(), rgment:GetAngles())
 			else
-				offset = WorldToLocal(offset, Angle(0,0,0), rgment:GetPos(), Angle(0,0,0))
+				offset = WorldToLocal(offset, angle_zero, rgment:GetPos(), angle_zero)
 			end
 
 			pl.rgm.GizmoOffset = offset
@@ -2258,6 +2258,8 @@ local material = CreateMaterial("rgmGizmoMaterial", "UnlitGeneric", {
 	["$nocull"] = 		1,
 })
 
+local VECTOR_FRONT = Vector(1,0,0)
+
 function TOOL:DrawHUD()
 
 	local pl = LocalPlayer()
@@ -2285,7 +2287,7 @@ function TOOL:DrawHUD()
 				local fwd = (intersect-axis:GetPos())
 				fwd:Normalize()
 				axis:DrawDirectionLine(fwd,scale,false)
-				local dirnorm = pl.rgm.DirNorm or Vector(1,0,0)
+				local dirnorm = pl.rgm.DirNorm or VECTOR_FRONT
 				axis:DrawDirectionLine(dirnorm,scale,true)
 				axis:DrawAngleText(moveaxis, intersect, pl.rgm.StartAngle)
 			end

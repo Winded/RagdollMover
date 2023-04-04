@@ -10,6 +10,10 @@ local TYPE_ARROW = 1
 local TYPE_ARROWSIDE = 2
 local TYPE_DISC = 3
 
+local VECTOR_FRONT = Vector(1,0,0)
+local ANGLE_DISC = Angle(0,90,0)
+local ANGLE_ARROW_OFFSET = Angle(0,90,90)
+
 util.AddNetworkString("rgmAxisRequest")
 util.AddNetworkString("rgmAxis")
 
@@ -296,7 +300,7 @@ function ENT:Think()
 
 	if not pl.rgm.Moving or not rotate then
 		if offsetlocal then 
-			self:SetPos(LocalToWorld(offset, Angle(0, 0, 0), pos, ang))
+			self:SetPos(LocalToWorld(offset, angle_zero, pos, ang))
 		else
 			self:SetPos(pos + offset)
 		end
@@ -309,18 +313,18 @@ function ENT:Think()
 
 	if not pl.rgm.Moving then -- Prevent whole thing from rotating when we do localized rotation - needed for proper angle reading
 		if localstate or scale or not pl.rgm.IsPhysBone then -- Non phys bones don't go well with world coordinates. Well, I didn't make them to behave with those
-			self:SetAngles(ang or Angle(0,0,0))
+			self:SetAngles(ang or angle_zero)
 			if (ent:GetClass() == "prop_ragdoll" or ent:GetClass() == "prop_dynamic" or ent:GetClass() == "ent_bonemerged") and (not pl.rgm.IsPhysBone) then
 				self.DiscP:SetLocalAngles(Angle(0, 90 + ent:GetManipulateBoneAngles(bone).y, 0)) -- Pitch follows Yaw angles
 				self.DiscR:SetLocalAngles(Angle(0 + ent:GetManipulateBoneAngles(bone).x, 0 + ent:GetManipulateBoneAngles(bone).y, 0)) -- Roll follows Pitch and Yaw angles
 			else
-				self.DiscP:SetLocalAngles(Angle(0, 90, 0))
-				self.DiscR:SetLocalAngles(Angle(0, 0, 0))
+				self.DiscP:SetLocalAngles(ANGLE_DISC)
+				self.DiscR:SetLocalAngles(angle_zero)
 			end
 		else
-			self:SetAngles(Angle(0,0,0))
-			self.DiscP:SetLocalAngles(Angle(0, 90, 0))
-			self.DiscR:SetLocalAngles(Angle(0, 0, 0))
+			self:SetAngles(angle_zero)
+			self.DiscP:SetLocalAngles(ANGLE_DISC)
+			self.DiscR:SetLocalAngles(angle_zero)
 		end
 		self.LocalAngles = ang
 		self.BonePos = pos
@@ -334,7 +338,7 @@ function ENT:Think()
 
 	pos, poseye = self:WorldToLocal(pos), self:WorldToLocal(poseye)
 	local xangle, yangle = (Vector(pos.y, pos.z, 0) - Vector(poseye.y, poseye.z, 0)):Angle(), (Vector(pos.x, pos.z, 0) - Vector(poseye.x, poseye.z, 0)):Angle()
-	local XAng, YAng, ZAng = Angle(0, 0, xangle.y + 90) + Vector(1,0,0):Angle(), Angle(0, 90, 90) - Angle(0,0,yangle.y), Angle(0, ang.y, 0) + Vector(0,0,1):Angle()
+	local XAng, YAng, ZAng = Angle(0, 0, xangle.y + 90) + VECTOR_FRONT:Angle(), ANGLE_ARROW_OFFSET - Angle(0,0,yangle.y), Angle(0, ang.y, 0) + vector_up:Angle()
 	self.ArrowX:SetLocalAngles(XAng)
 	self.ScaleX:SetLocalAngles(XAng)
 	self.ArrowY:SetLocalAngles(YAng)

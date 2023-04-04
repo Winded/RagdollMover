@@ -1,9 +1,12 @@
 
 include("shared.lua")
 
+local VECTOR_RED = Vector(255,0,0)
+local ANG = Angle(0,0,11.25)
+
 function ENT:GetLinePositions(width)
 	local RTable = {}
-	local ang = Angle(0,0,11.25)
+	local ang = ANG
 	local startposmin = Vector(0,0,1 - 0.1*width)
 	local startposmax = Vector(0,0,1 + 0.1*width)
 	for i=1,32 do
@@ -20,6 +23,8 @@ function ENT:GetLinePositions(width)
 	return RTable
 end
 
+local COLOR_YELLOW = Color(255,255,0,255)
+
 function ENT:DrawLines(yellow,scale,width)
 	local ToScreen = {}
 	local linetable = self:GetLinePositions(width)
@@ -30,7 +35,7 @@ function ENT:DrawLines(yellow,scale,width)
 	local borderpos = largedisc:GetPos()
 	local color = self:GetColor()
 	color = Color(color.r,color.g,color.b,color.a)
-	local color2 = self:GetNWVector("color2",Vector(255,0,0))
+	local color2 = self:GetNWVector("color2",VECTOR_RED)
 	color2 = Color(color2.x,color2.y,color2.z,255)
 	local moving = LocalPlayer().rgm.Moving or false
 
@@ -38,7 +43,7 @@ function ENT:DrawLines(yellow,scale,width)
 		local points = self:PointsToWorld(v, scale)
 		local col = color
 		if yellow then
-			col = Color(255,255,0,255)
+			col = COLOR_YELLOW
 		end
 		if GetConVar("ragdollmover_fulldisc"):GetBool() or (moving or
 		(points[1]:DistToSqr(eyepos) <= borderpos:DistToSqr(eyepos) and points[2]:DistToSqr(eyepos) <= borderpos:DistToSqr(eyepos) and 

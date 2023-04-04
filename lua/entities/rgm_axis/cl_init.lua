@@ -1,6 +1,8 @@
 
 include("shared.lua")
 
+local COLOR_RGMGREEN = Color(0,200,0,255)
+
 local TransTable = {
 	"ArrowX", "ArrowY", "ArrowZ",
 	"ArrowXY", "ArrowXZ", "ArrowYZ",
@@ -86,9 +88,9 @@ function ENT:DrawDirectionLine(norm,scale,ghost)
 end
 
 function ENT:DrawAngleText(axis, hitpos, startAngle)
-	local pos = WorldToLocal(hitpos, Angle(0,0,0), axis:GetPos(), axis:GetAngles())
+	local pos = WorldToLocal(hitpos, angle_zero, axis:GetPos(), axis:GetAngles())
 	local overnine
-	pos = WorldToLocal(pos, pos:Angle(), Vector(0, 0, 0), startAngle:Angle())
+	pos = WorldToLocal(pos, pos:Angle(), vector_origin, startAngle:Angle())
 
 	local localized = Vector(pos.x, pos.z, 0):Angle()
 
@@ -100,7 +102,7 @@ function ENT:DrawAngleText(axis, hitpos, startAngle)
 
 	local textAngle = math.abs(math.Round( (overnine - localized.y) * 100 ) / 100)
 	local textpos = hitpos:ToScreen()
-	draw.SimpleText(textAngle,"HudHintTextLarge",textpos.x + 5,textpos.y,Color(0,200,0,255),TEXT_ALIGN_LEFT,TEXT_ALIGN_BOTTOM)
+	draw.SimpleText(textAngle,"HudHintTextLarge",textpos.x + 5,textpos.y,COLOR_RGMGREEN,TEXT_ALIGN_LEFT,TEXT_ALIGN_BOTTOM)
 end
 
 function ENT:Draw()

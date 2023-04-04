@@ -479,9 +479,9 @@ function ProcessIK(ent,IKTable,sbone,RT,footlock)
 
 	if IKTable.ikhipparent then
 		obj = RT[IKTable.ikhipparent]
-		hpos,hang = LocalToWorld(hippos,Angle(0,0,0),obj.pos,obj.ang)
+		hpos,hang = LocalToWorld(hippos,angle_zero,obj.pos,obj.ang)
 	else
-		hpos,hang = LocalToWorld(hippos,Angle(0,0,0),Vector(0,0,0), Angle(0,0,0))
+		hpos,hang = LocalToWorld(hippos,angle_zero,vector_origin, angle_zero)
 	end
 	local HipPos = hpos*1
 
@@ -539,8 +539,8 @@ function SetAngleOffset(ent,pos,ang,ang2,offang)
 	local _p,_a = WorldToLocal(pos,ang2,pos,ang)
 	_a.p = 0
 	_a.y = 0
-	_p,_a = LocalToWorld(Vector(0,0,0),_a,pos,ang)
-	_p,_a = LocalToWorld(Vector(0,0,0),offang,pos,_a)
+	_p,_a = LocalToWorld(vector_origin,_a,pos,ang)
+	_p,_a = LocalToWorld(vector_origin,offang,pos,_a)
 	return _a
 end
 
@@ -585,6 +585,8 @@ function IsIKBone(tool,ent,bone)
 	return false
 end
 
+local COLOR_RGMGREEN = Color(0,200,0,255)
+
 function DrawBoneName(ent,bone)
 	local name = ent:GetBoneName(bone)
 	local _pos = ent:GetBonePosition(bone)
@@ -593,8 +595,8 @@ function DrawBoneName(ent,bone)
 	end
 	_pos = _pos:ToScreen()
 	local textpos = {x = _pos.x+5,y = _pos.y-5}
-	surface.DrawCircle(_pos.x,_pos.y,3.5,Color(0,200,0,255))
-	draw.SimpleText(name,"Default",textpos.x,textpos.y,Color(0,200,0,255),TEXT_ALIGN_LEFT,TEXT_ALIGN_BOTTOM)
+	surface.DrawCircle(_pos.x,_pos.y,3.5,COLOR_RGMGREEN)
+	draw.SimpleText(name,"Default",textpos.x,textpos.y,COLOR_RGMGREEN,TEXT_ALIGN_LEFT,TEXT_ALIGN_BOTTOM)
 end
 
 function DrawEntName(ent)
@@ -613,8 +615,8 @@ function DrawEntName(ent)
 
 	pos = pos:ToScreen()
 	local textpos = { x = pos.x+5, y = pos.y-5 }
-	surface.DrawCircle(pos.x, pos.y, 3.5, Color(0, 200, 0, 255))
-	draw.SimpleText(name,"Default",textpos.x,textpos.y,Color(0,200,0,255),TEXT_ALIGN_LEFT,TEXT_ALIGN_BOTTOM)
+	surface.DrawCircle(pos.x, pos.y, 3.5, COLOR_RGMGREEN)
+	draw.SimpleText(name,"Default",textpos.x,textpos.y,COLOR_RGMGREEN,TEXT_ALIGN_LEFT,TEXT_ALIGN_BOTTOM)
 end
 
 function DrawBoneConnections(ent, bone)
@@ -652,7 +654,7 @@ local function DrawRecursiveBones(ent, bone)
 		surface.SetDrawColor( 255, 255, 255, 255 )
 		surface.DrawLine(mainpos.x, mainpos.y, pos.x, pos.y)
 		DrawRecursiveBones(ent, boneid)
-		surface.DrawCircle(pos.x, pos.y, 2.5, Color(0, 200, 0, 255))
+		surface.DrawCircle(pos.x, pos.y, 2.5, COLOR_RGMGREEN)
 	end
 end
 
@@ -670,7 +672,7 @@ function DrawSkeleton(ent)
 			DrawRecursiveBones(ent, v)
 
 			pos = pos:ToScreen()
-			surface.DrawCircle(pos.x, pos.y, 2.5, Color(0, 200, 0, 255))
+			surface.DrawCircle(pos.x, pos.y, 2.5, COLOR_RGMGREEN)
 		end
 	end
 

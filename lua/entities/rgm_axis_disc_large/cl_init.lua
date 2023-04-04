@@ -1,19 +1,23 @@
 
 include("shared.lua")
 
+local VECTOR_RED = Vector(255,0,0)
+
+local COLOR_YELLOW = Color(255,255,0,255)
+
 function ENT:DrawLines(yellow,scale,width)
 	-- self.BaseClass.DrawLines(self,yellow,scale*1.25)
 	local ToScreen = {}
 	local linetable = self:GetLinePositions(width)
 	local color = self:GetColor()
 	color = Color(color.r,color.g,color.b,color.a)
-	local color2 = self:GetNWVector("color2",Vector(255,0,0))
+	local color2 = self:GetNWVector("color2",VECTOR_RED)
 	color2 = Color(color2.x,color2.y,color2.z,255)
 	local moving = LocalPlayer():GetNWBool("ragdollmover_moving",false)
 	for i,v in ipairs(linetable) do
 		local col = color
 		if yellow then
-			col = Color(255,255,0,255)
+			col = COLOR_YELLOW
 		end
 		local points = self:PointsToWorld(v, scale*1.25)
 		table.insert(ToScreen,{points,col})

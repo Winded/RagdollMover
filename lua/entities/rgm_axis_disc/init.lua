@@ -3,6 +3,8 @@ include("shared.lua")
 AddCSLuaFile("cl_init.lua")
 AddCSLuaFile("shared.lua")
 
+local VECTOR_FRONT, VECTOR_SIDE = Vector(1,0,0), Vector(0,1,0)
+
 local function ConvertVector(vec, axistype)
 	local rotationtable, result
 
@@ -25,9 +27,9 @@ function ENT:ProcessMovement(offpos,offang,eyepos,eyeang,ent,bone,ppos,pnorm, mo
 	local _p, _a
 	local pl = self:GetParent().Owner
 	local axistable = {
-		(self:GetParent():LocalToWorld(Vector(0,1,0)) - self:GetPos()):Angle(),
-		(self:GetParent():LocalToWorld(Vector(0,0,1)) - self:GetPos()):Angle(),
-		(self:GetParent():LocalToWorld(Vector(1,0,0)) - self:GetPos()):Angle(),
+		(self:GetParent():LocalToWorld(VECTOR_SIDE) - self:GetPos()):Angle(),
+		(self:GetParent():LocalToWorld(vector_up) - self:GetPos()):Angle(),
+		(self:GetParent():LocalToWorld(VECTOR_FRONT) - self:GetPos()):Angle(),
 		(self:GetPos()-pl:EyePos()):Angle()
 	}
 
@@ -36,7 +38,7 @@ function ENT:ProcessMovement(offpos,offang,eyepos,eyeang,ent,bone,ppos,pnorm, mo
 		local axis = self:GetParent()
 		local offset = axis.Owner.rgm.GizmoOffset
 		if axis.localizedoffset and not axis.relativerotate then
-			offset = LocalToWorld(offset, Angle(0,0,0), axis:GetPos(), axis.LocalAngles)
+			offset = LocalToWorld(offset, angle_zero, axis:GetPos(), axis.LocalAngles)
 			offset = offset - axis:GetPos()
 		end
 
@@ -44,11 +46,11 @@ function ENT:ProcessMovement(offpos,offang,eyepos,eyeang,ent,bone,ppos,pnorm, mo
 		local pos = self:GetPos()
 		local ang = self:LocalToWorldAngles(Angle(0,0,localized.y))
 		if axis.relativerotate then
-			offset = WorldToLocal(axis.BonePos, Angle(0, 0, 0), axis:GetPos(), axis.LocalAngles)
-			_p,_a = LocalToWorld(Vector(0,0,0),offang,pos,ang)
+			offset = WorldToLocal(axis.BonePos, angle_zero, axis:GetPos(), axis.LocalAngles)
+			_p,_a = LocalToWorld(vector_origin,offang,pos,ang)
 			_p = LocalToWorld(offset, _a, pos, _a)
 		else
-			_p,_a = LocalToWorld(Vector(0,0,0),offang,pos,ang)
+			_p,_a = LocalToWorld(vector_origin,offang,pos,ang)
 			_p = pos - offset
 		end
 	elseif movetype == 2 then
@@ -56,10 +58,10 @@ function ENT:ProcessMovement(offpos,offang,eyepos,eyeang,ent,bone,ppos,pnorm, mo
 		axisangle = axistable[self.axistype]
 
 		local _, boneang = ent:GetBonePosition(bone)
-		local startlocal = LocalToWorld(startAngle, startAngle:Angle(), Vector(0,0,0), axisangle) -- first we get our vectors into world coordinates, relative to the axis angles
-		localized = LocalToWorld(localized, localized:Angle(), Vector(0,0,0), axisangle)
-		localized = WorldToLocal(localized, localized:Angle(), Vector(0,0,0), boneang) -- then convert that vector to the angles of the bone
-		startlocal = WorldToLocal(startlocal, startlocal:Angle(), Vector(0,0,0), boneang)
+		local startlocal = LocalToWorld(startAngle, startAngle:Angle(), vector_origin, axisangle) -- first we get our vectors into world coordinates, relative to the axis angles
+		localized = LocalToWorld(localized, localized:Angle(), vector_origin, axisangle)
+		localized = WorldToLocal(localized, localized:Angle(), vector_origin, boneang) -- then convert that vector to the angles of the bone
+		startlocal = WorldToLocal(startlocal, startlocal:Angle(), vector_origin, boneang)
 
 		localized = ConvertVector(localized, self.axistype)
 		startlocal = ConvertVector(startlocal, self.axistype)
@@ -80,7 +82,7 @@ function ENT:ProcessMovement(offpos,offang,eyepos,eyeang,ent,bone,ppos,pnorm, mo
 		local axis = self:GetParent()
 		local offset = axis.Owner.rgm.GizmoOffset
 		if axis.localizedoffset and not axis.relativerotate then
-			offset = LocalToWorld(offset, Angle(0,0,0), axis:GetPos(), axis.LocalAngles)
+			offset = LocalToWorld(offset, angle_zero, axis:GetPos(), axis.LocalAngles)
 			offset = offset - axis:GetPos()
 		end
 
@@ -88,13 +90,13 @@ function ENT:ProcessMovement(offpos,offang,eyepos,eyeang,ent,bone,ppos,pnorm, mo
 		local pos = self:GetPos()
 		local ang = self:LocalToWorldAngles(Angle(0,0,localized.y))
 		if axis.relativerotate then
-			offset = WorldToLocal(axis.BonePos, Angle(0, 0, 0), axis:GetPos(), axis.LocalAngles)
-			_p,_a = LocalToWorld(Vector(0,0,0),offang,pos,ang)
+			offset = WorldToLocal(axis.BonePos, angle_zero, axis:GetPos(), axis.LocalAngles)
+			_p,_a = LocalToWorld(vector_origin,offang,pos,ang)
 			_p = LocalToWorld(offset, _a, pos, _a)
 			_a = ent:GetParent():WorldToLocalAngles(_a)
 			_p = ent:GetParent():WorldToLocal(_p)
 		else
-			_p,_a = LocalToWorld(Vector(0,0,0),offang,pos,ang)
+			_p,_a = LocalToWorld(vector_origin,offang,pos,ang)
 			_p = pos - offset
 			_a = ent:GetParent():WorldToLocalAngles(_a)
 			_p = ent:GetParent():WorldToLocal(_p)

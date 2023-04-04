@@ -8,7 +8,7 @@ function ENT:ProcessMovement(offpos,offang,eyepos,eyeang,ent,bone,ppos,pnorm, mo
 	local axis = self:GetParent()
 	local offset = axis.Owner.rgm.GizmoOffset
 	if axis.localizedoffset then
-		offset = LocalToWorld(offset, Angle(0, 0, 0), axis:GetPos(), axis.LocalAngles)
+		offset = LocalToWorld(offset, angle_zero, axis:GetPos(), axis.LocalAngles)
 		offset =  offset - axis:GetPos()
 	end
 	local pos, ang
@@ -17,7 +17,7 @@ function ENT:ProcessMovement(offpos,offang,eyepos,eyeang,ent,bone,ppos,pnorm, mo
 	if movetype == 1 then
 		local obj = ent:GetPhysicsObjectNum(bone)
 		ang = obj:GetAngles()
-		pos = LocalToWorld(offpos,Angle(0,0,0),intersect - offset,self:GetAngles())
+		pos = LocalToWorld(offpos,angle_zero,intersect - offset,self:GetAngles())
 	elseif movetype == 2 then
 		local localized, startmove, finalpos, boneang
 		if ent:GetBoneParent(bone) ~= -1 then
@@ -27,19 +27,19 @@ function ENT:ProcessMovement(offpos,offang,eyepos,eyeang,ent,bone,ppos,pnorm, mo
 			if IsValid(ent) then
 				boneang = ent:GetAngles()
 			else
-				boneang = Angle(0,0,0)
+				boneang = angle_zero
 			end
 		end
 
-		localized = LocalToWorld(offpos,Angle(0,0,0),intersect,self:GetAngles())
-		localized = WorldToLocal(localized, Angle(0,0,0), self:GetPos(), boneang)
+		localized = LocalToWorld(offpos,angle_zero,intersect,self:GetAngles())
+		localized = WorldToLocal(localized, angle_zero, self:GetPos(), boneang)
 
 		finalpos = NPhysPos + localized
 		ang = ent:GetManipulateBoneAngles(bone)
 		pos = finalpos
 	elseif movetype == 0 then
 		ang = ent:GetLocalAngles()
-		pos = LocalToWorld(offpos,Angle(0,0,0),intersect - offset,self:GetAngles())
+		pos = LocalToWorld(offpos,angle_zero,intersect - offset,self:GetAngles())
 		pos = ent:GetParent():WorldToLocal(pos)
 	end
 
