@@ -414,7 +414,7 @@ end)
 
 net.Receive("rgmResetGizmo", function(len, pl)
 	if not pl.rgm then return end
-	pl.rgm.GizmoOffset = vector_origin
+	pl.rgm.GizmoOffset = Vector(0, 0, 0)
 
 	net.Start("rgmUpdateGizmo")
 	net.WriteVector(pl.rgm.GizmoOffset)
