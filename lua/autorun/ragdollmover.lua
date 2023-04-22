@@ -372,7 +372,7 @@ local function SetBoneOffsets(tool, ent,ostable,sbone, rlocks, plocks)
 	end
 
 	for k,v in pairs(ent.rgmIKChains) do
-		if tobool(tool:GetClientNumber(DefIKnames[v.type],0)) then
+		if tool:GetClientBool(DefIKnames[v.type]) then
 			if v.ikhipparent then
 				if not RTable[v.ikhipparent] then RecursiveSetParent(ostable, sbone, rlocks, plocks, RTable, v.ikhipparent) end
 			end
@@ -388,7 +388,7 @@ local function SetBoneOffsets(tool, ent,ostable,sbone, rlocks, plocks)
 	end
 
 	for k,v in pairs(ent.rgmIKChains) do -- calculating IKs twice for proper bone locking stuff to IKs, perhaps there is a simpler way to do these
-		if tobool(tool:GetClientNumber(DefIKnames[v.type],0)) then
+		if tool:GetClientBool(DefIKnames[v.type]) then
 
 			local footdata = ostable[v.foot]
 			if not RTable[footdata.parent] then
@@ -572,7 +572,7 @@ end
 function IsIKBone(tool,ent,bone)
 	if not ent.rgmIKChains then return false end
 	for k,v in pairs(ent.rgmIKChains) do
-		if tobool(tool:GetClientNumber(DefIKnames[v.type],0)) then
+		if tool:GetClientBool(DefIKnames[v.type]) then
 			if bone == v.hip then
 				return true,1
 			elseif bone == v.knee then

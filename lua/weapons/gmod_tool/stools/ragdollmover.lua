@@ -12,6 +12,7 @@ TOOL.ClientConVar["scale"] = 10
 TOOL.ClientConVar["width"] = 0.5
 TOOL.ClientConVar["fulldisc"] = 0
 TOOL.ClientConVar["disablefilter"] = 0
+TOOL.ClientConVar["lockselected"] = 0
 TOOL.ClientConVar["scalechildren"] = 0
 TOOL.ClientConVar["drawskeleton"] = 0
 
@@ -38,6 +39,7 @@ local RGM_NOTIFY = {
 	ENTLOCK_FAILED_NONPHYS = {id = 4, iserror = true},
 	ENTLOCK_FAILED_NOTALLOWED = {id = 5,iserror = true},
 	ENTLOCK_SUCCESS = {id = 6, iserror = false},
+	ENTSELECT_LOCKRESPONSE = {id = 20, iserror = true},
 }
 
 local function RGMGetBone(pl, ent, bone)
@@ -295,7 +297,7 @@ net.Receive("rgmLockToBone", function(len, pl)
 		local err = samecheck and RGM_NOTIFY.BONELOCK_FAILED_SAME.id or RGM_NOTIFY.BONELOCK_FAILED_NOTPHYS.id
 
 		net.Start("rgmNotification")
-			net.WriteUInt(err, 4)
+			net.WriteUInt(err, 5)
 		net.Send(pl)
 		return
 	end
@@ -313,7 +315,7 @@ net.Receive("rgmLockToBone", function(len, pl)
 		net.Send(pl)
 	else
 		net.Start("rgmNotification")
-			net.WriteUInt(RGM_NOTIFY.BONELOCK_FAILED.id, 4)
+			net.WriteUInt(RGM_NOTIFY.BONELOCK_FAILED.id, 5)
 		net.Send(pl)
 	end
 end)
@@ -338,7 +340,7 @@ net.Receive("rgmLockConstrained", function(len, pl)
 	local convar = ConstrainedAllowed:GetBool()
 	if not convar then
 		net.Start("rgmNotification")
-			net.WriteUInt(RGM_NOTIFY.ENTLOCK_FAILED_NOTALLOWED.id, 4)
+			net.WriteUInt(RGM_NOTIFY.ENTLOCK_FAILED_NOTALLOWED.id, 5)
 		net.Send(pl)
 		return
 	end
@@ -349,7 +351,7 @@ net.Receive("rgmLockConstrained", function(len, pl)
 		local boneid = net.ReadUInt(8)
 		if not rgm.BoneToPhysBone(ent, boneid) then
 			net.Start("rgmNotification")
-				net.WriteUInt(RGM_NOTIFY.ENTLOCK_FAILED_NONPHYS.id, 4)
+				net.WriteUInt(RGM_NOTIFY.ENTLOCK_FAILED_NONPHYS.id, 5)
 			net.Send(pl)
 			return
 		end
@@ -381,6 +383,14 @@ end)
 
 net.Receive("rgmSelectEntity", function(len, pl)
 	local ent = net.ReadEntity()
+
+	if net.ReadBool() then
+		net.Start("rgmNotification")
+			net.WriteUInt(RGM_NOTIFY.ENTSELECT_LOCKRESPONSE.id, 5)
+		net.Send(pl)
+		return
+	end
+
 	if not IsValid(ent) then return end
 
 	pl.rgm.Entity = ent
@@ -629,7 +639,7 @@ function TOOL:Deploy()
 end
 
 local function EntityFilter(ent)
-	return (ent:GetClass() == "prop_ragdoll" or ent:GetClass() == "prop_physics" or ent:GetClass() == "prop_effect") or (tobool(GetConVar("ragdollmover_disablefilter"):GetBool()) and not ent:IsWorld())
+	return (ent:GetClass() == "prop_ragdoll" or ent:GetClass() == "prop_physics" or ent:GetClass() == "prop_effect") or (GetConVar("ragdollmover_disablefilter"):GetBool() and not ent:IsWorld())
 end
 
 function TOOL:LeftClick(tr)
@@ -735,8 +745,17 @@ function TOOL:LeftClick(tr)
 		return false
 
 	elseif IsValid(tr.Entity) and EntityFilter(tr.Entity) then
+
 		local entity
 		entity = tr.Entity
+
+		if entity ~= pl.rgm.Entity and self:GetClientBool("lockselected") then
+			net.Start("rgmNotification")
+				net.WriteUInt(RGM_NOTIFY.ENTSELECT_LOCKRESPONSE.id, 5)
+			net.Send(pl)
+			return false
+		end
+
 		pl.rgm.Entity = tr.Entity
 		pl.rgm.ParentEntity = tr.Entity
 
@@ -893,20 +912,20 @@ if SERVER then
 
 	local axis = pl.rgm.Axis
 	if IsValid(axis) then
-		if axis.localizedpos ~= tobool(self:GetClientNumber("localpos",1)) then
-			axis.localizedpos = tobool(self:GetClientNumber("localpos",1))
+		if axis.localizedpos ~= self:GetClientBool("localpos",true) then
+			axis.localizedpos = self:GetClientBool("localpos",true)
 		end
-		if axis.localizedang ~= tobool(self:GetClientNumber("localang",1)) then
-			axis.localizedang = tobool(self:GetClientNumber("localang",1))
+		if axis.localizedang ~= self:GetClientBool("localang",true) then
+			axis.localizedang = self:GetClientBool("localang",true)
 		end
-		if axis.localizedoffset ~= tobool(self:GetClientNumber("localoffset",1)) then
-			axis.localizedoffset = tobool(self:GetClientNumber("localoffset",1))
+		if axis.localizedoffset ~= self:GetClientBool("localoffset",true) then
+			axis.localizedoffset = self:GetClientBool("localoffset",true)
 		end
-		if axis.relativerotate ~= tobool(self:GetClientNumber("relativerotate",1)) then
-			axis.relativerotate = tobool(self:GetClientNumber("relativerotate",1))
+		if axis.relativerotate ~= self:GetClientBool("relativerotate",true) then
+			axis.relativerotate = self:GetClientBool("relativerotate",true)
 		end
-		if axis.scalechildren ~= tobool(self:GetClientNumber("scalechildren",1)) then
-			axis.scalechildren = tobool(self:GetClientNumber("scalechildren",1))
+		if axis.scalechildren ~= self:GetClientBool("scalechildren",true) then
+			axis.scalechildren = self:GetClientBool("scalechildren",true)
 		end
 	end
 
@@ -1765,6 +1784,8 @@ local function RGMBuildEntMenu(parent, children, entpanel)
 	entpanel:Clear()
 	if not IsValid(parent) then return end
 
+	local LockSelection = GetConVar("ragdollmover_lockselected")
+
 	entnodes = {}
 
 	entnodes[parent] = entpanel:AddNode(GetModelName(parent))
@@ -1773,6 +1794,7 @@ local function RGMBuildEntMenu(parent, children, entpanel)
 	entnodes[parent].DoClick = function()
 		net.Start("rgmSelectEntity")
 			net.WriteEntity(parent)
+			net.WriteBool(LockSelection:GetBool())
 		net.SendToServer()
 	end
 
@@ -1806,6 +1828,7 @@ local function RGMBuildEntMenu(parent, children, entpanel)
 			entnodes[v].DoClick = function()
 				net.Start("rgmSelectEntity")
 					net.WriteEntity(v)
+					net.WriteBool(LockSelection:GetBool())
 				net.SendToServer()
 			end
 
@@ -1959,6 +1982,7 @@ function TOOL.BuildCPanel(CPanel)
 		CCheckBox(Col2,"#tool.ragdollmover.ik2","ragdollmover_ik_leg_R")
 
 	local Col3 = CCol(CPanel,"#tool.ragdollmover.miscpanel")
+		CCheckBox(Col3, "#tool.ragdollmover.lockselected","ragdollmover_lockselected")
 		local CB = CCheckBox(Col3,"#tool.ragdollmover.unfreeze","ragdollmover_unfreeze")
 		CB:SetToolTip("#tool.ragdollmover.unfreezetip")
 		local DisFil = CCheckBox(Col3, "#tool.ragdollmover.disablefilter","ragdollmover_disablefilter")
@@ -2243,7 +2267,7 @@ net.Receive("rgmAskForNodeUpdatePhysicsResponse", function(len)
 end)
 
 net.Receive("rgmNotification", function(len)
-	local message = net.ReadUInt(4)
+	local message = net.ReadUInt(5)
 
 	rgmDoNotification(message)
 end)
@@ -2302,7 +2326,7 @@ function TOOL:DrawHUD()
 
 	local tr = pl:GetEyeTrace()
 	local aimedbone = IsValid(tr.Entity) and (tr.Entity:GetClass() == "prop_ragdoll" and pl.rgm.AimedBone or 0) or 0
-	if IsValid(ent) and EntityFilter(ent) and tobool(self:GetClientNumber("drawskeleton",0)) then
+	if IsValid(ent) and EntityFilter(ent) and self:GetClientBool("drawskeleton") then
 		rgm.DrawSkeleton(ent)
 	end
 
