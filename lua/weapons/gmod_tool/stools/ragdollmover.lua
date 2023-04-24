@@ -1307,6 +1307,29 @@ local function RGMGizmoMode()
 	net.SendToServer()
 end
 
+local function RGMSelectAllIK()
+	local ik1, ik2, ik3, ik4 = GetConVar("ragdollmover_ik_leg_L"):GetBool(), GetConVar("ragdollmover_ik_leg_R"):GetBool(), GetConVar("ragdollmover_ik_hand_L"):GetBool(), GetConVar("ragdollmover_ik_hand_R"):GetBool()
+
+	if ik1 && ik2 && ik3 && ik4 then
+		RunConsoleCommand("ragdollmover_ik_hand_L", 0)
+		RunConsoleCommand("ragdollmover_ik_hand_R", 0)
+		RunConsoleCommand("ragdollmover_ik_leg_L", 0)
+		RunConsoleCommand("ragdollmover_ik_leg_R", 0)
+	else
+		RunConsoleCommand("ragdollmover_ik_hand_L", 1)
+		RunConsoleCommand("ragdollmover_ik_hand_R", 1)
+		RunConsoleCommand("ragdollmover_ik_leg_L", 1)
+		RunConsoleCommand("ragdollmover_ik_leg_R", 1)
+	end
+end
+
+local function RGMResetAllBones()
+	net.Start("rgmResetAll")
+	net.WriteUInt(0, 8)
+	net.WriteBool(true)
+	net.SendToServer()
+end
+
 local function AddHBar(self) -- There is no horizontal scrollbars in gmod, so I guess we'll override vertical one from GMod
 	self.HBar = vgui.Create("DVScrollBar")
 
@@ -1457,6 +1480,12 @@ local function SetBoneNodes(bonepanel, ent, sortedbones)
 
 	nodes = {}
 
+	local BoneTypeSort = {
+		{ Icon = "icon16/brick.png", ToolTip = "#tool.ragdollmover.physbone" },
+		{ Icon = "icon16/connect.png", ToolTip = "#tool.ragdollmover.nonphysbone" },
+		{ Icon = "icon16/error.png", ToolTip = "#tool.ragdollmover.proceduralbone" },
+	}
+
 	for k, v in ipairs(sortedbones) do
 		local text1 = ent:GetBoneName(v.id)
 
@@ -1468,16 +1497,9 @@ local function SetBoneNodes(bonepanel, ent, sortedbones)
 
 		nodes[v.id].Type = v.Type
 		nodes[v.id]:SetExpanded(true)
-		if nodes[v.id].Type == BONE_NONPHYSICAL then
-			nodes[v.id]:SetIcon("icon16/connect.png")
-			nodes[v.id].Label:SetToolTip("#tool.ragdollmover.nonphysbone")
-		elseif nodes[v.id].Type == BONE_PROCEDURAL then
-			nodes[v.id]:SetIcon("icon16/error.png")
-			nodes[v.id].Label:SetToolTip("#tool.ragdollmover.proceduralbone")
-		elseif nodes[v.id].Type == BONE_PHYSICAL then
-			nodes[v.id]:SetIcon("icon16/brick.png")
-			nodes[v.id].Label:SetToolTip("#tool.ragdollmover.physbone")
-		end
+
+		nodes[v.id]:SetIcon(BoneTypeSort[v.Type].Icon)
+		nodes[v.id].Label:SetToolTip(BoneTypeSort[v.Type].ToolTip)
 
 		nodes[v.id].DoClick = function()
 
@@ -1492,12 +1514,23 @@ local function SetBoneNodes(bonepanel, ent, sortedbones)
 						net.WriteUInt(v.id, 8)
 						net.WriteUInt(LockTo, 8)
 					net.SendToServer()
+
+					if nodes[LockTo].poslock or nodes[LockTo].anglock then
+						nodes[LockTo]:SetIcon("icon16/lock.png")
+						nodes[LockTo].Label:SetToolTip("#tool.ragdollmover.lockedbone")
+					else
+						nodes[LockTo]:SetIcon(BoneTypeSort[v.Type].Icon)
+						nodes[LockTo].Label:SetToolTip(BoneTypeSort[v.Type].ToolTip)
+					end
 				elseif LockMode == 2 then
 					net.Start("rgmLockConstrained")
 						net.WriteEntity(LockTo) -- In this case it isn't really "LockTo", more of "LockThis" but i was lazy so used same variables. Probably once I get to C++ stuff trying to do the same thing would be baaad
 						net.WriteBool(true)
 						net.WriteUInt(v.id, 8)
 					net.SendToServer()
+
+					conentnodes[LockTo]:SetIcon("icon16/brick_link.png")
+					conentnodes[LockTo]:SetToolTip(false)
 				end
 
 				LockMode = false
@@ -1654,6 +1687,10 @@ local function SetBoneNodes(bonepanel, ent, sortedbones)
 					if not IsValid(pl.rgm.Entity) then return end
 					LockMode = 1
 					LockTo = v.id
+
+					surface.PlaySound("buttons/button9.wav")
+					nodes[v.id]:SetIcon("icon16/brick_add.png")
+					nodes[v.id].Label:SetToolTip("#tool.ragdollmover.bonetolock")
 				end)
 				option:SetIcon("icon16/lock.png")
 
@@ -1884,6 +1921,10 @@ local function RGMBuildConstrainedEnts(parent, children, entpanel)
 				else
 					LockMode = 2
 					LockTo = ent
+
+					surface.PlaySound("buttons/button9.wav")
+					conentnodes[ent]:SetIcon("icon16/brick_edit.png")
+					conentnodes[ent]:SetToolTip("#tool.ragdollmover.entlock")
 				end
 			end
 		end
@@ -1980,6 +2021,7 @@ function TOOL.BuildCPanel(CPanel)
 		CCheckBox(Col2,"#tool.ragdollmover.ik4","ragdollmover_ik_hand_R")
 		CCheckBox(Col2,"#tool.ragdollmover.ik1","ragdollmover_ik_leg_L")
 		CCheckBox(Col2,"#tool.ragdollmover.ik2","ragdollmover_ik_leg_R")
+		CButton(Col2, "#tool.ragdollmover.ikall", RGMSelectAllIK)
 
 	local Col3 = CCol(CPanel,"#tool.ragdollmover.miscpanel")
 		CCheckBox(Col3, "#tool.ragdollmover.lockselected","ragdollmover_lockselected")
@@ -2013,6 +2055,8 @@ function TOOL.BuildCPanel(CPanel)
 			Scale1 = CManipSlider(ColManip, "#tool.ragdollmover.scale1", 3, 1, -100, 100, 2) --x
 			Scale2 = CManipSlider(ColManip, "#tool.ragdollmover.scale2", 3, 2, -100, 100, 2) --y
 			Scale3 = CManipSlider(ColManip, "#tool.ragdollmover.scale3", 3, 3, -100, 100, 2) --z
+
+			CButton(ColManip, "#tool.ragdollmover.resetallbones", RGMResetAllBones)
 
 		CCheckBox(Col4,"#tool.ragdollmover.scalechildren","ragdollmover_scalechildren")
 
@@ -2133,7 +2177,10 @@ net.Receive("rgmAskForPhysbonesResponse", function(len)
 			nodes[bone].anglock = anglock
 			nodes[bone].bonelock = bonelock
 
-			if bonelock then
+			if LockMode == 1 and bone == LockTo then
+				nodes[bone]:SetIcon("icon16/brick_add.png")
+				nodes[bone].Label:SetToolTip("#tool.ragdollmover.bonetolock")
+			elseif bonelock then
 				nodes[bone]:SetIcon("icon16/lock_go.png")
 				nodes[bone].Label:SetToolTip("#tool.ragdollmover.lockedbonetobone")
 			elseif anglock or poslock then
