@@ -1123,22 +1123,22 @@ local BONE_NONPHYSICAL = 2
 local BONE_PROCEDURAL = 3
 local BONE_PARENTED = 4
 
-local function GetRecursiveBones(ent, boneid, tab)
+local function GetRecursiveBones(ent, boneid, tab, depth)
 	for k, v in ipairs(ent:GetChildBones(boneid)) do
-		local bone = {id = v, Type = BONE_NONPHYSICAL, parent = boneid}
+		local bone = {id = v, Type = BONE_NONPHYSICAL, parent = boneid, depth = depth + 1}
 
 		if ent:BoneHasFlag(v, 4) then -- BONE_ALWAYS_PROCEDURAL flag
 			bone.Type = BONE_PROCEDURAL
 		end
 
 		table.insert(tab, bone)
-		GetRecursiveBones(ent, v, tab)
+		GetRecursiveBones(ent, v, tab, bone.depth)
 	end
 end
 
-local function GetRecursiveBonesExclusive(ent, boneid, lastvalidbone, tab, physcheck, isphys)
+local function GetRecursiveBonesExclusive(ent, boneid, lastvalidbone, tab, physcheck, isphys, depth)
 	for k, v in ipairs(ent:GetChildBones(boneid)) do
-		local bone = {id = v, Type = BONE_NONPHYSICAL, parent = lastvalidbone}
+		local bone = {id = v, Type = BONE_NONPHYSICAL, parent = lastvalidbone, depth = depth + 1}
 		local newlastvalid = lastvalidbone
 
 		if ent:BoneHasFlag(v, 4) then -- BONE_ALWAYS_PROCEDURAL flag
@@ -1152,7 +1152,7 @@ local function GetRecursiveBonesExclusive(ent, boneid, lastvalidbone, tab, physc
 			table.insert(tab, bone)
 		end
 
-		GetRecursiveBonesExclusive(ent, v, newlastvalid, tab, physcheck, isphys)
+		GetRecursiveBonesExclusive(ent, v, newlastvalid, tab, physcheck, isphys, bone.depth)
 	end
 end
 
@@ -1336,6 +1336,8 @@ local function AddHBar(self) -- There is no horizontal scrollbars in gmod, so I 
 	self.HBar.btnUp.Paint = function(panel, w, h) derma.SkinHook("Paint", "ButtonLeft", panel, w, h) end
 	self.HBar.btnDown.Paint = function(panel, w, h) derma.SkinHook("Paint", "ButtonRight", panel, w, h) end
 
+	self.PanelWidth = 600
+
 	self.HBar.SetScroll = function(self, scrll)
 		if (not self.Enabled) then self.Scroll = 0 return end
 
@@ -1436,7 +1438,7 @@ local function AddHBar(self) -- There is no horizontal scrollbars in gmod, so I 
 
 	self.PerformLayoutInternal = function(self)
 		local HTall, VTall = self:GetTall(), self.pnlCanvas:GetTall()
-		local HWide, VWide = self.pnlCanvas:GetWide(), 600
+		local HWide, VWide = self.pnlCanvas:GetWide(), self.PanelWidth
 		local XPos, YPos = 0, 0
 
 		self:Rebuild()
@@ -1466,6 +1468,11 @@ local function AddHBar(self) -- There is no horizontal scrollbars in gmod, so I 
 	self.PerformLayout = function(self)
 		self:PerformLayoutInternal()
 	end
+
+	self.UpdateWidth = function(self, newwidth)
+		self.PanelWidth = newwidth
+		self:InvalidateLayout()
+	end
 end
 
 local BonePanel, EntPanel, ConEntPanel
@@ -1479,6 +1486,8 @@ local LockMode, LockTo = false, nil
 local function SetBoneNodes(bonepanel, ent, sortedbones)
 
 	nodes = {}
+
+	local width = 0
 
 	local BoneTypeSort = {
 		{ Icon = "icon16/brick.png", ToolTip = "#tool.ragdollmover.physbone" },
@@ -1726,7 +1735,15 @@ local function SetBoneNodes(bonepanel, ent, sortedbones)
 		nodes[v.id].Label.OnCursorExited = function()
 			HoveredBone = nil
 		end
+
+		local XSize = nodes[v.id].Label:GetTextSize()
+		local currentwidth = XSize + (v.depth * 20) + 32
+		if currentwidth > width then
+			width = currentwidth
+		end
 	end
+
+	bonepanel:UpdateWidth(width)
 end
 
 local function RGMBuildBoneMenu(ent, bonepanel)
@@ -1739,13 +1756,13 @@ local function RGMBuildBoneMenu(ent, bonepanel)
 		if ent:GetBoneName(v) == "__INVALIDBONE__" then continue end
 
 		if ent:GetBoneParent(v) == -1 then
-			local bone = { id = v, Type = BONE_NONPHYSICAL }
+			local bone = { id = v, Type = BONE_NONPHYSICAL, depth = 1 }
 			if ent:BoneHasFlag(v, 4) then -- BONE_ALWAYS_PROCEDURAL flag
 				bone.Type = BONE_PROCEDURAL
 			end
 
 			table.insert(sortedbones, bone)
-			GetRecursiveBones(ent, v, sortedbones)
+			GetRecursiveBones(ent, v, sortedbones, bone.depth)
 		end
 	end
 
@@ -1790,7 +1807,7 @@ local function UpdateBoneNodes(ent, bonepanel, physIDs, isphys)
 		if ent:GetBoneName(v) == "__INVALIDBONE__" then continue end
 
 		if ent:GetBoneParent(v) == -1 then
-			local bone = { id = v, Type = BONE_NONPHYSICAL }
+			local bone = { id = v, Type = BONE_NONPHYSICAL, depth = 1 }
 			if ent:BoneHasFlag(v, 4) then
 				bone.Type = BONE_PROCEDURAL
 			elseif physIDs[v] then
@@ -1798,7 +1815,7 @@ local function UpdateBoneNodes(ent, bonepanel, physIDs, isphys)
 			end
 
 			table.insert(sortedbones, bone)
-			GetRecursiveBonesExclusive(ent, v, v, sortedbones, physIDs, isphys)
+			GetRecursiveBonesExclusive(ent, v, v, sortedbones, physIDs, isphys, bone.depth)
 		end
 	end
 
@@ -1822,6 +1839,7 @@ local function RGMBuildEntMenu(parent, children, entpanel)
 	if not IsValid(parent) then return end
 
 	local LockSelection = GetConVar("ragdollmover_lockselected")
+	local width
 
 	entnodes = {}
 
@@ -1843,20 +1861,25 @@ local function RGMBuildEntMenu(parent, children, entpanel)
 		HoveredEnt = nil
 	end
 
-	local sortchildren = {}
+	local XSize = entnodes[parent].Label:GetTextSize()
+	width = XSize + 52
 
-	local function RecursiveChildrenSort(parent, sorttable)
+	local sortchildren = {depth = 1}
+
+	local function RecursiveChildrenSort(parent, sorttable, depth)
 		for k, v in ipairs(children) do
 			if v:GetParent() ~= parent then continue end
 			table.insert(sorttable, v)
 			sorttable[v] = {}
-			RecursiveChildrenSort(v, sorttable[v])
+			sorttable[v].depth = depth + 1
+			RecursiveChildrenSort(v, sorttable[v], depth + 1)
 		end
 	end
 
-	RecursiveChildrenSort(parent, sortchildren)
+	RecursiveChildrenSort(parent, sortchildren, sortchildren.depth)
 
 	local function MakeChildrenList(parent, sorttable)
+		local depth = sorttable.depth
 		for k, v in ipairs(sorttable) do
 			if not IsValid(v) or not isstring(v:GetModel()) then continue end
 			entnodes[v] = entnodes[parent]:AddNode(GetModelName(v))
@@ -1877,11 +1900,20 @@ local function RGMBuildEntMenu(parent, children, entpanel)
 				HoveredEnt = nil
 			end
 
+			XSize = entnodes[v].Label:GetTextSize()
+			local currentwidth = XSize + (depth * 20) + 32
+
+			if currentwidth > width then
+				width = currentwidth
+			end
+
 			MakeChildrenList(v, sorttable[v])
 		end
 	end
 
 	MakeChildrenList(parent, sortchildren)
+
+	entpanel:UpdateWidth(width)
 end
 
 local function RGMBuildConstrainedEnts(parent, children, entpanel)
