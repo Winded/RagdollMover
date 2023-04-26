@@ -1336,7 +1336,8 @@ local function AddHBar(self) -- There is no horizontal scrollbars in gmod, so I 
 	self.HBar.btnUp.Paint = function(panel, w, h) derma.SkinHook("Paint", "ButtonLeft", panel, w, h) end
 	self.HBar.btnDown.Paint = function(panel, w, h) derma.SkinHook("Paint", "ButtonRight", panel, w, h) end
 
-	self.PanelWidth = 600
+	self.PanelWidth = 100
+	self.LastWidth = 1
 
 	self.HBar.SetScroll = function(self, scrll)
 		if (not self.Enabled) then self.Scroll = 0 return end
@@ -1438,7 +1439,7 @@ local function AddHBar(self) -- There is no horizontal scrollbars in gmod, so I 
 
 	self.PerformLayoutInternal = function(self)
 		local HTall, VTall = self:GetTall(), self.pnlCanvas:GetTall()
-		local HWide, VWide = self.pnlCanvas:GetWide(), self.PanelWidth
+		local HWide, VWide = self:GetWide(), self.PanelWidth
 		local XPos, YPos = 0, 0
 
 		self:Rebuild()
@@ -1456,13 +1457,15 @@ local function AddHBar(self) -- There is no horizontal scrollbars in gmod, so I 
 
 		self:Rebuild()
 
-		if (HWide ~= self.pnlCanvas:GetWide()) then
+		if (HWide ~= self.LastWidth) then
 			self.HBar:SetScroll(self.HBar:GetScroll())
 		end
 
 		if (VTall ~= self.pnlCanvas:GetTall()) then
 			self.VBar:SetScroll(self.VBar:GetScroll())
 		end
+
+		self.LastWidth = HWide
 	end
 
 	self.PerformLayout = function(self)
@@ -1737,13 +1740,13 @@ local function SetBoneNodes(bonepanel, ent, sortedbones)
 		end
 
 		local XSize = nodes[v.id].Label:GetTextSize()
-		local currentwidth = XSize + (v.depth * 20) + 32
+		local currentwidth = XSize + (v.depth * 17)
 		if currentwidth > width then
 			width = currentwidth
 		end
 	end
 
-	bonepanel:UpdateWidth(width)
+	bonepanel:UpdateWidth(width + 8 + 32 + 16)
 end
 
 local function RGMBuildBoneMenu(ent, bonepanel)
@@ -1862,7 +1865,7 @@ local function RGMBuildEntMenu(parent, children, entpanel)
 	end
 
 	local XSize = entnodes[parent].Label:GetTextSize()
-	width = XSize + 52
+	width = XSize + 17
 
 	local sortchildren = {depth = 1}
 
@@ -1901,7 +1904,7 @@ local function RGMBuildEntMenu(parent, children, entpanel)
 			end
 
 			XSize = entnodes[v].Label:GetTextSize()
-			local currentwidth = XSize + (depth * 20) + 32
+			local currentwidth = XSize + (depth * 17)
 
 			if currentwidth > width then
 				width = currentwidth
@@ -1913,7 +1916,7 @@ local function RGMBuildEntMenu(parent, children, entpanel)
 
 	MakeChildrenList(parent, sortchildren)
 
-	entpanel:UpdateWidth(width)
+	entpanel:UpdateWidth(width + 8 + 32)
 end
 
 local function RGMBuildConstrainedEnts(parent, children, entpanel)
