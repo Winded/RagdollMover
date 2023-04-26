@@ -1916,7 +1916,7 @@ local function RGMBuildEntMenu(parent, children, entpanel)
 
 	MakeChildrenList(parent, sortchildren)
 
-	entpanel:UpdateWidth(width + 8 + 32)
+	entpanel:UpdateWidth(width + 8 + 32 + 16)
 end
 
 local function RGMBuildConstrainedEnts(parent, children, entpanel)
