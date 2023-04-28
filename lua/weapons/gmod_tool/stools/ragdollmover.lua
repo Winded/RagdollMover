@@ -1542,7 +1542,7 @@ local function SetBoneNodes(bonepanel, ent, sortedbones)
 					net.SendToServer()
 
 					conentnodes[LockTo]:SetIcon("icon16/brick_link.png")
-					conentnodes[LockTo]:SetToolTip(false)
+					conentnodes[LockTo].Label:SetToolTip(false)
 				end
 
 				LockMode = false
@@ -1697,6 +1697,12 @@ local function SetBoneNodes(bonepanel, ent, sortedbones)
 				option = bonemenu:AddOption("#tool.ragdollmover.lockbone", function()
 					if not pl.rgm then return end
 					if not IsValid(pl.rgm.Entity) then return end
+
+					if LockMode == 1 then
+						nodes[LockTo]:SetIcon(BoneTypeSort[nodes[LockTo].Type].Icon)
+						nodes[LockTo].Label:SetToolTip(BoneTypeSort[nodes[LockTo].Type].ToolTip)
+					end
+
 					LockMode = 1
 					LockTo = v.id
 
@@ -1954,12 +1960,18 @@ local function RGMBuildConstrainedEnts(parent, children, entpanel)
 						net.WriteBool(false)
 					net.SendToServer()
 				else
+
+					if LockMode == 2 then
+						conentnodes[LockTo]:SetIcon("icon16/brick_link.png")
+						conentnodes[LockTo].Label:SetToolTip(false)
+					end
+
 					LockMode = 2
 					LockTo = ent
 
 					surface.PlaySound("buttons/button9.wav")
 					conentnodes[ent]:SetIcon("icon16/brick_edit.png")
-					conentnodes[ent]:SetToolTip("#tool.ragdollmover.entlock")
+					conentnodes[ent].Label:SetToolTip("#tool.ragdollmover.entlock")
 				end
 			end
 		end
