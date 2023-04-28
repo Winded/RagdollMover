@@ -1701,6 +1701,9 @@ local function SetBoneNodes(bonepanel, ent, sortedbones)
 					if LockMode == 1 then
 						nodes[LockTo]:SetIcon(BoneTypeSort[nodes[LockTo].Type].Icon)
 						nodes[LockTo].Label:SetToolTip(BoneTypeSort[nodes[LockTo].Type].ToolTip)
+					elseif LockMode == 2 then
+						conentnodes[LockTo]:SetIcon("icon16/brick_link.png")
+						conentnodes[LockTo].Label:SetToolTip(false)
 					end
 
 					LockMode = 1
@@ -1961,7 +1964,10 @@ local function RGMBuildConstrainedEnts(parent, children, entpanel)
 					net.SendToServer()
 				else
 
-					if LockMode == 2 then
+					if LockMode == 1 then
+						nodes[LockTo]:SetIcon(BoneTypeSort[nodes[LockTo].Type].Icon)
+						nodes[LockTo].Label:SetToolTip(BoneTypeSort[nodes[LockTo].Type].ToolTip)
+					elseif LockMode == 2 then
 						conentnodes[LockTo]:SetIcon("icon16/brick_link.png")
 						conentnodes[LockTo].Label:SetToolTip(false)
 					end
