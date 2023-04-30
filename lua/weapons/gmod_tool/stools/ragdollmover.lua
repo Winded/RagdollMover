@@ -749,7 +749,7 @@ function TOOL:LeftClick(tr)
 		local entity
 		entity = tr.Entity
 
-		if entity ~= pl.rgm.Entity and self:GetClientBool("lockselected") then
+		if entity ~= pl.rgm.Entity and self:GetClientNumber("lockselected") ~= 0 then
 			net.Start("rgmNotification")
 				net.WriteUInt(RGM_NOTIFY.ENTSELECT_LOCKRESPONSE.id, 5)
 			net.Send(pl)
@@ -912,20 +912,20 @@ if SERVER then
 
 	local axis = pl.rgm.Axis
 	if IsValid(axis) then
-		if axis.localizedpos ~= self:GetClientBool("localpos",true) then
-			axis.localizedpos = self:GetClientBool("localpos",true)
+		if axis.localizedpos ~= (self:GetClientNumber("localpos",1) ~= 0) then
+			axis.localizedpos = (self:GetClientNumber("localpos",1) ~= 0)
 		end
-		if axis.localizedang ~= self:GetClientBool("localang",true) then
-			axis.localizedang = self:GetClientBool("localang",true)
+		if axis.localizedang ~= (self:GetClientNumber("localang",1) ~= 0) then
+			axis.localizedang = (self:GetClientNumber("localang",1) ~= 0)
 		end
-		if axis.localizedoffset ~= self:GetClientBool("localoffset",true) then
-			axis.localizedoffset = self:GetClientBool("localoffset",true)
+		if axis.localizedoffset ~= (self:GetClientNumber("localoffset",1) ~= 0) then
+			axis.localizedoffset = (self:GetClientNumber("localoffset",1) ~= 0)
 		end
-		if axis.relativerotate ~= self:GetClientBool("relativerotate",true) then
-			axis.relativerotate = self:GetClientBool("relativerotate",true)
+		if axis.relativerotate ~= (self:GetClientNumber("relativerotate",1) ~= 0) then
+			axis.relativerotate = (self:GetClientNumber("relativerotate",1) ~= 0)
 		end
-		if axis.scalechildren ~= self:GetClientBool("scalechildren",true) then
-			axis.scalechildren = self:GetClientBool("scalechildren",true)
+		if axis.scalechildren ~= (self:GetClientNumber("scalechildren",1) ~= 0) then
+			axis.scalechildren = (self:GetClientNumber("scalechildren",1) ~= 0)
 		end
 	end
 
@@ -1143,7 +1143,8 @@ local function GetRecursiveBonesExclusive(ent, boneid, lastvalidbone, tab, physc
 
 		if ent:BoneHasFlag(v, 4) then -- BONE_ALWAYS_PROCEDURAL flag
 			bone.Type = BONE_PROCEDURAL
-		elseif physcheck[v] then
+		end
+		if physcheck[v] then
 			bone.Type = BONE_PHYSICAL
 		end
 
@@ -1822,7 +1823,8 @@ local function UpdateBoneNodes(ent, bonepanel, physIDs, isphys)
 			local bone = { id = v, Type = BONE_NONPHYSICAL, depth = 1 }
 			if ent:BoneHasFlag(v, 4) then
 				bone.Type = BONE_PROCEDURAL
-			elseif physIDs[v] then
+			end
+			if physIDs[v] then
 				bone.Type = BONE_PHYSICAL
 			end
 
@@ -2426,7 +2428,7 @@ function TOOL:DrawHUD()
 
 	local tr = pl:GetEyeTrace()
 	local aimedbone = IsValid(tr.Entity) and (tr.Entity:GetClass() == "prop_ragdoll" and pl.rgm.AimedBone or 0) or 0
-	if IsValid(ent) and EntityFilter(ent) and self:GetClientBool("drawskeleton") then
+	if IsValid(ent) and EntityFilter(ent) and self:GetClientNumber("drawskeleton") ~= 0 then
 		rgm.DrawSkeleton(ent)
 	end
 
