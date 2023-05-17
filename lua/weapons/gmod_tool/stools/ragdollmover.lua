@@ -227,7 +227,7 @@ net.Receive("rgmSelectBone", function(len, pl)
 	local ent = net.ReadEntity()
 	local bone = net.ReadUInt(32)
 
-	pl.rgm.BoneToResetTo = 0
+	pl.rgm.BoneToResetTo = (ent:GetClass() == "prop_ragdoll") and ent:TranslatePhysBoneToBone(0) or 0
 	RGMGetBone(pl, ent, bone)
 	pl:rgmSync()
 
@@ -394,7 +394,7 @@ net.Receive("rgmSelectEntity", function(len, pl)
 	if not IsValid(ent) then return end
 
 	pl.rgm.Entity = ent
-	pl.rgm.BoneToResetTo = 0
+	pl.rgm.BoneToResetTo = (ent:GetClass() == "prop_ragdoll") and ent:TranslatePhysBoneToBone(0) or 0
 	pl.rgmPosLocks = {}
 	pl.rgmAngLocks = {}
 	pl.rgmBoneLocks = {}
@@ -768,7 +768,7 @@ function TOOL:LeftClick(tr)
 		end
 
 		RGMGetBone(pl, entity, entity:TranslatePhysBoneToBone(tr.PhysicsBone))
-		pl.rgm.BoneToResetTo = 0 -- used for quickswitching to root bone and back
+		pl.rgm.BoneToResetTo = (entity:GetClass() == "prop_ragdoll") and entity:TranslatePhysBoneToBone(0) or 0 -- used for quickswitching to root bone and back
 
 		if ent ~= pl.rgm.ParentEntity then
 			local children = rgmFindEntityChildren(pl.rgm.ParentEntity)
