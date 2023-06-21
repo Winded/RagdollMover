@@ -48,6 +48,7 @@ local function RGMGetBone(pl, ent, bone)
 	pl.rgm.IsPhysBone = false
 
 	local count = ent:GetPhysicsObjectCount()
+	local isragdoll = ent:GetClass() == "prop_ragdoll"
 
 	for i = 0, count - 1 do
 		local b = ent:TranslatePhysBoneToBone(i)
@@ -58,7 +59,7 @@ local function RGMGetBone(pl, ent, bone)
 	end
 
 	if count == 1 then
-		if (ent:GetClass() == "prop_physics" or ent:GetClass() == "prop_effect") and bone == 0 then
+		if not isragdoll and bone == 0 then
 			phys = 0
 			pl.rgm.IsPhysBone = true
 		end
@@ -67,7 +68,7 @@ local function RGMGetBone(pl, ent, bone)
 	local bonen = phys or bone
 
 	pl.rgm.PhysBone = bonen
-	if pl.rgm.IsPhysBone and not (ent:GetClass() == "prop_physics") then -- physics props only have 1 phys object which is tied to bone -1, and that bone doesn't really exist
+	if pl.rgm.IsPhysBone and isragdoll then -- physics props only have 1 phys object which is tied to bone -1, and that bone doesn't really exist
 		pl.rgm.Bone = ent:TranslatePhysBoneToBone(bonen)
 	else
 		pl.rgm.Bone = bonen
@@ -944,7 +945,7 @@ if SERVER then
 							obj:EnableMotion(true)
 							obj:Wake()
 						end
-						if ConstrainedAllowed:GetBool() then
+						if pl.rgmOffsetTable[i].locked and ConstrainedAllowed:GetBool() then
 							for lockent, bonetable in pairs(pl.rgmOffsetTable[i].locked) do
 								for j=0, lockent:GetPhysicsObjectCount()-1 do
 									if  bonetable[j].moving then
