@@ -15,6 +15,8 @@ TOOL.ClientConVar["disablefilter"] = 0
 TOOL.ClientConVar["lockselected"] = 0
 TOOL.ClientConVar["scalechildren"] = 0
 TOOL.ClientConVar["drawskeleton"] = 0
+TOOL.ClientConVar["snapenable"] = 0
+TOOL.ClientConVar["snapamount"] = 30
 
 TOOL.ClientConVar["ik_leg_L"] = 0
 TOOL.ClientConVar["ik_leg_R"] = 0
@@ -979,19 +981,25 @@ if SERVER then
 			return
 		end
 
+		local snapamount = 0
+		if self:GetClientNumber("snapenable",0) ~= 0 then
+			snapamount = self:GetClientNumber("snapamount", 1)
+			snapamount = snapamount < 1 and 1 or snapamount
+		end
+
 		local physbonecount = ent:GetBoneCount() - 1
 		if physbonecount == nil then return end
 
 		if not scale then
 			if IsValid(ent:GetParent()) and bone == 0 and not ent:IsEffectActive(EF_BONEMERGE) and not (ent:GetClass() == "prop_ragdoll") then
-				local pos, ang = apart:ProcessMovement(pl.rgmOffsetPos,pl.rgmOffsetAng,eyepos,eyeang,ent,bone,pl.rgmISPos,pl.rgmISDir,0)
+				local pos, ang = apart:ProcessMovement(pl.rgmOffsetPos,pl.rgmOffsetAng,eyepos,eyeang,ent,bone,pl.rgmISPos,pl.rgmISDir,0,snapamount,pl.rgm.StartAngle)
 				ent:SetLocalPos(pos)
 				ent:SetLocalAngles(ang)
 			elseif pl.rgm.IsPhysBone then
 
 				local isik,iknum = rgm.IsIKBone(self,ent,bone)
 
-				local pos,ang = apart:ProcessMovement(pl.rgmOffsetPos,pl.rgmOffsetAng,eyepos,eyeang,ent,bone,pl.rgmISPos,pl.rgmISDir, 1)
+				local pos,ang = apart:ProcessMovement(pl.rgmOffsetPos,pl.rgmOffsetAng,eyepos,eyeang,ent,bone,pl.rgmISPos,pl.rgmISDir,1,snapamount,pl.rgm.StartAngle)
 
 				local obj = ent:GetPhysicsObjectNum(bone)
 				if not isik or iknum == 3 or (rotate and (iknum == 1 or iknum == 2)) then
@@ -1064,7 +1072,7 @@ if SERVER then
 
 				-- if not pl:GetNWBool("ragdollmover_keydown") then
 			else
-				local pos, ang = apart:ProcessMovement(pl.rgmOffsetPos,pl.rgmOffsetAng,eyepos,eyeang,ent,bone,pl.rgmISPos,pl.rgmISDir, 2, pl.rgm.StartAngle, pl.rgm.NPhysBonePos, pl.rgm.NPhysBoneAng) -- if a bone is not physics one, we pass over "start angle" thing
+				local pos, ang = apart:ProcessMovement(pl.rgmOffsetPos,pl.rgmOffsetAng,eyepos,eyeang,ent,bone,pl.rgmISPos,pl.rgmISDir,2,snapamount, pl.rgm.StartAngle, pl.rgm.NPhysBonePos, pl.rgm.NPhysBoneAng) -- if a bone is not physics one, we pass over "start angle" thing
 
 				ent:ManipulateBoneAngles(bone, ang)
 				ent:ManipulateBonePosition(bone, pos)
@@ -1072,7 +1080,7 @@ if SERVER then
 		else
 			bone = pl.rgm.Bone
 			local prevscale = ent:GetManipulateBoneScale(bone)
-			local sc, ang = apart:ProcessMovement(pl.rgmOffsetPos,pl.rgmOffsetAng,eyepos,eyeang,ent,bone,pl.rgmISPos,pl.rgmISDir, 2, pl.rgm.StartAngle, pl.rgm.NPhysBonePos, pl.rgm.NPhysBoneAng, pl.rgm.NPhysBoneScale)
+			local sc, ang = apart:ProcessMovement(pl.rgmOffsetPos,pl.rgmOffsetAng,eyepos,eyeang,ent,bone,pl.rgmISPos,pl.rgmISDir,2,snapamount, pl.rgm.StartAngle, pl.rgm.NPhysBonePos, pl.rgm.NPhysBoneAng, pl.rgm.NPhysBoneScale)
 
 			if axis.scalechildren then
 				local scalediff = sc - prevscale
@@ -2115,6 +2123,9 @@ function TOOL.BuildCPanel(CPanel)
 			CButton(ColManip, "#tool.ragdollmover.resetallbones", RGMResetAllBones)
 
 		CCheckBox(Col4,"#tool.ragdollmover.scalechildren","ragdollmover_scalechildren")
+
+		CCheckBox(Col4, "Enable angle snapping", "ragdollmover_snapenable")
+		CNumSlider(Col4, "Angle snap amount", "ragdollmover_snapamount", 1, 180, 0)
 
 		local ColBones = CCol(Col4, "#tool.ragdollmover.bonelist")
 			RGMMakeBoneButtonPanel(ColBones, CPanel)

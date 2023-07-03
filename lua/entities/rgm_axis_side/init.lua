@@ -3,7 +3,7 @@ include("shared.lua")
 AddCSLuaFile("cl_init.lua")
 AddCSLuaFile("shared.lua")
 
-function ENT:ProcessMovement(offpos,offang,eyepos,eyeang,ent,bone,ppos,pnorm, movetype, startGrab, NPhysPos)
+function ENT:ProcessMovement(offpos,offang,eyepos,eyeang,ent,bone,ppos,pnorm, movetype, garbage, startGrab, NPhysPos)
 	local intersect = self:GetGrabPos(eyepos,eyeang,ppos,pnorm)
 	local axis = self:GetParent()
 	local offset = axis.Owner.rgm.GizmoOffset

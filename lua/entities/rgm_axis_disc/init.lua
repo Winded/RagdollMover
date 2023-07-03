@@ -3,7 +3,7 @@ include("shared.lua")
 AddCSLuaFile("cl_init.lua")
 AddCSLuaFile("shared.lua")
 
-local VECTOR_FRONT, VECTOR_SIDE = Vector(1,0,0), Vector(0,1,0)
+local VECTOR_FRONT, VECTOR_SIDE = Vector(1,0,0), Vector(0,1,0) 
 
 local function ConvertVector(vec, axistype)
 	local rotationtable, result
@@ -21,7 +21,7 @@ local function ConvertVector(vec, axistype)
 	return result
 end
 
-function ENT:ProcessMovement(offpos,offang,eyepos,eyeang,ent,bone,ppos,pnorm, movetype, startAngle, garbage, NPhysAngle) -- initially i had a table instead of separate things for initial bone pos and angle, but sync command can't handle tables and i thought implementing a way to handle those would be too much hassle
+function ENT:ProcessMovement(offpos,offang,eyepos,eyeang,ent,bone,ppos,pnorm, movetype, snapamount, startAngle, garbage, NPhysAngle) -- initially i had a table instead of separate things for initial bone pos and angle, but sync command can't handle tables and i thought implementing a way to handle those would be too much hassle
 	local intersect = self:GetGrabPos(eyepos,eyeang,ppos,pnorm)
 	local localized = self:WorldToLocal(intersect)
 	local _p, _a
@@ -43,8 +43,22 @@ function ENT:ProcessMovement(offpos,offang,eyepos,eyeang,ent,bone,ppos,pnorm, mo
 		end
 
 		localized = Vector(localized.y,localized.z,0):Angle()
+		startAngle = Vector(startAngle.y, startAngle.z, 0):Angle()
+		local diff = startAngle.y - localized.y
+		local mathfunc = nil
+		if diff >= 0 then
+			mathfunc = math.floor
+		else
+			mathfunc = math.ceil
+		end
+
+		local rotationangle = localized.y
+		if snapamount ~= 0 then
+			rotationangle = startAngle.y - (mathfunc(diff / snapamount) * snapamount)
+		end
+
 		local pos = self:GetPos()
-		local ang = self:LocalToWorldAngles(Angle(0,0,localized.y))
+		local ang = self:LocalToWorldAngles(Angle(0,0,rotationangle))
 		if axis.relativerotate then
 			offset = WorldToLocal(axis.BonePos, angle_zero, axis:GetPos(), axis.LocalAngles)
 			_p,_a = LocalToWorld(vector_origin,offang,pos,ang)
@@ -68,12 +82,19 @@ function ENT:ProcessMovement(offpos,offang,eyepos,eyeang,ent,bone,ppos,pnorm, mo
 
 		localized = localized:Angle() - startlocal:Angle()
 
+		local mathfunc = math.floor
+		if localized.y < 0 then mathfunc = math.ceil end
+		local rotationangle = localized.y
+		if snapamount ~= 0 then
+			rotationangle = mathfunc(localized.y / snapamount) * snapamount
+		end
+
 		if self.axistype == 4 then
 			 rotateang = NPhysAngle + localized
 			 _a = rotateang
 		else
 			_a = ent:GetManipulateBoneAngles(bone)
-			rotateang = NPhysAngle[self.axistype] + localized.y
+			rotateang = NPhysAngle[self.axistype] + rotationangle
 			_a[self.axistype] = rotateang
 		end
 
@@ -87,8 +108,22 @@ function ENT:ProcessMovement(offpos,offang,eyepos,eyeang,ent,bone,ppos,pnorm, mo
 		end
 
 		localized = Vector(localized.y,localized.z,0):Angle()
+		startAngle = Vector(startAngle.y, startAngle.z, 0):Angle()
+		local diff = startAngle.y - localized.y
+		local mathfunc = nil
+		if diff >= 0 then
+			mathfunc = math.floor
+		else
+			mathfunc = math.ceil
+		end
+
+		local rotationangle = localized.y
+		if snapamount ~= 0 then
+			rotationangle = startAngle.y - (mathfunc(diff / snapamount) * snapamount)
+		end
+
 		local pos = self:GetPos()
-		local ang = self:LocalToWorldAngles(Angle(0,0,localized.y))
+		local ang = self:LocalToWorldAngles(Angle(0,0,rotationangle))
 		if axis.relativerotate then
 			offset = WorldToLocal(axis.BonePos, angle_zero, axis:GetPos(), axis.LocalAngles)
 			_p,_a = LocalToWorld(vector_origin,offang,pos,ang)

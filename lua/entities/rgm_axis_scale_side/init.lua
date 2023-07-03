@@ -3,7 +3,7 @@ include("shared.lua")
 AddCSLuaFile("cl_init.lua")
 AddCSLuaFile("shared.lua")
 
-function ENT:ProcessMovement(offpos,offang,eyepos,eyeang,ent,bone,ppos,pnorm, movetype, startGrab, garbage, garbage, NPhysScale)
+function ENT:ProcessMovement(offpos,offang,eyepos,eyeang,ent,bone,ppos,pnorm, movetype, garbage, startGrab, garbage, garbage, NPhysScale)
 	local intersect = self:GetGrabPos(eyepos,eyeang,ppos,pnorm)
 	local pos, ang
 	local pl = self:GetParent().Owner
