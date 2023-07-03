@@ -2124,8 +2124,8 @@ function TOOL.BuildCPanel(CPanel)
 
 		CCheckBox(Col4,"#tool.ragdollmover.scalechildren","ragdollmover_scalechildren")
 
-		CCheckBox(Col4, "Enable angle snapping", "ragdollmover_snapenable")
-		CNumSlider(Col4, "Angle snap amount", "ragdollmover_snapamount", 1, 180, 0)
+		CCheckBox(Col4, "#tool.ragdollmover.snapenable", "ragdollmover_snapenable")
+		CNumSlider(Col4, "#tool.ragdollmover.snapamount", "ragdollmover_snapamount", 1, 180, 0)
 
 		local ColBones = CCol(Col4, "#tool.ragdollmover.bonelist")
 			RGMMakeBoneButtonPanel(ColBones, CPanel)

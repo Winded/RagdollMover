@@ -3,7 +3,7 @@ include("shared.lua")
 AddCSLuaFile("cl_init.lua")
 AddCSLuaFile("shared.lua")
 
-local VECTOR_FRONT, VECTOR_SIDE = Vector(1,0,0), Vector(0,1,0) 
+local VECTOR_FRONT, VECTOR_SIDE = Vector(1,0,0), Vector(0,1,0)
 
 local function ConvertVector(vec, axistype)
 	local rotationtable, result
