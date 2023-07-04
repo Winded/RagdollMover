@@ -270,7 +270,7 @@ function GetOffsetTable(tool,ent,rotate, bonelocks, entlocks)
 			local pos2,ang2 = obj2:GetPos(),obj2:GetAngles()
 			local pos3,ang3 = WorldToLocal(pos1,ang1,pos2,ang2)
 			local mov = obj1:IsMoveable()
-			RTable[pb] = {pos = pos3,ang = ang3,moving = mov,parent = parent}
+			RTable[pb] = {pos = pos3,ang = ang3,moving = mov,parent = parent, lock = bonelocks[pb] and true or nil}
 			local iktable = IsIKBone(tool,ent,pb)
 			if iktable then
 				RTable[pb].isik = true
@@ -378,7 +378,7 @@ local function SetBoneOffsets(tool, ent,ostable,sbone, rlocks, plocks)
 			end
 
 			local footdata = ostable[v.foot]
-			if footdata ~= nil and (footdata.parent ~= v.knee and footdata.parent ~= v.hip) and not RTable[footdata.parent] then 
+			if footdata ~= nil and (footdata.parent ~= v.knee and footdata.parent ~= v.hip) and not RTable[footdata.parent] and footdata.lock then 
 				RecursiveSetParent(ostable, sbone, rlocks, plocks, RTable, footdata.parent)
 			end
 
@@ -488,7 +488,7 @@ function ProcessIK(ent,IKTable,sbone,RT,footlock)
 	local AnklePos,AnkleAng
 	if IKTable.foot == sbone.b then
 		AnklePos,AnkleAng = sbone.p,sbone.a
-	elseif footlock ~= nil and IKTable.knee ~= footlock.parent and IKTable.hip ~= footlock.parent then
+	elseif footlock ~= nil and footlock.lock and IKTable.knee ~= footlock.parent and IKTable.hip ~= footlock.parent then
 		AnklePos,AnkleAng = LocalToWorld(footlock.pos, footlock.ang, RT[footlock.parent].pos, RT[footlock.parent].ang)
 	else
 		AnklePos,AnkleAng = footpos*1,footang*1

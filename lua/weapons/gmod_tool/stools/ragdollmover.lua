@@ -1541,8 +1541,8 @@ local function SetBoneNodes(bonepanel, ent, sortedbones)
 						nodes[LockTo]:SetIcon("icon16/lock.png")
 						nodes[LockTo].Label:SetToolTip("#tool.ragdollmover.lockedbone")
 					else
-						nodes[LockTo]:SetIcon(BoneTypeSort[v.Type].Icon)
-						nodes[LockTo].Label:SetToolTip(BoneTypeSort[v.Type].ToolTip)
+						nodes[LockTo]:SetIcon(BoneTypeSort[nodes[LockTo].Type].Icon)
+						nodes[LockTo].Label:SetToolTip(BoneTypeSort[nodes[LockTo].Type].ToolTip)
 					end
 				elseif LockMode == 2 then
 					net.Start("rgmLockConstrained")
