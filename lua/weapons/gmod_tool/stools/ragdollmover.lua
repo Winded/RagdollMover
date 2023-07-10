@@ -22,6 +22,12 @@ TOOL.ClientConVar["ik_leg_L"] = 0
 TOOL.ClientConVar["ik_leg_R"] = 0
 TOOL.ClientConVar["ik_hand_L"] = 0
 TOOL.ClientConVar["ik_hand_R"] = 0
+TOOL.ClientConVar["ik_chain_1"] = 0
+TOOL.ClientConVar["ik_chain_2"] = 0
+TOOL.ClientConVar["ik_chain_3"] = 0
+TOOL.ClientConVar["ik_chain_4"] = 0
+TOOL.ClientConVar["ik_chain_5"] = 0
+TOOL.ClientConVar["ik_chain_6"] = 0
 TOOL.ClientConVar["hipkneeroll"] = 3
 TOOL.ClientConVar["ignoredaxis"] = 3
 
@@ -1265,19 +1271,16 @@ local function CCol(cpanel,text, notexpanded)
 end
 local function CBinder(cpanel)
 	local parent = vgui.Create("Panel", cpanel)
-	parent:SetHeight(80)
 	cpanel:AddItem(parent)
 
 	local bindrot = vgui.Create("DBinder", parent)
 	bindrot.Label = vgui.Create("DLabel", parent)
 	bindrot:SetConVar("ragdollmover_rotatebutton")
 	bindrot:SetSize(100, 50)
-	bindrot:SetPos(25, 25)
 
 	bindrot.Label:SetText("#tool.ragdollmover.bindrot")
 	bindrot.Label:SetDark(true)
 	bindrot.Label:SizeToContents()
-	bindrot.Label:SetPos(25, 0)
 
 	function bindrot:OnChange(keycode)
 		net.Start("rgmSetToggleRot")
@@ -1289,18 +1292,65 @@ local function CBinder(cpanel)
 	bindsc.Label = vgui.Create("DLabel", parent)
 	bindsc:SetConVar("ragdollmover_scalebutton")
 	bindsc:SetSize(100, 50)
-	bindsc:SetPos(135, 25)
 
 	bindsc.Label:SetText("#tool.ragdollmover.bindscale")
 	bindsc.Label:SetDark(true)
 	bindsc.Label:SizeToContents()
-	bindsc.Label:SetPos(137, 0)
 
 	function bindsc:OnChange(keycode)
 		net.Start("rgmSetToggleScale")
 		net.WriteInt(keycode, 32)
 		net.SendToServer()
 	end
+
+	local rotw, scw = bindrot.Label:GetWide(), bindsc.Label:GetWide()
+
+	parent.PerformLayout = function()
+		parent:SetHeight(80)
+
+		bindrot:SetPos(parent:GetWide()/2 - 100 - 5 - 30 *(parent:GetWide()/217 - 1), 25)
+		bindrot.Label:SetPos(bindrot:GetX() + 50 - rotw/2, 0)
+		bindrot.Label:SetWidth(parent:GetWide()/2 - bindrot.Label:GetX())
+
+		bindsc:SetPos(parent:GetWide()/2 + 5 + 30 *(parent:GetWide()/217 - 1), 25)
+		bindsc.Label:SetPos(bindsc:GetX() + 50 - scw/2, 0)
+		bindsc.Label:SetWidth(parent:GetWide() - bindsc.Label:GetX())
+	end
+end
+
+local AdditionalIKs = {
+	"ragdollmover_ik_chain_1",
+	"ragdollmover_ik_chain_2",
+	"ragdollmover_ik_chain_3",
+	"ragdollmover_ik_chain_4",
+	"ragdollmover_ik_chain_5",
+	"ragdollmover_ik_chain_6"
+}
+
+local function CBAdditionalIKs(cpanel, text)
+	local butt = vgui.Create("DButton", cpanel)
+	butt:SetText(text)
+	function butt:DoClick()
+		local menu = DermaMenu(false, cpanel)
+		local panel = vgui.Create("Panel")
+		panel:SetSize(100, 125)
+		panel.iks = {}
+
+		for i = 1, 6 do
+			panel.iks[i] = vgui.Create("DCheckBoxLabel", panel)
+			panel.iks[i]:SetText(language.GetPhrase("tool.ragdollmover.ikchain") .. " " ..i)
+			panel.iks[i]:SetDark(true)
+			panel.iks[i]:SetConVar(AdditionalIKs[i])
+			panel.iks[i]:SetSize(90, 15)
+			panel.iks[i]:SetPos(5, 5 + 20*(i - 1))
+		end
+
+		menu:AddPanel(panel)
+		menu:Open()
+	end
+	cpanel:AddItem(butt)
+
+	return butt
 end
 
 local function RGMResetGizmo()
@@ -2086,6 +2136,7 @@ function TOOL.BuildCPanel(CPanel)
 		CCheckBox(Col2,"#tool.ragdollmover.ik1","ragdollmover_ik_leg_L")
 		CCheckBox(Col2,"#tool.ragdollmover.ik2","ragdollmover_ik_leg_R")
 		CButton(Col2, "#tool.ragdollmover.ikall", RGMSelectAllIK)
+		CBAdditionalIKs(Col2, "#tool.ragdollmover.additional")
 
 	local Col3 = CCol(CPanel,"#tool.ragdollmover.miscpanel")
 		CCheckBox(Col3, "#tool.ragdollmover.lockselected","ragdollmover_lockselected")

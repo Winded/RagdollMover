@@ -228,7 +228,13 @@ local DefIKnames = {
 	"ik_leg_L",
 	"ik_leg_R",
 	"ik_hand_L",
-	"ik_hand_R"
+	"ik_hand_R",
+	"ik_chain_1",
+	"ik_chain_2",
+	"ik_chain_3",
+	"ik_chain_4",
+	"ik_chain_5",
+	"ik_chain_6"
 }
 
 --Get bone offsets from parent bones, and update IK data.
