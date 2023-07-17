@@ -4,6 +4,7 @@ include("shared.lua")
 local COLOR_RGMGREEN = Color(0,200,0,255)
 
 local TransTable = {
+	"ArrowOmni",
 	"ArrowX", "ArrowY", "ArrowZ",
 	"ArrowXY", "ArrowXZ", "ArrowYZ",
 	"DiscP", "DiscY", "DiscR", "DiscLarge",
@@ -13,6 +14,7 @@ local TransTable = {
 
 net.Receive("rgmAxis",function(len)
 	local self = net.ReadEntity()
+	self.ArrowOmni =	net.ReadEntity()
 	self.ArrowX =		net.ReadEntity()
 	self.ArrowY =		net.ReadEntity()
 	self.ArrowZ =		net.ReadEntity()
@@ -30,6 +32,7 @@ net.Receive("rgmAxis",function(len)
 	self.ScaleXZ =		net.ReadEntity()
 	self.ScaleYZ =		net.ReadEntity()
 	self.Axises = {
+		self.ArrowOmni,
 		self.ArrowX,
 		self.ArrowY,
 		self.ArrowZ,
@@ -45,7 +48,7 @@ net.Receive("rgmAxis",function(len)
 		self.ScaleZ,
 		self.ScaleXY,
 		self.ScaleXZ,
-		self.ScaleYZ,
+		self.ScaleYZ
 	}
 end)
 
@@ -55,9 +58,9 @@ function ENT:DrawLines(scale,width)
 	local rotate = pl.rgm.Rotate or false
 	local modescale = pl.rgm.Scale or false
 	local collision = self:TestCollision(LocalPlayer(),scale)
-	local Start,End = 1,6
-	if rotate then Start,End = 7,10 end
-	if modescale then Start, End = 11, 16 end
+	local Start,End = 1,7
+	if rotate then Start,End = 8,11 end
+	if modescale then Start, End = 12, 17 end
 	-- print(self.Axises)
 
 	if not self.Axises then

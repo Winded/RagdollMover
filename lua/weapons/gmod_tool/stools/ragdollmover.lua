@@ -993,19 +993,29 @@ if SERVER then
 			snapamount = snapamount < 1 and 1 or snapamount
 		end
 
+		local tracepos = nil
+		if pl:KeyDown(IN_SPEED) then
+			local tr = util.TraceLine({
+				start = pl:EyePos(),
+				endpos = pl:EyePos() + pl:GetAimVector()*4096,
+				filter = {ent, pl}
+			})
+			tracepos = tr.HitPos
+		end
+
 		local physbonecount = ent:GetBoneCount() - 1
 		if physbonecount == nil then return end
 
 		if not scale then
-			if IsValid(ent:GetParent()) and bone == 0 and not ent:IsEffectActive(EF_BONEMERGE) and not (ent:GetClass() == "prop_ragdoll") then
-				local pos, ang = apart:ProcessMovement(pl.rgmOffsetPos,pl.rgmOffsetAng,eyepos,eyeang,ent,bone,pl.rgmISPos,pl.rgmISDir,0,snapamount,pl.rgm.StartAngle)
+			if IsValid(ent:GetParent()) and bone == 0 and not ent:IsEffectActive(EF_BONEMERGE) and not (ent:GetClass() == "prop_ragdoll") then -- is parented
+				local pos, ang = apart:ProcessMovement(pl.rgmOffsetPos,pl.rgmOffsetAng,eyepos,eyeang,ent,bone,pl.rgmISPos,pl.rgmISDir,0,snapamount,pl.rgm.StartAngle,nil,nil,nil,tracepos)
 				ent:SetLocalPos(pos)
 				ent:SetLocalAngles(ang)
-			elseif pl.rgm.IsPhysBone then
+			elseif pl.rgm.IsPhysBone then -- moving physbones
 
 				local isik,iknum = rgm.IsIKBone(self,ent,bone)
 
-				local pos,ang = apart:ProcessMovement(pl.rgmOffsetPos,pl.rgmOffsetAng,eyepos,eyeang,ent,bone,pl.rgmISPos,pl.rgmISDir,1,snapamount,pl.rgm.StartAngle)
+				local pos,ang = apart:ProcessMovement(pl.rgmOffsetPos,pl.rgmOffsetAng,eyepos,eyeang,ent,bone,pl.rgmISPos,pl.rgmISDir,1,snapamount,pl.rgm.StartAngle,nil,nil,nil,tracepos)
 
 				local obj = ent:GetPhysicsObjectNum(bone)
 				if not isik or iknum == 3 or (rotate and (iknum == 1 or iknum == 2)) then
@@ -1077,16 +1087,16 @@ if SERVER then
 				end
 
 				-- if not pl:GetNWBool("ragdollmover_keydown") then
-			else
-				local pos, ang = apart:ProcessMovement(pl.rgmOffsetPos,pl.rgmOffsetAng,eyepos,eyeang,ent,bone,pl.rgmISPos,pl.rgmISDir,2,snapamount, pl.rgm.StartAngle, pl.rgm.NPhysBonePos, pl.rgm.NPhysBoneAng) -- if a bone is not physics one, we pass over "start angle" thing
+			else -- moving nonphysbones
+				local pos, ang = apart:ProcessMovement(pl.rgmOffsetPos,pl.rgmOffsetAng,eyepos,eyeang,ent,bone,pl.rgmISPos,pl.rgmISDir,2,snapamount,pl.rgm.StartAngle,pl.rgm.NPhysBonePos,pl.rgm.NPhysBoneAng,nil,tracepos) -- if a bone is not physics one, we pass over "start angle" thing
 
 				ent:ManipulateBoneAngles(bone, ang)
 				ent:ManipulateBonePosition(bone, pos)
 			end
-		else
+		else -- scaling
 			bone = pl.rgm.Bone
 			local prevscale = ent:GetManipulateBoneScale(bone)
-			local sc, ang = apart:ProcessMovement(pl.rgmOffsetPos,pl.rgmOffsetAng,eyepos,eyeang,ent,bone,pl.rgmISPos,pl.rgmISDir,2,snapamount, pl.rgm.StartAngle, pl.rgm.NPhysBonePos, pl.rgm.NPhysBoneAng, pl.rgm.NPhysBoneScale)
+			local sc, ang = apart:ProcessMovement(pl.rgmOffsetPos,pl.rgmOffsetAng,eyepos,eyeang,ent,bone,pl.rgmISPos,pl.rgmISDir,2,snapamount,pl.rgm.StartAngle,pl.rgm.NPhysBonePos,pl.rgm.NPhysBoneAng,pl.rgm.NPhysBoneScale)
 
 			if axis.scalechildren then
 				local scalediff = sc - prevscale

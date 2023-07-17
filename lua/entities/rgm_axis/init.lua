@@ -22,6 +22,7 @@ local function SendAxisToPlayer(Axis, pl)
 	timer.Simple(0.5, function()
 		net.Start("rgmAxis")
 			net.WriteEntity(Axis)
+			net.WriteEntity(Axis.ArrowOmni)
 			net.WriteEntity(Axis.ArrowX)
 			net.WriteEntity(Axis.ArrowY)
 			net.WriteEntity(Axis.ArrowZ)
@@ -44,6 +45,14 @@ local function SendAxisToPlayer(Axis, pl)
 end
 
 function ENT:Setup()
+
+	self.ArrowOmni = ents.Create("rgm_axis_side_omni")
+		self.ArrowOmni:SetParent(self)
+		self.ArrowOmni:Spawn()
+		self.ArrowOmni:SetColor(Color(255,165,0,255))
+		self.ArrowOmni:SetNWVector("color2",Vector(255,165,0))
+		self.ArrowOmni:SetLocalPos(Vector(0,0,0))
+		self.ArrowOmni:SetLocalAngles(Vector(1,0,0):Angle())
 
 	--Arrows
 	self.ArrowX = ents.Create("rgm_axis_arrow")
@@ -190,6 +199,7 @@ function ENT:Setup()
 		self.ScaleYZ:SetLocalAngles(Vector(1,0,0):Angle())
 
 	self.Axises = {
+		self.ArrowOmni,
 		self.ArrowX,
 		self.ArrowY,
 		self.ArrowZ,
@@ -205,7 +215,7 @@ function ENT:Setup()
 		self.ScaleZ,
 		self.ScaleXY,
 		self.ScaleXZ,
-		self.ScaleYZ,
+		self.ScaleYZ
 	}
 
 	SendAxisToPlayer(self, self.Owner)
@@ -335,6 +345,7 @@ function ENT:Think()
 	local ang = (pos - poseye):Angle()
 	ang = self:WorldToLocalAngles(ang)
 	disc:SetLocalAngles(ang)
+	self.ArrowOmni:SetLocalAngles(ang)
 
 	pos, poseye = self:WorldToLocal(pos), self:WorldToLocal(poseye)
 	local xangle, yangle = (Vector(pos.y, pos.z, 0) - Vector(poseye.y, poseye.z, 0)):Angle(), (Vector(pos.x, pos.z, 0) - Vector(poseye.x, poseye.z, 0)):Angle()
