@@ -217,7 +217,7 @@ function GetPhysBoneParent(ent,bone)
 			return parent
 		end
 		i = i + 1
-		if i > 256 then
+		if i > 512 then
 			cont = true
 		end
 	end
@@ -593,8 +593,11 @@ end
 
 local COLOR_RGMGREEN = Color(0,200,0,255)
 
-function DrawBoneName(ent,bone)
-	local name = ent:GetBoneName(bone)
+function DrawBoneName(ent,bone,name)
+	if not name then
+		name = ent:GetBoneName(bone)
+	end
+
 	local _pos = ent:GetBonePosition(bone)
 	if not _pos then
 		_pos = ent:GetPos()
