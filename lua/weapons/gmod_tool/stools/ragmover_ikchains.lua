@@ -93,6 +93,15 @@ local function RecursionBoneFind(ent, startbone, lookfor)
 	return RecursionBoneFind(ent, nextbone, lookfor)
 end
 
+local function RecursionPropFind(startent, lookfor)
+	local nextent = startent.rgmPRparent
+	if not nextent then return false end
+
+	nextent = startent.rgmPRidtoent[nextent]
+	if nextent == lookfor then return true end
+	return RecursionPropFind(nextent, lookfor)
+end
+
 if SERVER then
 
 util.AddNetworkString("rgmikMessage")
@@ -166,56 +175,80 @@ end)
 end
 
 function TOOL:LeftClick(tr)
-	if not IsValid(tr.Entity) or tr.Entity:GetClass() ~= "prop_ragdoll" or not tr.PhysicsBone then return false end
+	local ent = tr.Entity
+	if not IsValid(ent) or (ent:GetClass() ~= "prop_ragdoll" and not ent.rgmPRenttoid) or not tr.PhysicsBone then return false end
 	local stage = self:GetStage()
 
 	if stage == 0 then
-		self.SelectedEnt = tr.Entity
+		self.IsPropRagdoll = ent.rgmPRenttoid and true or false
+		self.SelectedHipEnt = ent
 		self.SelectedHip = tr.PhysicsBone
+		self.SelectedKneeEnt = nil
 		self.SelectedKnee = nil
 
 		if SERVER then
-			rgmSendBone(tr.Entity, tr.PhysicsBone, self:GetOwner())
+			rgmSendBone(ent, tr.PhysicsBone, self:GetOwner())
 		end
 
 		self:SetStage(1)
 		return true
 	elseif stage == 1 then
-		if tr.Entity ~= self.SelectedEnt then return false end
-		if self.SelectedHip == tr.PhysicsBone then
+		if ent ~= self.SelectedHipEnt and (not ent.rgmPRenttoid or not ent.rgmPRenttoid[self.SelectedHipEnt]) then return false end
+		if (not self.IsPropRagdoll and self.SelectedHip == tr.PhysicsBone) or (self.IsPropRagdoll and self.SelectedHipEnt == ent) then
 			if SERVER then rgmSendNotif(RGM_NOTIFY.SAME_BONE.id, self:GetOwner()) end
 			return false
 		end
 
+		self.SelectedKneeEnt = ent
 		self.SelectedKnee = tr.PhysicsBone
 
 		if SERVER then
-			rgmSendBone(tr.Entity, tr.PhysicsBone, self:GetOwner())
+			rgmSendBone(ent, tr.PhysicsBone, self:GetOwner())
 		end
 
 		self:SetStage(2)
 		return true
 	else
-		if tr.Entity ~= self.SelectedEnt then return false end
-		if self.SelectedHip == tr.PhysicsBone or self.SelectedKnee == tr.PhysicsBone then
+		if ent ~= self.SelectedHipEnt and (not ent.rgmPRenttoid or not ent.rgmPRenttoid[self.SelectedHipEnt]) then return false end
+		if (not self.IsPropRagdoll and (self.SelectedHip == tr.PhysicsBone or self.SelectedKnee == tr.PhysicsBone)) or (self.IsPropRagdoll and (self.SelectedHipEnt == ent or self.SelectedKneeEnt == ent)) then
 			if SERVER then rgmSendNotif(RGM_NOTIFY.SAME_BONE.id, self:GetOwner()) end
 			return false
 		end
 
-		if RecursionBoneFind(self.SelectedEnt, tr.PhysicsBone, self.SelectedKnee) and RecursionBoneFind(self.SelectedEnt, self.SelectedKnee, self.SelectedHip) then
+		if not self.IsPropRagdoll and RecursionBoneFind(self.SelectedHipEnt, tr.PhysicsBone, self.SelectedKnee) and RecursionBoneFind(self.SelectedHipEnt, self.SelectedKnee, self.SelectedHip) then
 			if SERVER then 
 				rgmSendNotif(RGM_NOTIFY.SUCCESS.id, self:GetOwner())
 				rgmCallReset(self:GetOwner())
 			end
 
-			if not tr.Entity.rgmIKChains then tr.Entity.rgmIKChains = {} end
+			if not ent.rgmIKChains then ent.rgmIKChains = {} end
 			local Type = self:GetClientNumber("type",1)
-			tr.Entity.rgmIKChains[Type] = {hip = self.SelectedHip,knee = self.SelectedKnee,foot = tr.PhysicsBone,type = Type}
+			ent.rgmIKChains[Type] = {hip = self.SelectedHip,knee = self.SelectedKnee,foot = tr.PhysicsBone,type = Type}
+
 			self:SetStage(0)
-			rgmCallReset(self:GetOwner())
+			self.SelectedHipEnt = nil
 			self.SelectedHip = nil
+			self.SelectedKneeEnt = nil
 			self.SelectedKnee = nil
 			return true
+		elseif self.IsPropRagdoll and RecursionPropFind(ent, self.SelectedKneeEnt) and RecursionPropFind(self.SelectedKneeEnt, self.SelectedHipEnt) then
+			if SERVER then
+				rgmSendNotif(RGM_NOTIFY.SUCCESS.id, self:GetOwner())
+				rgmCallReset(self:GetOwner())
+			end
+
+			local Type = self:GetClientNumber("type",1)
+			local IKTable = {hip = ent.rgmPRenttoid[self.SelectedHipEnt], knee = ent.rgmPRenttoid[self.SelectedKneeEnt], foot = ent.rgmPRenttoid[ent], type = Type}
+			for id, ent in pairs(ent.rgmPRidtoent) do
+				if not ent.rgmIKChains then ent.rgmIKChains = {} end
+				ent.rgmIKChains[Type] = IKTable
+			end
+
+			self:SetStage(0)
+			self.SelectedHipEnt = nil
+			self.SelectedHip = nil
+			self.SelectedKneeEnt = nil
+			self.SelectedKnee = nil
 		else
 			if SERVER then 
 				rgmSendNotif(RGM_NOTIFY.BAD_ORDER.id, self:GetOwner())
@@ -223,7 +256,9 @@ function TOOL:LeftClick(tr)
 			end
 
 			self:SetStage(0)
+			self.SelectedHipEnt = nil
 			self.SelectedHip = nil
+			self.SelectedKnee = nil
 			self.SelectedKnee = nil
 			return false
 		end
@@ -463,7 +498,9 @@ function TOOL:DrawHUD()
 		end
 
 		local aimedbone = pl.ragdollmoverik_aimedbone or 0
-		if aimedbone ~= pl.ragdollmoverik_hip and aimedbone ~= pl.ragdollmoverik_knee or aimedent ~= pl.ragdollmoverik_ent then
+		local hipbone, kneebone = pl.ragdollmoverik_hip and pl.ragdollmoverik_hip.bone or 0, pl.ragdollmoverik_knee and pl.ragdollmoverik_knee.bone or 0
+		local hipent, kneeent = pl.ragdollmoverik_hip and pl.ragdollmoverik_hip.ent or nil, pl.ragdollmoverik_knee and pl.ragdollmoverik_knee.ent or nil
+		if aimedbone ~= hipbone and aimedbone ~= kneebone or aimedent ~= hipent and aimedent ~= kneeent then
 			rgm.DrawBoneName(aimedent,aimedbone)
 		end
 
@@ -472,14 +509,14 @@ function TOOL:DrawHUD()
 	local iktype = self:GetClientNumber("type",1)
 	iktype = ((iktype == 3) or (iktype == 4)) and true or false
 
-	if pl.ragdollmoverik_ent and pl.ragdollmoverik_hip then
+	if pl.ragdollmoverik_hip and IsValid(pl.ragdollmoverik_hip.ent) then
 		local hipname = iktype and "#tool.ragmover_ikchains.upperarm" or "#tool.ragmover_ikchains.hip"
-		rgm.DrawBoneName(pl.ragdollmoverik_ent,pl.ragdollmoverik_hip,hipname)
+		rgm.DrawBoneName(pl.ragdollmoverik_hip.ent,pl.ragdollmoverik_hip.bone,hipname)
 	end
 
-	if pl.ragdollmoverik_ent and pl.ragdollmoverik_knee then
+	if pl.ragdollmoverik_knee and IsValid(pl.ragdollmoverik_knee.ent) then
 		local kneename = iktype and "#tool.ragmover_ikchains.elbow" or "#tool.ragmover_ikchains.knee"
-		rgm.DrawBoneName(pl.ragdollmoverik_ent,pl.ragdollmoverik_knee,kneename)
+		rgm.DrawBoneName(pl.ragdollmoverik_knee.ent,pl.ragdollmoverik_knee.bone,kneename)
 	end
 
 end
@@ -527,17 +564,14 @@ net.Receive("rgmikSendBone", function(len)
 
 	local stage = tool:GetStage()
 	if stage == 0 then
-		pl.ragdollmoverik_ent = ent
-		pl.ragdollmoverik_hip = bone
+		pl.ragdollmoverik_hip = { bone = bone, ent = ent }
 	elseif stage == 1 then
-		if ent ~= pl.ragdollmoverik_ent then return end
-		pl.ragdollmoverik_knee = bone
+		pl.ragdollmoverik_knee = { bone = bone, ent = ent }
 	end
 end)
 
 net.Receive("rgmikReset", function(len)
 	local pl = LocalPlayer()
-	pl.ragdollmoverik_ent = nil
 	pl.ragdollmoverik_hip = nil
 	pl.ragdollmoverik_knee = nil
 end)
