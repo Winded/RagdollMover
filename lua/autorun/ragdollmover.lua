@@ -348,9 +348,9 @@ function GetOffsetTable(tool,ent,rotate, bonelocks, entlocks)
 
 	for k,v in pairs(ent.rgmIKChains) do
 
-		local obj1 = ent:GetPhysicsObjectNum(v.hip)
-		local obj2 = ent:GetPhysicsObjectNum(v.knee)
-		local obj3 = ent:GetPhysicsObjectNum(v.foot)
+		local obj1
+		local obj2
+		local obj3
 
 		if not ent.rgmPRidtoent then
 			obj1 = ent:GetPhysicsObjectNum(v.hip)
