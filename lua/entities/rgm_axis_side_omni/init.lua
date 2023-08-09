@@ -3,8 +3,12 @@ include("shared.lua")
 AddCSLuaFile("cl_init.lua")
 AddCSLuaFile("shared.lua")
 
-function ENT:ProcessMovement(offpos,offang,eyepos,eyeang,ent,bone,ppos,pnorm, movetype, garbage, startGrab, NPhysPos)
-	local intersect = self:GetGrabPos(eyepos,eyeang,ppos,pnorm)
+function ENT:ProcessMovement(offpos,offang,eyepos,eyeang,ent,bone,ppos,pnorm,movetype,_,startGrab,NPhysPos,_,_,tracepos)
+	local intersect = tracepos
+	if not intersect then
+		intersect = self:GetGrabPos(eyepos,eyeang,ppos,pnorm)
+	end
+
 	local axis = self:GetParent()
 	local offset = axis.Owner.rgm.GizmoOffset
 	if axis.localizedoffset then

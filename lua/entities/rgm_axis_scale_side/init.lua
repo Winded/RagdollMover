@@ -3,7 +3,7 @@ include("shared.lua")
 AddCSLuaFile("cl_init.lua")
 AddCSLuaFile("shared.lua")
 
-function ENT:ProcessMovement(offpos,offang,eyepos,eyeang,ent,bone,ppos,pnorm, movetype, startGrab, garbage, garbage, NPhysScale)
+function ENT:ProcessMovement(offpos,offang,eyepos,eyeang,ent,bone,ppos,pnorm, movetype, garbage, startGrab, garbage, garbage, NPhysScale)
 	local intersect = self:GetGrabPos(eyepos,eyeang,ppos,pnorm)
 	local pos, ang
 	local pl = self:GetParent().Owner
@@ -16,12 +16,12 @@ function ENT:ProcessMovement(offpos,offang,eyepos,eyeang,ent,bone,ppos,pnorm, mo
 		if IsValid(ent) then
 			boneang = ent:GetAngles()
 		else
-			boneang = Angle(0,0,0)
+			boneang = angle_zero
 		end
 	end
 
-	localized = LocalToWorld(offpos,Angle(0,0,0),intersect,self:GetAngles())
-	localized = WorldToLocal(localized, Angle(0,0,0), self:GetPos(), boneang)
+	localized = LocalToWorld(offpos,angle_zero,intersect,self:GetAngles())
+	localized = WorldToLocal(localized, angle_zero, self:GetPos(), boneang)
 
 	finalpos = NPhysScale + localized
 	ang = ent:GetManipulateBoneAngles(bone)

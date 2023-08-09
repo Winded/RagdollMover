@@ -1,6 +1,8 @@
 
 include("shared.lua")
 
+local VECTOR_RED = Vector(255,0,0)
+
 function ENT:GetLinePositions(width)
 	local RTable = {}
 	RTable[1] = {Vector(0,0.25 - 0.05*width,0),Vector(0,0.25 - 0.05*width,0.25 - 0.05*width),Vector(0,0.25 + 0.05*width,0.25 + 0.05*width),Vector(0,0.25 + 0.05*width,0)}
@@ -8,18 +10,20 @@ function ENT:GetLinePositions(width)
 	return RTable
 end
 
+local COLOR_YELLOW = Color(255,255,0,255)
+
 function ENT:DrawLines(yellow,scale,width)
 	local ToScreen = {}
 	local linetable = self:GetLinePositions(width)
 	local color = self:GetColor()
 	color = Color(color.r,color.g,color.b,color.a)
-	local color2 = self:GetNWVector("color2",Vector(255,0,0))
+	local color2 = self:GetNWVector("color2",VECTOR_RED)
 	color2 = Color(color2.x,color2.y,color2.z,255)
 	for i,v in ipairs(linetable) do
 		local points = self:PointsToWorld(v, scale)
 		local col = color
 		if yellow then
-			col = Color(255,255,0,255)
+			col = COLOR_YELLOW
 		elseif i == 2 then
 			col = color2
 		end

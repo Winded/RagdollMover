@@ -217,7 +217,7 @@ function GetPhysBoneParent(ent,bone)
 			return parent
 		end
 		i = i + 1
-		if i > 128 then --We've gone through all possible bones, so we get out.
+		if i > 512 then
 			cont = true
 		end
 	end
@@ -228,11 +228,17 @@ local DefIKnames = {
 	"ik_leg_L",
 	"ik_leg_R",
 	"ik_hand_L",
-	"ik_hand_R"
+	"ik_hand_R",
+	"ik_chain_1",
+	"ik_chain_2",
+	"ik_chain_3",
+	"ik_chain_4",
+	"ik_chain_5",
+	"ik_chain_6"
 }
 
 --Get bone offsets from parent bones, and update IK data.
-function GetOffsetTable(tool,ent,rotate)
+function GetOffsetTable(tool,ent,rotate, bonelocks, entlocks)
 	local RTable = {}
 	if not ent.rgmIKChains then
 		CreateDefaultIKs(tool,ent)
@@ -243,26 +249,34 @@ function GetOffsetTable(tool,ent,rotate)
 		local Parent = ent:GetBoneParent(Bone)
 		if ent:TranslateBoneToPhysBone(Parent) == -1 or not GetPhysBoneParent(ent, a) then -- root physbones seem to be "parented" to the -1. and the physboneparent function will not find the thing for it.
 			RTable[a] = {}
-			RTable[a].pos = ent:GetPhysicsObjectNum(a):GetPos()
-			RTable[a].ang = ent:GetPhysicsObjectNum(a):GetAngles()
+			if bonelocks[a] then
+				local obj1 = ent:GetPhysicsObjectNum(a)
+				local obj2 = ent:GetPhysicsObjectNum(bonelocks[a])
+				local pos1,ang1 = obj1:GetPos(),obj1:GetAngles()
+				local pos2,ang2 = obj2:GetPos(),obj2:GetAngles()
+				local pos3,ang3 = WorldToLocal(pos1,ang1,pos2,ang2)
+				RTable[a] = {pos = pos3,ang = ang3,parent = bonelocks[a]}
+			else
+				RTable[a].pos = ent:GetPhysicsObjectNum(a):GetPos()
+				RTable[a].ang = ent:GetPhysicsObjectNum(a):GetAngles()
+				RTable[a].root = true
+			end
 			RTable[a].moving = ent:GetPhysicsObjectNum(a):IsMoveable()
-			RTable[a].root = true
 		end
 	end
 
 	for i=0,ent:GetBoneCount()-1 do
 		local pb = BoneToPhysBone(ent,i)
-		local parent = GetPhysBoneParent(ent,pb)
+		local parent = bonelocks[pb] or GetPhysBoneParent(ent,pb)
 		if pb and parent and not RTable[pb] then
 			local b = ent:TranslatePhysBoneToBone(pb)
-			local bn = ent:GetBoneName(b)
 			local obj1 = ent:GetPhysicsObjectNum(pb)
 			local obj2 = ent:GetPhysicsObjectNum(parent)
 			local pos1,ang1 = obj1:GetPos(),obj1:GetAngles()
 			local pos2,ang2 = obj2:GetPos(),obj2:GetAngles()
 			local pos3,ang3 = WorldToLocal(pos1,ang1,pos2,ang2)
 			local mov = obj1:IsMoveable()
-			RTable[pb] = {pos = pos3,ang = ang3,moving = mov,parent = parent}
+			RTable[pb] = {pos = pos3,ang = ang3,moving = mov,parent = parent, lock = bonelocks[pb] and true or nil}
 			local iktable = IsIKBone(tool,ent,pb)
 			if iktable then
 				RTable[pb].isik = true
@@ -301,10 +315,54 @@ function GetOffsetTable(tool,ent,rotate)
 
 	end
 
+	for lockent, pb in pairs(entlocks) do -- getting offsets from physical entities that are locked to our bones
+		if not RTable[pb].locked then
+			RTable[pb].locked = {}
+		end
+
+		local locktable = {}
+
+		for i=0, lockent:GetPhysicsObjectCount() - 1 do
+			local obj1 = lockent:GetPhysicsObjectNum(i)
+			local obj2 = ent:GetPhysicsObjectNum(pb)
+			local pos1,ang1 = obj1:GetPos(),obj1:GetAngles()
+			local pos2,ang2 = obj2:GetPos(),obj2:GetAngles()
+			local pos3,ang3 = WorldToLocal(pos1,ang1,pos2,ang2)
+			local mov = obj1:IsMoveable()
+
+			locktable[i] = {pos = pos3, ang = ang3, moving = mov,parent = -1}
+		end
+
+		RTable[pb].locked[lockent] = locktable
+	end
+
 	return RTable
 end
 
-local function SetBoneOffsets(ent,ostable,sbone, rlocks, plocks)
+local function RecursiveSetParent(ostable, sbone, rlocks, plocks, RTable, bone)
+
+	local parent = ostable[bone].parent
+	if not RTable[parent] then RecursiveSetParent(ostable, sbone, rlocks, plocks, RTable, parent) end
+
+	local ppos,pang = RTable[parent].pos,RTable[parent].ang
+	local pos,ang = LocalToWorld(ostable[bone].pos,ostable[bone].ang,ppos,pang)
+	if bone == sbone.b then
+		pos = sbone.p
+		ang = sbone.a
+	else
+		if IsValid(rlocks[bone]) then
+			ang = rlocks[bone]:GetAngles()
+		end
+		if IsValid(plocks[bone]) then
+			pos = plocks[bone]:GetPos()
+		end
+	end
+	RTable[bone] = {}
+	RTable[bone].pos = pos*1
+	RTable[bone].ang = ang*1
+end
+
+local function SetBoneOffsets(tool, ent,ostable,sbone, rlocks, plocks)
 	local RTable = {}
 
 	for id, value in pairs(ostable) do
@@ -318,45 +376,68 @@ local function SetBoneOffsets(ent,ostable,sbone, rlocks, plocks)
 			end
 		end
 	end
-	for i=0,ent:GetBoneCount()-1 do
-		local pb = BoneToPhysBone(ent,i)
-		if ostable[pb] and not RTable[pb] then
-			local parent = ostable[pb].parent
-			local bn = ent:GetBoneName(i)
-			local ppos,pang = RTable[parent].pos,RTable[parent].ang
-			local pos,ang = LocalToWorld(ostable[pb].pos,ostable[pb].ang,ppos,pang)
-			if pb == sbone.b then
-				pos = sbone.p
-				ang = sbone.a
-			else
-				if IsValid(rlocks[pb]) then
-					ang = rlocks[pb]:GetAngles()
-				end
-				if IsValid(plocks[pb]) then
-					pos = plocks[pb]:GetPos()
-				end
-			end
-			RTable[pb] = {}
-			RTable[pb].pos = pos*1
-			RTable[pb].ang = ang*1
-		end
-	end
-	return RTable
-end
-
---Set bone positions from the local positions on the offset table.
---And process IK chains.
-function SetOffsets(tool,ent,ostable,sbone, rlocks, plocks)
-	local RTable = SetBoneOffsets(ent,ostable,sbone, rlocks, plocks)
-
 
 	for k,v in pairs(ent.rgmIKChains) do
-		if tobool(tool:GetClientNumber(DefIKnames[v.type],0)) then
-			local RT = ProcessIK(ent,v,sbone,RTable)
+		if tool:GetClientNumber(DefIKnames[v.type]) ~= 0 then
+			if v.ikhipparent then
+				if not RTable[v.ikhipparent] then RecursiveSetParent(ostable, sbone, rlocks, plocks, RTable, v.ikhipparent) end
+			end
+
+			local footdata = ostable[v.foot]
+			if footdata ~= nil and (footdata.parent ~= v.knee and footdata.parent ~= v.hip) and not RTable[footdata.parent] and footdata.lock then 
+				RecursiveSetParent(ostable, sbone, rlocks, plocks, RTable, footdata.parent)
+			end
+
+			local RT = ProcessIK(ent,v,sbone,RTable, footdata)
 			table.Merge(RTable,RT)
 		end
 	end
 
+	for k,v in pairs(ent.rgmIKChains) do -- calculating IKs twice for proper bone locking stuff to IKs, perhaps there is a simpler way to do these
+		if tool:GetClientNumber(DefIKnames[v.type]) ~= 0 then
+
+			local footdata = ostable[v.foot]
+			if not RTable[footdata.parent] then
+				RecursiveSetParent(ostable, sbone, rlocks, plocks, RTable, footdata.parent)
+			end
+
+			local RT = ProcessIK(ent,v,sbone,RTable, footdata)
+			table.Merge(RTable,RT)
+		end
+	end
+
+	for i=0,ent:GetBoneCount()-1 do
+		local pb = BoneToPhysBone(ent,i)
+		if ostable[pb] and not RTable[pb] then
+			RecursiveSetParent(ostable, sbone, rlocks, plocks, RTable, pb)
+		end
+	end
+
+	for i=0,ent:GetPhysicsObjectCount()-1 do
+		if not ostable[i].locked then continue end
+
+		for lockent, bones in pairs(ostable[i].locked) do
+			if not RTable[i].locked then
+				RTable[i].locked = {}
+			end
+			RTable[i].locked[lockent] = {}
+			RTable[i].locked[lockent][-1] = {pos = RTable[i].pos, ang = RTable[i].ang}
+
+			for j=0,lockent:GetPhysicsObjectCount()-1 do
+				if bones[j] and not RTable[i].locked[lockent][j] then
+					RecursiveSetParent(bones, {}, {}, {}, RTable[i].locked[lockent],j)
+				end
+			end
+		end
+	end
+
+	return RTable
+end
+
+--Set bone positions from the local positions on the offset table.
+--And process IK chains (In SetBoneOffsets).
+function SetOffsets(tool,ent,ostable,sbone, rlocks, plocks)
+	local RTable = SetBoneOffsets(tool, ent,ostable,sbone, rlocks, plocks)
 
 	return RTable
 
@@ -385,7 +466,7 @@ function FindKnee(pHip,pAnkle,fThigh,fShin,vKneeDir)
 end
 
 --Process one IK chain, and set it's positions.
-function ProcessIK(ent,IKTable,sbone,RT)
+function ProcessIK(ent,IKTable,sbone,RT,footlock)
 
 	local RTable = {}
 
@@ -404,17 +485,19 @@ function ProcessIK(ent,IKTable,sbone,RT)
 
 	if IKTable.ikhipparent then
 		obj = RT[IKTable.ikhipparent]
-		hpos,hang = LocalToWorld(hippos,Angle(0,0,0),obj.pos,obj.ang)
+		hpos,hang = LocalToWorld(hippos,angle_zero,obj.pos,obj.ang)
 	else
-		hpos,hang = LocalToWorld(hippos,Angle(0,0,0),Vector(0,0,0), Angle(0,0,0))
+		hpos,hang = LocalToWorld(hippos,angle_zero,vector_origin, angle_zero)
 	end
 	local HipPos = hpos*1
 
 	local AnklePos,AnkleAng
-	if IKTable.foot ~= sbone.b then
-		AnklePos,AnkleAng = footpos*1,footang*1
-	else
+	if IKTable.foot == sbone.b then
 		AnklePos,AnkleAng = sbone.p,sbone.a
+	elseif footlock ~= nil and footlock.lock and IKTable.knee ~= footlock.parent and IKTable.hip ~= footlock.parent then
+		AnklePos,AnkleAng = LocalToWorld(footlock.pos, footlock.ang, RT[footlock.parent].pos, RT[footlock.parent].ang)
+	else
+		AnklePos,AnkleAng = footpos*1,footang*1
 	end
 	local ankledist = AnklePos:Distance(HipPos)
 	if ankledist > (thighlength + shinlength) then
@@ -462,8 +545,8 @@ function SetAngleOffset(ent,pos,ang,ang2,offang)
 	local _p,_a = WorldToLocal(pos,ang2,pos,ang)
 	_a.p = 0
 	_a.y = 0
-	_p,_a = LocalToWorld(Vector(0,0,0),_a,pos,ang)
-	_p,_a = LocalToWorld(Vector(0,0,0),offang,pos,_a)
+	_p,_a = LocalToWorld(vector_origin,_a,pos,ang)
+	_p,_a = LocalToWorld(vector_origin,offang,pos,_a)
 	return _a
 end
 
@@ -495,7 +578,7 @@ end
 function IsIKBone(tool,ent,bone)
 	if not ent.rgmIKChains then return false end
 	for k,v in pairs(ent.rgmIKChains) do
-		if tobool(tool:GetClientNumber(DefIKnames[v.type],0)) then
+		if tool:GetClientNumber(DefIKnames[v.type]) ~= 0 then
 			if bone == v.hip then
 				return true,1
 			elseif bone == v.knee then
@@ -508,16 +591,21 @@ function IsIKBone(tool,ent,bone)
 	return false
 end
 
-function DrawBoneName(ent,bone)
-	local name = ent:GetBoneName(bone)
+local COLOR_RGMGREEN = Color(0,200,0,255)
+
+function DrawBoneName(ent,bone,name)
+	if not name then
+		name = ent:GetBoneName(bone)
+	end
+
 	local _pos = ent:GetBonePosition(bone)
 	if not _pos then
 		_pos = ent:GetPos()
 	end
 	_pos = _pos:ToScreen()
 	local textpos = {x = _pos.x+5,y = _pos.y-5}
-	surface.DrawCircle(_pos.x,_pos.y,3.5,Color(0,200,0,255))
-	draw.SimpleText(name,"Default",textpos.x,textpos.y,Color(0,200,0,255),TEXT_ALIGN_LEFT,TEXT_ALIGN_BOTTOM)
+	surface.DrawCircle(_pos.x,_pos.y,3.5,COLOR_RGMGREEN)
+	draw.SimpleText(name,"Default",textpos.x,textpos.y,COLOR_RGMGREEN,TEXT_ALIGN_LEFT,TEXT_ALIGN_BOTTOM)
 end
 
 function DrawEntName(ent)
@@ -536,8 +624,8 @@ function DrawEntName(ent)
 
 	pos = pos:ToScreen()
 	local textpos = { x = pos.x+5, y = pos.y-5 }
-	surface.DrawCircle(pos.x, pos.y, 3.5, Color(0, 200, 0, 255))
-	draw.SimpleText(name,"Default",textpos.x,textpos.y,Color(0,200,0,255),TEXT_ALIGN_LEFT,TEXT_ALIGN_BOTTOM)
+	surface.DrawCircle(pos.x, pos.y, 3.5, COLOR_RGMGREEN)
+	draw.SimpleText(name,"Default",textpos.x,textpos.y,COLOR_RGMGREEN,TEXT_ALIGN_LEFT,TEXT_ALIGN_BOTTOM)
 end
 
 function DrawBoneConnections(ent, bone)
@@ -548,7 +636,7 @@ function DrawBoneConnections(ent, bone)
 	mainpos = mainpos:ToScreen()
 
 	surface.SetDrawColor( 0, 200, 0, 255 )
-	for _, childbone in ipairs(ent:GetChildBones(bone)) do
+	for _, childbone in ipairs(ent:GetChildBones(bone) or {}) do
 		local pos = ent:GetBonePosition(childbone)
 		pos = pos:ToScreen()
 
@@ -575,7 +663,7 @@ local function DrawRecursiveBones(ent, bone)
 		surface.SetDrawColor( 255, 255, 255, 255 )
 		surface.DrawLine(mainpos.x, mainpos.y, pos.x, pos.y)
 		DrawRecursiveBones(ent, boneid)
-		surface.DrawCircle(pos.x, pos.y, 2.5, Color(0, 200, 0, 255))
+		surface.DrawCircle(pos.x, pos.y, 2.5, COLOR_RGMGREEN)
 	end
 end
 
@@ -593,7 +681,7 @@ function DrawSkeleton(ent)
 			DrawRecursiveBones(ent, v)
 
 			pos = pos:ToScreen()
-			surface.DrawCircle(pos.x, pos.y, 2.5, Color(0, 200, 0, 255))
+			surface.DrawCircle(pos.x, pos.y, 2.5, COLOR_RGMGREEN)
 		end
 	end
 

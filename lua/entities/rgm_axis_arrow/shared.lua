@@ -20,7 +20,7 @@ function ENT:TestCollision(pl,scale)
 	local eyepos,eyeang = rgm.EyePosAng(pl)
 	local intersect = self:GetGrabPos(eyepos,eyeang)
 	local localized = self:WorldToLocal(intersect)
-	local distmin = Vector(0,-0.075*scale,-0.075*scale)
+	local distmin = Vector(0.1*scale,-0.075*scale,-0.075*scale)
 	local distmax = Vector(1*scale,0.075*scale,0.075*scale)
 	if localized.x >= distmin.x and localized.x <= distmax.x
 	and localized.y >= distmin.y and localized.y <= distmax.y
