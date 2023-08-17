@@ -115,7 +115,7 @@ local function rgmGetConstrainedEntities(parent)
 	local count = 1
 
 	for _, ent in pairs(conents) do
-		if not IsValid(ent) or ent:IsWorld() or ent:IsConstraint() or not util.IsValidModel(ent:GetModel()) then continue end
+		if not IsValid(ent) or ent:IsWorld() or ent:IsConstraint() or not util.IsValidModel(ent:GetModel()) or IsValid(ent:GetParent()) then continue end
 		if ent:GetPhysicsObjectCount() > 0 then
 			children[count] = ent
 			count = count + 1
