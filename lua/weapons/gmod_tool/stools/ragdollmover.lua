@@ -1245,18 +1245,18 @@ if SERVER then
 						local boneid = not pl.rgm.PropRagdoll and i or 0
 
 						local obj = ent:GetPhysicsObjectNum(boneid)
-						local poslen = postable[i].pos:Length()
-						local anglen = Vector(postable[i].ang.p,postable[i].ang.y,postable[i].ang.r):Length()
+	--					local poslen = postable[i].pos:Length()
+	--					local anglen = Vector(postable[i].ang.p,postable[i].ang.y,postable[i].ang.r):Length()
 
 						--Temporary solution for INF and NaN decimals crashing the game (Even rounding doesnt fix it)
-						if poslen > 2 and anglen > 2 then
+	--					if poslen > 2 and anglen > 2 then
 							obj:EnableMotion(true)
 							obj:Wake()
 							obj:SetPos(postable[i].pos)
 							obj:SetAngles(postable[i].ang)
 							obj:EnableMotion(false)
 							obj:Wake()
-						end
+	--					end
 					end
 
 					if postable[i] and postable[i].locked and ConstrainedAllowed:GetBool() then
@@ -1264,18 +1264,18 @@ if SERVER then
 							for j=0,lockent:GetPhysicsObjectCount()-1 do
 								if bones[j] then
 									local obj = lockent:GetPhysicsObjectNum(j)
-									local poslen = bones[j].pos:Length()
-									local anglen = Vector(bones[j].ang.p,bones[j].ang.y,bones[j].ang.r):Length()
+	--								local poslen = bones[j].pos:Length()
+	--								local anglen = Vector(bones[j].ang.p,bones[j].ang.y,bones[j].ang.r):Length()
 
 									--Temporary solution for INF and NaN decimals crashing the game (Even rounding doesnt fix it)
-									if poslen > 2 and anglen > 2 then
+	--								if poslen > 2 and anglen > 2 then
 										obj:EnableMotion(true)
 										obj:Wake()
 										obj:SetPos(bones[j].pos)
 										obj:SetAngles(bones[j].ang)
 										obj:EnableMotion(false)
 										obj:Wake()
-									end
+	--								end
 
 								end
 							end

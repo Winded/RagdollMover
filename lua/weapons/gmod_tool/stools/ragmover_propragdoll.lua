@@ -5,6 +5,15 @@ TOOL.ConfigName = ""
 
 CVMaxPRBones = CreateConVar("sv_ragdollmover_max_prop_ragdoll_bones", 32, FCVAR_ARCHIVE + FCVAR_NOTIFY, "Maximum amount of bones that can be used in single Prop Ragdoll", 0, 4096)
 
+local RGM_NOTIFY = {
+	ENT_SELECTED = {id = 0, iserror = false},
+	ENT_CLEARED = {id = 1, iserror = false},
+	APPLIED = {id = 2, iserror = false},
+	APPLY_FAILED = {id = 3, iserror = true},
+	APPLY_FAILED_LIMIT = {id = 4, iserror = true},
+	PROPRAGDOLL_CLEARED = {id = 5, iserror = false}
+}
+
 local function ClearPropRagdoll(ent)
 	ent.rgmPRidtoent = nil
 	ent.rgmPRenttoid = nil
@@ -12,10 +21,17 @@ local function ClearPropRagdoll(ent)
 	duplicator.ClearEntityModifier(ent, "Ragdoll Mover Prop Ragdoll")
 end
 
+local function SendNotification(pl, id)
+	net.Start("rgmprDoNotify")
+	net.WriteUInt(id, 3)
+	net.Send(pl)
+end
+
 if SERVER then
 
 	util.AddNetworkString("rgmprSendConEnts")
 	util.AddNetworkString("rgmprApplySkeleton")
+	util.AddNetworkString("rgmprDoNotify")
 
 
 	duplicator.RegisterEntityModifier("Ragdoll Mover Prop Ragdoll", function(pl, ent, data)
@@ -88,7 +104,14 @@ if SERVER then
 			end
 		end
 
-		if fail or count > CVMaxPRBones:GetInt() then return end
+		if fail or count > CVMaxPRBones:GetInt() then
+			if fail then
+				SendNotification(pl, RGM_NOTIFY.APPLY_FAILED.id)
+			else
+				SendNotification(pl, RGM_NOTIFY.APPLY_FAILED_LIMIT.id)
+			end
+			return
+		end
 
 		for id, data in pairs(ents) do
 			local ent = data.ent
@@ -117,6 +140,7 @@ if SERVER then
 
 			duplicator.StoreEntityModifier(ent, "Ragdoll Mover Prop Ragdoll", data)
 		end
+		SendNotification(pl, RGM_NOTIFY.APPLIED.id)
 	end)
 end
 
@@ -169,12 +193,18 @@ function TOOL:Reload(tr)
 		for id, ent in pairs(ent.rgmPRidtoent) do
 			ClearPropRagdoll(ent)
 		end
+		SendNotification(self:GetOwner(), RGM_NOTIFY.PROPRAGDOLL_CLEARED.id)
 	end
 
 	return true
 end
 
 if CLIENT then
+
+TOOL.Information = {
+	{name = "right"},
+	{name = "reload"}
+}
 
 local PRUI
 local HoveredEnt
@@ -194,8 +224,29 @@ local function RGMCallApplySkeleton()
 	net.SendToServer()
 end
 
+local function rgmDoNotification(message)
+	local MessageTable = {}
+
+	for key, data in pairs(RGM_NOTIFY) do
+		if not data.iserror then
+			MessageTable[data.id] = function()
+				notification.AddLegacy("#tool.ragmover_propragdoll.message" .. data.id, NOTIFY_GENERIC, 5)
+				surface.PlaySound("buttons/button14.wav")
+			end
+		else
+			MessageTable[data.id] = function()
+				notification.AddLegacy("#tool.ragmover_propragdoll.message" .. data.id, NOTIFY_ERROR, 5)
+				surface.PlaySound("buttons/button10.wav")
+			end
+		end
+	end
+
+	MessageTable[message]()
+end
+
 local function DeleteNodeRecursive(node)
 	if IsValid(node) then
+		PRUI.PRTree.Nodes[node.id] = nil
 		node:SetParent(nil)
 		node:Remove()
 		for _, child in ipairs(node:GetChildNodes()) do
@@ -490,17 +541,17 @@ local function PropRagdollCreator(cpanel)
 	helptext:SetWrap(true)
 	helptext:SetAutoStretchVertical(true)
 	helptext:SetDark(true)
-	helptext:SetText("Drag nodes from Constrained Entities tab into Prop Ragdoll tab to create skeleton for your prop ragdoll and then apply it. This tool can not read Prop Ragdoll skeleton data from existing Prop Ragdolls")
+	helptext:SetText("#tool.ragmover_propragdoll.treeinfo")
 	cpanel:AddItem(helptext)
 
 	local PropRagdollUI = {}
-	local constrainedents = CCol(cpanel, "Constrained Entities")
+	local constrainedents = CCol(cpanel, "#tool.ragmover_propragdoll.conents")
 
 	PropRagdollUI.EntTree = vgui.Create("DTree", constrainedents)
 	PropRagdollUI.EntTree:SetTall(300)
 	constrainedents:AddItem(PropRagdollUI.EntTree)
 
-	local creatorpanel = CCol(cpanel, "Prop Ragdoll")
+	local creatorpanel = CCol(cpanel, "#tool.ragmover_propragdoll.propragdoll")
 
 	PropRagdollUI.PRTree = vgui.Create("DTree", creatorpanel)
 	PropRagdollUI.PRTree:SetTall(300)
@@ -538,7 +589,7 @@ local function PropRagdollCreator(cpanel)
 	creatorpanel:AddItem(PropRagdollUI.PRTree.HBar)
 
 	local applybutt = vgui.Create("DButton", creatorpanel)
-	applybutt:SetText("Apply Skeleton")
+	applybutt:SetText("#tool.ragmover_propragdoll.apply")
 
 	applybutt.DoClick = RGMCallApplySkeleton
 
@@ -562,7 +613,7 @@ local function UpdateConstrainedEnts(ents)
 	PRUI.PRTree.Bones = 0
 	PRUI.PRTree.Nodes = {}
 
-	if not next(ents) then return end
+	if not next(ents) then 	rgmDoNotification(1) return end
 	for _, ent in ipairs(ents) do
 		local text = GetModelName(ent)
 		PRUI.EntNodes[ent] = PRUI.EntTree:AddNode(text, "icon16/brick.png")
@@ -580,6 +631,7 @@ local function UpdateConstrainedEnts(ents)
 			HoveredEnt = nil
 		end
 	end
+	rgmDoNotification(0)
 end
 
 function TOOL.BuildCPanel(CPanel)
@@ -595,6 +647,7 @@ function TOOL:DrawHUD()
 	if PRUI and PRUI.PRTree and PRUI.PRTree.Nodes then
 		for id, node in pairs(PRUI.PRTree.Nodes) do
 			local ent = node.ent
+			if not IsValid(ent) then break end
 			local pos = ent:GetPos():ToScreen()
 			local textpos = { x = pos.x+5, y = pos.y-5 }
 			surface.DrawCircle(pos.x, pos.y, 3.5, COLOR_RGMGREEN)
@@ -614,7 +667,7 @@ function TOOL:DrawHUD()
 
 end
 
-net.Receive("rgmprSendConEnts", function(len, pl)
+net.Receive("rgmprSendConEnts", function(len)
 
 	local validents = net.ReadBool()
 	local ents = {}
@@ -627,6 +680,11 @@ net.Receive("rgmprSendConEnts", function(len, pl)
 	end
 
 	UpdateConstrainedEnts(ents)
+end)
+
+net.Receive("rgmprDoNotify", function(len)
+	local msgid = net.ReadUInt(3)
+	rgmDoNotification(msgid)
 end)
 
 end
