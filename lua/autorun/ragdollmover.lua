@@ -239,7 +239,7 @@ local DefIKnames = {
 
 
 --Functions for offset table generation
-local function GetRootBones(parent, physobj, obj1, obj2, RTable, ent, ent2)
+local function GetRootBones(parent, physobj, obj1, obj2, RTable)
 	RTable[physobj] = {}
 	if parent then
 		local pos1,ang1 = obj1:GetPos(),obj1:GetAngles()
@@ -256,7 +256,7 @@ local function GetRootBones(parent, physobj, obj1, obj2, RTable, ent, ent2)
 	RTable[physobj].moving = obj1:IsMoveable()
 end
 
-local function GetBones(bonelock, parent, pb, obj1, obj2, RTable, ent, ent2)
+local function GetBones(bonelock, parent, pb, obj1, obj2, RTable)
 	local pos1,ang1 = obj1:GetPos(),obj1:GetAngles()
 	local pos2,ang2 = obj2:GetPos(),obj2:GetAngles()
 	local pos3,ang3 = WorldToLocal(pos1,ang1,pos2,ang2)
@@ -339,9 +339,8 @@ function GetOffsetTable(tool,ent,rotate, bonelocks, entlocks)
 
 			if pb and parent and not RTable[pb] then
 				local obj1 = thisent:GetPhysicsObjectNum(0)
-				local ent2 = ent.rgmPRidtoent[parent]
-				local obj2 = ent2:GetPhysicsObjectNum(0)
-				GetBones(bonelocks[thisent][pb], parent, pb, obj1, obj2, RTable, ent, ent2)
+				local obj2 = ent.rgmPRidtoent[parent]:GetPhysicsObjectNum(0)
+				GetBones(bonelocks[thisent][pb], parent, pb, obj1, obj2, RTable)
 				RTable[pb].ent = thisent
 				local iktable = IsIKBone(tool,ent,pb)
 				if iktable then
