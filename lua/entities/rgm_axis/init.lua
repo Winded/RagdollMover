@@ -10,6 +10,7 @@ local TYPE_ARROW = 1
 local TYPE_ARROWSIDE = 2
 local TYPE_DISC = 3
 
+local VECTOR_ORIGIN = Vector(0,0,0)
 local VECTOR_FRONT = Vector(1,0,0)
 local ANGLE_DISC = Angle(0,90,0)
 local ANGLE_ARROW_OFFSET = Angle(0,90,90)
@@ -309,10 +310,19 @@ function ENT:Think()
 	end
 
 	if not pl.rgm.Moving or not rotate then
+		local entoffset = VECTOR_ORIGIN
+		if ent.rgmPRoffset then
+			entoffset = ent.rgmPRoffset
+		end
+
 		if offsetlocal then 
-			self:SetPos(LocalToWorld(offset, angle_zero, pos, ang))
+			self:SetPos(LocalToWorld(offset + entoffset, angle_zero, pos, ang))
 		else
-			self:SetPos(pos + offset)
+			if ent.rgmPRoffset then
+				entoffset = LocalToWorld(entoffset, angle_zero, pos, ang)
+				entoffset = entoffset - pos
+			end
+			self:SetPos(pos + offset + entoffset)
 		end
 	end
 

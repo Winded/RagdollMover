@@ -237,8 +237,9 @@ local DefIKnames = {
 	"ik_chain_6"
 }
 
+
 --Functions for offset table generation
-local function GetRootBones(parent, physobj, obj1, obj2, RTable)
+local function GetRootBones(parent, physobj, obj1, obj2, RTable, ent, ent2)
 	RTable[physobj] = {}
 	if parent then
 		local pos1,ang1 = obj1:GetPos(),obj1:GetAngles()
@@ -246,14 +247,16 @@ local function GetRootBones(parent, physobj, obj1, obj2, RTable)
 		local pos3,ang3 = WorldToLocal(pos1,ang1,pos2,ang2)
 		RTable[physobj] = {pos = pos3,ang = ang3,parent = parent.id}
 	else
-		RTable[physobj].pos = obj1:GetPos()
-		RTable[physobj].ang = obj1:GetAngles()
+		local pos, ang = obj1:GetPos(), obj1:GetAngles()
+
+		RTable[physobj].pos = pos
+		RTable[physobj].ang = ang
 		RTable[physobj].root = true
 	end
 	RTable[physobj].moving = obj1:IsMoveable()
 end
 
-local function GetBones(bonelock, parent, pb, obj1, obj2, RTable)
+local function GetBones(bonelock, parent, pb, obj1, obj2, RTable, ent, ent2)
 	local pos1,ang1 = obj1:GetPos(),obj1:GetAngles()
 	local pos2,ang2 = obj2:GetPos(),obj2:GetAngles()
 	local pos3,ang3 = WorldToLocal(pos1,ang1,pos2,ang2)
@@ -283,7 +286,7 @@ function GetOffsetTable(tool,ent,rotate, bonelocks, entlocks)
 			local Parent = ent:GetBoneParent(Bone)
 			if ent:TranslateBoneToPhysBone(Parent) == -1 or not GetPhysBoneParent(ent, a) then -- root physbones seem to be "parented" to the -1. and the physboneparent function will not find the thing for it.
 				local obj1 = ent:GetPhysicsObjectNum(a)
-				local obj2
+				local obj2 = nil
 				if bonelocks[ent][a] then
 					obj2 = ent:GetPhysicsObjectNum(bonelocks[ent][a].id)
 				end
@@ -295,11 +298,13 @@ function GetOffsetTable(tool,ent,rotate, bonelocks, entlocks)
 			local thisent = ent.rgmPRidtoent[a]
 			if not thisent.rgmPRparent then
 				local obj1 = thisent:GetPhysicsObjectNum(0)
-				local obj2
+				local obj2 = nil
+				local ent2 = nil
 				if bonelocks[thisent][a] then
-					obj2 = bonelocks[thisent][a].ent:GetPhysicsObjectNum(0)
+					ent2 = bonelocks[thisent][a].ent
+					obj2 = ent2:GetPhysicsObjectNum(0)
 				end
-				GetRootBones(bonelocks[thisent][a],a,obj1,obj2,RTable)
+				GetRootBones(bonelocks[thisent][a],a,obj1,obj2,RTable, ent, ent2)
 				RTable[a].ent = thisent
 			end
 
@@ -334,8 +339,9 @@ function GetOffsetTable(tool,ent,rotate, bonelocks, entlocks)
 
 			if pb and parent and not RTable[pb] then
 				local obj1 = thisent:GetPhysicsObjectNum(0)
-				local obj2 = ent.rgmPRidtoent[parent]:GetPhysicsObjectNum(0)
-				GetBones(bonelocks[thisent][pb], parent, pb, obj1, obj2, RTable)
+				local ent2 = ent.rgmPRidtoent[parent]
+				local obj2 = ent2:GetPhysicsObjectNum(0)
+				GetBones(bonelocks[thisent][pb], parent, pb, obj1, obj2, RTable, ent, ent2)
 				RTable[pb].ent = thisent
 				local iktable = IsIKBone(tool,ent,pb)
 				if iktable then
@@ -348,25 +354,51 @@ function GetOffsetTable(tool,ent,rotate, bonelocks, entlocks)
 
 	for k,v in pairs(ent.rgmIKChains) do
 
-		local obj1
-		local obj2
-		local obj3
+		local obj1, obj2, obj3 = nil, nil, nil
+		local ent1, ent2, ent3 = nil, nil, nil
 
-		if not ent.rgmPRidtoent then
+		if not propragdoll then
 			obj1 = ent:GetPhysicsObjectNum(v.hip)
 			obj2 = ent:GetPhysicsObjectNum(v.knee)
 			obj3 = ent:GetPhysicsObjectNum(v.foot)
 		else
-			obj1 = ent.rgmPRidtoent[v.hip]:GetPhysicsObjectNum(0)
-			obj2 = ent.rgmPRidtoent[v.knee]:GetPhysicsObjectNum(0)
-			obj3 = ent.rgmPRidtoent[v.foot]:GetPhysicsObjectNum(0)
+			ent1 = ent.rgmPRidtoent[v.hip]
+			ent2 = ent.rgmPRidtoent[v.knee]
+			ent3 = ent.rgmPRidtoent[v.foot]
+
+			obj1 = ent1:GetPhysicsObjectNum(0)
+			obj2 = ent2:GetPhysicsObjectNum(0)
+			obj3 = ent3:GetPhysicsObjectNum(0)
+		end
+
+		local pos1, pos2, pos3 = obj1:GetPos(), obj2:GetPos(), obj3:GetPos()
+		local hippos = RTable[v.hip].pos*1
+
+		if ent1 and ent1.rgmPRoffset then
+			local parent = RTable[v.hip].parent
+			local offset = ent1.rgmPRoffset
+			if parent and RTable[parent].ent then
+				local pent = RTable[parent].ent
+				offset = LocalToWorld(offset, angle_zero, pos1, obj1:GetAngles())
+				offset = WorldToLocal(offset, obj1:GetAngles(), pent:GetPos(), pent:GetAngles())
+				hippos = offset
+			else
+				hippos = LocalToWorld(offset, angle_zero, pos1, obj1:GetAngles())
+			end
+			pos1 = LocalToWorld(ent1.rgmPRoffset, angle_zero, pos1, obj1:GetAngles())
+		end
+		if ent2 and ent2.rgmPRoffset then
+			pos2 = LocalToWorld(ent2.rgmPRoffset, angle_zero, pos2, obj2:GetAngles())
+		end
+		if ent3 and ent3.rgmPRoffset then
+			pos3 = LocalToWorld(ent3.rgmPRoffset, angle_zero, pos3, obj3:GetAngles())
 		end
 
 		ent.rgmIKChains[k].rotate = rotate
 
 		local kneedir = GetKneeDir(ent,v.hip,v.knee,v.foot)
 
-		ent.rgmIKChains[k].ikhippos = RTable[v.hip].pos*1
+		ent.rgmIKChains[k].ikhippos = hippos
 		if RTable[v.hip].parent then
 			ent.rgmIKChains[k].ikhipparent = RTable[v.hip].parent*1
 		end
@@ -379,11 +411,11 @@ function GetOffsetTable(tool,ent,rotate, bonelocks, entlocks)
 		ent.rgmIKChains[k].ikkneeang = ang*1
 		ent.rgmIKChains[k].ikkneeoffang = offang*1
 
-		ent.rgmIKChains[k].ikfootpos = obj3:GetPos()
+		ent.rgmIKChains[k].ikfootpos = pos3
 		ent.rgmIKChains[k].ikfootang = obj3:GetAngles()
 
-		ent.rgmIKChains[k].thighlength = obj1:GetPos():Distance(obj2:GetPos())
-		ent.rgmIKChains[k].shinlength = obj2:GetPos():Distance(obj3:GetPos())
+		ent.rgmIKChains[k].thighlength = pos1:Distance(pos2)
+		ent.rgmIKChains[k].shinlength = pos2:Distance(pos3)
 
 	end
 
@@ -494,6 +526,18 @@ local function SetBoneOffsets(tool,ent,ostable,sbone,rlocks,plocks)
 		end
 	end
 
+	if propragdoll then
+		for pb=0,physcount do
+			value = ostable[pb]
+			if value.ent and value.ent.rgmPRoffset and not value.isik then
+				local offset = value.ent.rgmPRoffset
+				local _p,_a = LocalToWorld(-offset,value.ent:GetAngles(),RTable[pb].pos,RTable[pb].ang)
+				_p = LocalToWorld(offset, angle_zero, _p, value.ent:GetAngles())
+				RTable[pb].pos = _p
+			end
+		end
+	end
+
 	for i=0,physcount do
 		if not ostable[i].locked then continue end
 
@@ -549,6 +593,8 @@ end
 --Process one IK chain, and set it's positions.
 function ProcessIK(ent,IKTable,sbone,RT,footlock)
 
+	local propragdoll = ent.rgmPRidtoent and true or false
+
 	local RTable = {}
 
 	local hippos = IKTable.ikhippos
@@ -575,6 +621,14 @@ function ProcessIK(ent,IKTable,sbone,RT,footlock)
 	local AnklePos,AnkleAng
 	if IKTable.foot == sbone.b then
 		AnklePos,AnkleAng = sbone.p,sbone.a
+
+		if propragdoll then
+			local ent3 = ent.rgmPRidtoent[IKTable.foot]
+			if ent3 and ent3.rgmPRoffset then
+				AnklePos = LocalToWorld(ent3.rgmPRoffset, angle_zero, AnklePos, AnkleAng)
+			end
+		end
+
 	elseif footlock ~= nil and footlock.lock and IKTable.knee ~= footlock.parent and IKTable.hip ~= footlock.parent then
 		AnklePos,AnkleAng = LocalToWorld(footlock.pos, footlock.ang, RT[footlock.parent].pos, RT[footlock.parent].ang)
 	else
@@ -592,6 +646,20 @@ function ProcessIK(ent,IKTable,sbone,RT,footlock)
 	local HipAng = hang*1
 	hang = SetAngleOffset(ent,KneePos,(AnklePos-KneePos):Angle(),kneeang,kneeoffang)
 	local KneeAng = hang*1
+
+	if propragdoll then
+		local ent1, ent2, ent3 = ent.rgmPRidtoent[IKTable.hip], ent.rgmPRidtoent[IKTable.knee], ent.rgmPRidtoent[IKTable.foot]
+
+		if ent1 and ent1.rgmPRoffset then
+			HipPos = LocalToWorld(-ent1.rgmPRoffset, angle_zero, HipPos, HipAng)
+		end
+		if ent2 and ent2.rgmPRoffset then
+			KneePos = LocalToWorld(-ent2.rgmPRoffset, angle_zero, KneePos, KneeAng)
+		end
+		if ent3 and ent3.rgmPRoffset then
+			AnklePos = LocalToWorld(-ent3.rgmPRoffset, angle_zero, AnklePos, AnkleAng)
+		end
+	end
 
 	RTable[IKTable.hip] = {pos = HipPos,ang = HipAng}
 	RTable[IKTable.knee] = {pos = KneePos,ang = KneeAng}
@@ -615,19 +683,31 @@ function NormalizeAngle(ang)
 end
 
 function GetAngleOffset(ent,b1,b2)
-	local obj1
-	local obj2
+	local obj1, obj2 = nil, nil
+	local ent1, ent2 = nil, nil
 
 	if not ent.rgmPRidtoent then
 		obj1 = ent:GetPhysicsObjectNum(b1)
 		obj2 = ent:GetPhysicsObjectNum(b2)
 	else
-		obj1 = ent.rgmPRidtoent[b1]:GetPhysicsObjectNum(0)
-		obj2 = ent.rgmPRidtoent[b2]:GetPhysicsObjectNum(0)
+		ent1 = ent.rgmPRidtoent[b1]
+		ent2 = ent.rgmPRidtoent[b2]
+
+		obj1 = ent1:GetPhysicsObjectNum(0)
+		obj2 = ent2:GetPhysicsObjectNum(0)
 	end
 
-	local ang = (obj2:GetPos()-obj1:GetPos()):Angle()
-	local p,offang = WorldToLocal(obj1:GetPos(),obj1:GetAngles(),obj1:GetPos(),ang)
+	local pos1, pos2 = obj1:GetPos(), obj2:GetPos()
+
+	if ent1 and ent1.rgmPRoffset then
+		pos1 = LocalToWorld(ent1.rgmPRoffset, angle_zero, pos1, obj1:GetAngles())
+	end
+	if ent2 and ent2.rgmPRoffset then
+		pos2 = LocalToWorld(ent2.rgmPRoffset, angle_zero, pos2, obj2:GetAngles())
+	end
+
+	local ang = (pos2-pos1):Angle()
+	local p,offang = WorldToLocal(pos1,obj1:GetAngles(),pos1,ang)
 	return ang,offang
 end
 
@@ -642,22 +722,37 @@ end
 
 --Get IK chain's knee direction.
 function GetKneeDir(ent,bHip,bKnee,bAnkle)
-	local obj1
-	local obj2
-	local obj3
+	local obj1, obj2, obj3 = nil, nil, nil
+	local ent1, ent2, ent3 = nil, nil, nil
 
 	if not ent.rgmPRidtoent then
 		obj1 = ent:GetPhysicsObjectNum(bHip)
 		obj2 = ent:GetPhysicsObjectNum(bKnee)
 		obj3 = ent:GetPhysicsObjectNum(bAnkle)
 	else
-		obj1 = ent.rgmPRidtoent[bHip]:GetPhysicsObjectNum(0)
-		obj2 = ent.rgmPRidtoent[bKnee]:GetPhysicsObjectNum(0)
-		obj3 = ent.rgmPRidtoent[bAnkle]:GetPhysicsObjectNum(0)
+		ent1 = ent.rgmPRidtoent[bHip]
+		ent2 = ent.rgmPRidtoent[bKnee]
+		ent3 = ent.rgmPRidtoent[bAnkle]
+
+		obj1 = ent1:GetPhysicsObjectNum(0)
+		obj2 = ent2:GetPhysicsObjectNum(0)
+		obj3 = ent3:GetPhysicsObjectNum(0)
+	end
+
+	local pos1, pos2, pos3 = obj1:GetPos(), obj2:GetPos(), obj3:GetPos()
+
+	if ent1 and ent1.rgmPRoffset then
+		pos1 = LocalToWorld(ent1.rgmPRoffset, angle_zero, pos1, obj1:GetAngles())
+	end
+	if ent2 and ent2.rgmPRoffset then
+		pos2 = LocalToWorld(ent2.rgmPRoffset, angle_zero, pos2, obj2:GetAngles())
+	end
+	if ent3 and ent3.rgmPRoffset then
+		pos3 = LocalToWorld(ent3.rgmPRoffset, angle_zero, pos3, obj3:GetAngles())
 	end
 
 	-- print(( obj2:GetPos()- ( obj3:GetPos() + ( ( obj1:GetPos() - obj3:GetPos() ) / 2 ) ) ):Normalize())
-	local r = ( obj2:GetPos()- ( obj3:GetPos() + ( ( obj1:GetPos() - obj3:GetPos() ) / 2 ) ) )
+	local r = ( pos2 - ( pos3 + ( ( pos1 - pos3 ) / 2 ) ) )
 	r:Normalize()
 	return r
 end

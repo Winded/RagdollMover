@@ -37,9 +37,15 @@ function ENT:ProcessMovement(offpos,offang,eyepos,eyeang,ent,bone,ppos,pnorm, mo
 	if movetype == 1 then
 		local axis = self:GetParent()
 		local offset = axis.Owner.rgm.GizmoOffset
+		local entoffset = vector_origin
 		if axis.localizedoffset and not axis.relativerotate then
 			offset = LocalToWorld(offset, angle_zero, axis:GetPos(), axis.LocalAngles)
 			offset = offset - axis:GetPos()
+		end
+		if ent.rgmPRoffset then
+			entoffset = LocalToWorld(ent.rgmPRoffset, angle_zero, axis:GetPos(), axis.LocalAngles)
+			entoffset = entoffset - axis:GetPos()
+			offset = offset + entoffset
 		end
 
 		localized = Vector(localized.y,localized.z,0):Angle()
@@ -102,9 +108,15 @@ function ENT:ProcessMovement(offpos,offang,eyepos,eyeang,ent,bone,ppos,pnorm, mo
 	elseif movetype == 0 then
 		local axis = self:GetParent()
 		local offset = axis.Owner.rgm.GizmoOffset
+		local entoffset = vector_origin
 		if axis.localizedoffset and not axis.relativerotate then
 			offset = LocalToWorld(offset, angle_zero, axis:GetPos(), axis.LocalAngles)
 			offset = offset - axis:GetPos()
+		end
+		if ent.rgmPRoffset then
+			entoffset = LocalToWorld(ent.rgmPRoffset, angle_zero, axis:GetPos(), axis.LocalAngles)
+			entoffset = entoffset - axis:GetPos()
+			offset = offset + entoffset
 		end
 
 		localized = Vector(localized.y,localized.z,0):Angle()

@@ -11,9 +11,15 @@ function ENT:ProcessMovement(offpos,offang,eyepos,eyeang,ent,bone,ppos,pnorm,mov
 
 	local axis = self:GetParent()
 	local offset = axis.Owner.rgm.GizmoOffset
+	local entoffset = vector_origin
 	if axis.localizedoffset then
 		offset = LocalToWorld(offset, angle_zero, axis:GetPos(), axis.LocalAngles)
 		offset =  offset - axis:GetPos()
+	end
+	if ent.rgmPRoffset then
+		entoffset = LocalToWorld(ent.rgmPRoffset, angle_zero, axis:GetPos(), axis.LocalAngles)
+		entoffset = entoffset - axis:GetPos()
+		offset = offset + entoffset
 	end
 	local pos, ang
 	local pl = self:GetParent().Owner

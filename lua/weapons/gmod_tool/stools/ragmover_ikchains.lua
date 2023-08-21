@@ -285,6 +285,7 @@ function TOOL:LeftClick(tr)
 			self.SelectedHip = nil
 			self.SelectedKneeEnt = nil
 			self.SelectedKnee = nil
+			return true
 		else
 			if SERVER then 
 				rgmSendNotif(RGM_NOTIFY.BAD_ORDER.id, self:GetOwner())

@@ -1245,6 +1245,7 @@ if SERVER then
 						local boneid = not pl.rgm.PropRagdoll and i or 0
 
 						local obj = ent:GetPhysicsObjectNum(boneid)
+
 	--					local poslen = postable[i].pos:Length()
 	--					local anglen = Vector(postable[i].ang.p,postable[i].ang.y,postable[i].ang.r):Length()
 
@@ -1417,7 +1418,7 @@ local function CNumSlider(cpanel,text,cvar,min,max,dec)
 
 	return SL
 end
-local function CManipSlider(cpanel, text, mode, axis, min, max, dec)
+local function CManipSlider(cpanel, text, mode, axis, min, max, dec, textentry)
 	local slider = vgui.Create("DNumSlider",cpanel)
 	slider:SetText(text)
 	slider:SetDecimals(dec)
@@ -1431,17 +1432,44 @@ local function CManipSlider(cpanel, text, mode, axis, min, max, dec)
 	end
 
 	function slider:OnValueChanged(value)
-		if ManipSliderUpdating then return end
+		if ManipSliderUpdating or self.busy then return end
+		self.busy = true
 		net.Start("rgmAdjustBone")
 		net.WriteInt(mode, 3)
 		net.WriteInt(axis, 3)
 		net.WriteFloat(value)
 		net.SendToServer()
+
+		textentry:SetValue(math.Round(textentry.Sliders[1]:GetValue(), 2) .. " " .. math.Round(textentry.Sliders[2]:GetValue(), 2) .. " " .. math.Round(textentry.Sliders[3]:GetValue(), 2))
+		self.busy = false
 	end
 
 	cpanel:AddItem(slider)
 
 	return slider
+end
+local function CManipEntry(cpanel, mode)
+	local entry = vgui.Create("DTextEntry", cpanel, slider1, slider2, slider3)
+	entry:SetValue("0 0 0")
+	entry:SetUpdateOnType(true)
+	entry.OnValueChange = function(self, value)
+		if ManipSliderUpdating or self.busy then return end
+		self.busy = true
+
+		local values = string.Explode(" ", value)
+		for i = 1, 3 do
+			if values[i] and tonumber(values[i]) and IsValid(entry.Sliders[i]) then
+				entry.Sliders[i]:SetValue(tonumber(values[i]))
+			end
+		end
+		self.busy = false
+	end
+
+	entry.Sliders = {}
+
+	cpanel:AddItem(entry)
+
+	return entry
 end
 local function CGizmoSlider(cpanel, text, axis, min, max, dec)
 	local slider = vgui.Create("DNumSlider", cpanel)
@@ -1763,7 +1791,7 @@ local function AddHBar(self) -- There is no horizontal scrollbars in gmod, so I 
 end
 
 local BonePanel, EntPanel, ConEntPanel
-local Pos1, Pos2, Pos3, Rot1, Rot2, Rot3, Scale1, Scale2, Scale3
+local Pos1, Pos2, Pos3, Rot1, Rot2, Rot3, Scale1, Scale2, Scale3, Entry1, Entry2, Entry3
 local ManipSliderUpdating = false
 local Gizmo1, Gizmo2, Gizmo3
 local nodes, entnodes, conentnodes
@@ -2462,23 +2490,31 @@ function TOOL.BuildCPanel(CPanel)
 
 		local ColManip = CCol(Col4, "#tool.ragdollmover.bonemanip", true)
 			-- Position
-			Pos1 = CManipSlider(ColManip, "#tool.ragdollmover.pos1", 1, 1, -300, 300, 2) --x
-			Pos2 = CManipSlider(ColManip, "#tool.ragdollmover.pos2", 1, 2, -300, 300, 2) --y
-			Pos3 = CManipSlider(ColManip, "#tool.ragdollmover.pos3", 1, 3, -300, 300, 2) --z
+			Entry1 = CManipEntry(ColManip, 1)
+			Pos1 = CManipSlider(ColManip, "#tool.ragdollmover.pos1", 1, 1, -300, 300, 2, Entry1) --x
+			Pos2 = CManipSlider(ColManip, "#tool.ragdollmover.pos2", 1, 2, -300, 300, 2, Entry1) --y
+			Pos3 = CManipSlider(ColManip, "#tool.ragdollmover.pos3", 1, 3, -300, 300, 2, Entry1) --z
+			Entry1:SetVisible(false)
 			Pos1:SetVisible(false)
 			Pos2:SetVisible(false)
 			Pos3:SetVisible(false)
+			Entry1.Sliders = {Pos1, Pos2, Pos3}
 			-- Angles
-			Rot1 = CManipSlider(ColManip, "#tool.ragdollmover.rot1", 2, 1, -180, 180, 2) --pitch
-			Rot2 = CManipSlider(ColManip, "#tool.ragdollmover.rot2", 2, 2, -180, 180, 2) --yaw
-			Rot3 = CManipSlider(ColManip, "#tool.ragdollmover.rot3", 2, 3, -180, 180, 2) --roll
+			Entry2 = CManipEntry(ColManip, 2)
+			Rot1 = CManipSlider(ColManip, "#tool.ragdollmover.rot1", 2, 1, -180, 180, 2, Entry2) --pitch
+			Rot2 = CManipSlider(ColManip, "#tool.ragdollmover.rot2", 2, 2, -180, 180, 2, Entry2) --yaw
+			Rot3 = CManipSlider(ColManip, "#tool.ragdollmover.rot3", 2, 3, -180, 180, 2, Entry2) --roll
+			Entry2:SetVisible(false)
 			Rot1:SetVisible(false)
 			Rot2:SetVisible(false)
 			Rot3:SetVisible(false)
+			Entry2.Sliders = {Rot1, Rot2, Rot3}
 			--Scale
-			Scale1 = CManipSlider(ColManip, "#tool.ragdollmover.scale1", 3, 1, -100, 100, 2) --x
-			Scale2 = CManipSlider(ColManip, "#tool.ragdollmover.scale2", 3, 2, -100, 100, 2) --y
-			Scale3 = CManipSlider(ColManip, "#tool.ragdollmover.scale3", 3, 3, -100, 100, 2) --z
+			Entry3 = CManipEntry(ColManip, 3)
+			Scale1 = CManipSlider(ColManip, "#tool.ragdollmover.scale1", 3, 1, -100, 100, 2, Entry3) --x
+			Scale2 = CManipSlider(ColManip, "#tool.ragdollmover.scale2", 3, 2, -100, 100, 2, Entry3) --y
+			Scale3 = CManipSlider(ColManip, "#tool.ragdollmover.scale3", 3, 3, -100, 100, 2, Entry3) --z
+			Entry3.Sliders = {Scale1, Scale2, Scale3}
 
 			CButton(ColManip, "#tool.ragdollmover.resetallbones", RGMResetAllBones)
 
@@ -2528,14 +2564,17 @@ local function UpdateManipulationSliders(boneid, ent)
 	Pos1:SetValue(pos[1])
 	Pos2:SetValue(pos[2])
 	Pos3:SetValue(pos[3])
+	Entry1:SetValue(pos[1] .. " " .. pos[2] .. " " .. pos[3])
 
 	Rot1:SetValue(rot[1])
 	Rot2:SetValue(rot[2])
 	Rot3:SetValue(rot[3])
+	Entry2:SetValue(rot[1] .. " " .. rot[2] .. " " .. rot[3])
 
 	Scale1:SetValue(scale[1])
 	Scale2:SetValue(scale[2])
 	Scale3:SetValue(scale[3])
+	Entry3:SetValue(scale[1] .. " " .. scale[2] .. " " .. scale[3])
 
 	ManipSliderUpdating = false
 
@@ -2755,9 +2794,11 @@ net.Receive("rgmSelectBoneResponse", function(len)
 		Pos1:SetVisible(inverted)
 		Pos2:SetVisible(inverted)
 		Pos3:SetVisible(inverted)
+		Entry1:SetVisible(inverted)
 		Rot1:SetVisible(inverted)
 		Rot2:SetVisible(inverted)
 		Rot3:SetVisible(inverted)
+		Entry2:SetVisible(inverted)
 	end
 
 	local isphys = net.ReadBool()
