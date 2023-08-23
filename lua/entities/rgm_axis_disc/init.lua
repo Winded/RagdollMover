@@ -78,6 +78,21 @@ function ENT:ProcessMovement(offpos,offang,eyepos,eyeang,ent,bone,ppos,pnorm, mo
 		axisangle = axistable[self.axistype]
 
 		local _, boneang = ent:GetBonePosition(bone)
+		if ent:GetClass() == "prop_physics" then
+			local manang = ent:GetManipulateBoneAngles(bone)
+			manang:Normalize()
+
+			_, boneang = LocalToWorld(vector_origin, Angle(0, 0, -manang[3]), vector_origin, boneang)
+			_, boneang = LocalToWorld(vector_origin, Angle(-manang[1], 0, 0), vector_origin, boneang)
+			_, boneang = LocalToWorld(vector_origin, Angle(0, -manang[2], 0), vector_origin, boneang)
+		else
+			if ent:GetBoneParent(bone) ~= -1 then
+				local _ , pang = ent:GetBonePosition(ent:GetBoneParent(bone))
+
+				local _, diff = WorldToLocal(vector_origin, boneang, vector_origin, pang)
+				_, boneang = LocalToWorld(vector_origin, diff, vector_origin, pl.rgm.GizmoParent)
+			end
+		end
 		local startlocal = LocalToWorld(startAngle, startAngle:Angle(), vector_origin, axisangle) -- first we get our vectors into world coordinates, relative to the axis angles
 		localized = LocalToWorld(localized, localized:Angle(), vector_origin, axisangle)
 		localized = WorldToLocal(localized, localized:Angle(), vector_origin, boneang) -- then convert that vector to the angles of the bone
