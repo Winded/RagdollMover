@@ -284,9 +284,21 @@ function ENT:Think()
 				if not pl.rgm.GizmoParent then -- dunno if there is a need for these failsafes
 					_ , ang = ent:GetBonePosition(bone)
 				else
-					_ , pang = ent:GetBonePosition(ent:GetBoneParent(bone))
-					_ , ang = ent:GetBonePosition(bone)
-					ang = pl.rgm.GizmoParent - pang + ang
+					if not (ent:GetClass() == "prop_physics") then -- for some reason physics props update their angles serverside on nonphys bones, ragdolls and dynamic props don't. do any other entities do that?
+						local _ , pang = ent:GetBonePosition(ent:GetBoneParent(bone))
+						_ , ang = ent:GetBonePosition(bone)
+
+						local _, diff = WorldToLocal(vector_origin, ang, vector_origin, pang)
+						_, ang = LocalToWorld(vector_origin, diff, vector_origin, pl.rgm.GizmoParent)
+					else
+						local manang = ent:GetManipulateBoneAngles(bone)
+						manang:Normalize()
+						_, ang = ent:GetBonePosition(bone)
+
+						_, ang = LocalToWorld(vector_origin, Angle(0, 0, -manang[3]), vector_origin, ang)
+						_, ang = LocalToWorld(vector_origin, Angle(-manang[1], 0, 0), vector_origin, ang)
+						_, ang = LocalToWorld(vector_origin, Angle(0, -manang[2], 0), vector_origin, ang)
+					end
 				end
 			else
 				_ , ang = ent:GetBonePosition(bone)
@@ -334,7 +346,7 @@ function ENT:Think()
 	if not pl.rgm.Moving then -- Prevent whole thing from rotating when we do localized rotation - needed for proper angle reading
 		if localstate or scale or not pl.rgm.IsPhysBone then -- Non phys bones don't go well with world coordinates. Well, I didn't make them to behave with those
 			self:SetAngles(ang or angle_zero)
-			if (ent:GetClass() == "prop_ragdoll" or ent:GetClass() == "prop_dynamic" or ent:GetClass() == "ent_bonemerged") and (not pl.rgm.IsPhysBone) then
+			if not pl.rgm.IsPhysBone then
 				self.DiscP:SetLocalAngles(Angle(0, 90 + ent:GetManipulateBoneAngles(bone).y, 0)) -- Pitch follows Yaw angles
 				self.DiscR:SetLocalAngles(Angle(0 + ent:GetManipulateBoneAngles(bone).x, 0 + ent:GetManipulateBoneAngles(bone).y, 0)) -- Roll follows Pitch and Yaw angles
 			else

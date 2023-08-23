@@ -1076,6 +1076,7 @@ function TOOL:Think()
 			else
 				pl.rgm.GizmoParent = nil
 			end
+
 			pl.rgm.GizmoPos = pos
 			pl.rgm.GizmoAng = ang
 			pl:rgmSyncClient("GizmoPos")
@@ -2810,7 +2811,7 @@ net.Receive("rgmSelectBoneResponse", function(len)
 	end
 
 	if nodes then
-		if ent:GetClass() == "prop_ragdoll" and isphys and nodes[ent] and nodes[ent][boneid] then
+		if isphys and nodes[ent] and nodes[ent][boneid] then
 			SetVisiblePhysControls(true)
 		else
 			SetVisiblePhysControls(false)

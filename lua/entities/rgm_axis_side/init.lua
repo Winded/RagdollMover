@@ -29,6 +29,12 @@ function ENT:ProcessMovement(offpos,offang,eyepos,eyeang,ent,bone,ppos,pnorm, mo
 		if ent:GetBoneParent(bone) ~= -1 then
 			local matrix = ent:GetBoneMatrix(ent:GetBoneParent(bone))
 			boneang = matrix:GetAngles()
+			if not (ent:GetClass() == "prop_physics") then
+				local _ , pang = ent:GetBonePosition(ent:GetBoneParent(bone))
+
+				local _, diff = WorldToLocal(vector_origin, boneang, vector_origin, pang)
+				_, boneang = LocalToWorld(vector_origin, diff, vector_origin, pl.rgm.GizmoParent)
+			end
 		else
 			if IsValid(ent) then
 				boneang = ent:GetAngles()
