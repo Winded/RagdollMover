@@ -562,7 +562,7 @@ end)
 
 net.Receive("rgmResetGizmo", function(len, pl)
 	if not pl.rgm then return end
-	pl.rgm.GizmoOffset = Vector(0, 0, 0)
+	pl.rgm.GizmoOffset:Set(vector_origin)
 
 	net.Start("rgmUpdateGizmo")
 	net.WriteVector(pl.rgm.GizmoOffset)
@@ -795,10 +795,9 @@ function TOOL:LeftClick(tr)
 		if SERVER then
 			local pl = self:GetOwner()
 			local axis, ent = pl.rgm.Axis, pl.rgm.Entity
-			local offset = vector_origin
 
 			if not IsValid(axis) or not IsValid(ent) then self:SetOperation(0) return true end
-			offset = tr.HitPos
+			local offset = tr.HitPos
 
 			if ent:GetClass() == "prop_ragdoll" and pl.rgm.IsPhysBone then
 				ent = ent:GetPhysicsObjectNum(pl.rgm.PhysBone)
@@ -1002,7 +1001,7 @@ function TOOL:RightClick(tr)
 			local pl = self:GetOwner()
 			local axis = pl.rgm.Axis
 			local ent, rgment = tr.Entity, pl.rgm.Entity
-			local offset = vector_origin
+			local offset
 
 			if not IsValid(axis) or not IsValid(rgment) then self:SetOperation(0) return true end
 
