@@ -879,6 +879,43 @@ function TOOL:LeftClick(tr)
 		pl.rgm.NPhysBoneAng = ent:GetManipulateBoneAngles(pl.rgm.Bone)
 		pl.rgm.NPhysBoneScale = ent:GetManipulateBoneScale(pl.rgm.Bone)
 
+		local ignore = { pl }
+
+		if ent.rgmPRidtoent then
+			for id, e in pairs(ent.rgmPRidtoent) do
+				table.insert(ignore, e)
+			end
+		else
+			ignore[2] = ent
+		end
+
+		local function FindRecursiveIfParent(findid, id, ent)
+			if ent.rgmPRidtoent then
+				if ent.rgmPRparent then
+					if ent.rgmPRparent == findid then return true end
+					return FindRecursiveIfParent(findid, ent.rgmPRparent, ent.rgmPRidtoent[ent.rgmPRparent])
+				else
+					return false
+				end
+			else
+				local parent = rgm.GetPhysBoneParent(ent, id)
+				if parent then
+					if parent == findid then return true end
+					return FindRecursiveIfParent(findid, parent, ent)
+				else
+					return false
+				end
+			end
+		end
+
+		if pl.rgm.IsPhysBone then
+			for lockent, data in pairs(pl.rgmEntLocks) do
+				if FindRecursiveIfParent(data.id, pl.rgm.PhysBone, ent) then continue end
+				table.insert(ignore, lockent)
+			end
+		end
+
+		pl.rgm.Ignore = ignore
 
 		local dirnorm = (collision.hitpos-axis:GetPos())
 		dirnorm:Normalize()
@@ -1175,19 +1212,11 @@ if SERVER then
 
 		local tracepos = nil
 		if pl:KeyDown(IN_SPEED) then
-			local ignore = { pl }
-			if ent.rgmPRidtoent then
-				for id, e in pairs(ent.rgmPRidtoent) do
-					table.insert(ignore, e)
-				end
-			else
-				ignore[2] = ent
-			end
 
 			local tr = util.TraceLine({
 				start = pl:EyePos(),
 				endpos = pl:EyePos() + pl:GetAimVector()*4096,
-				filter = ignore
+				filter = pl.rgm.Ignore
 			})
 			tracepos = tr.HitPos
 		end
