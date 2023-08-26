@@ -1175,10 +1175,19 @@ if SERVER then
 
 		local tracepos = nil
 		if pl:KeyDown(IN_SPEED) then
+			local ignore = { pl }
+			if ent.rgmPRidtoent then
+				for id, e in pairs(ent.rgmPRidtoent) do
+					table.insert(ignore, e)
+				end
+			else
+				ignore[2] = ent
+			end
+
 			local tr = util.TraceLine({
 				start = pl:EyePos(),
 				endpos = pl:EyePos() + pl:GetAimVector()*4096,
-				filter = {ent, pl}
+				filter = ignore
 			})
 			tracepos = tr.HitPos
 		end

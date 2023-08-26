@@ -456,10 +456,10 @@ local function RecursiveSetParent(ostable, sbone, ent, rlocks, plocks, RTable, b
 		pos = sbone.p
 		ang = sbone.a
 	else
-		if IsValid(rlocks[ent][bone]) then
+		if rlocks[ent] and IsValid(rlocks[ent][bone]) then
 			ang = rlocks[ent][bone]:GetAngles()
 		end
-		if IsValid(plocks[ent][bone]) then
+		if plocks[ent] and IsValid(plocks[ent][bone]) then
 			pos = plocks[ent][bone]:GetPos()
 		end
 	end
