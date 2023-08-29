@@ -2602,17 +2602,17 @@ local function UpdateManipulationSliders(boneid, ent)
 	Pos1:SetValue(pos[1])
 	Pos2:SetValue(pos[2])
 	Pos3:SetValue(pos[3])
-	Entry1:SetValue(pos[1] .. " " .. pos[2] .. " " .. pos[3])
+	Entry1:SetValue(math.Round(pos[1], 2) .. " " .. math.Round(pos[2], 2) .. " " .. math.Round(pos[3], 2))
 
 	Rot1:SetValue(rot[1])
 	Rot2:SetValue(rot[2])
 	Rot3:SetValue(rot[3])
-	Entry2:SetValue(rot[1] .. " " .. rot[2] .. " " .. rot[3])
+	Entry2:SetValue(math.Round(rot[1], 2) .. " " .. math.Round(rot[2], 2) .. " " .. math.Round(rot[3], 2))
 
 	Scale1:SetValue(scale[1])
 	Scale2:SetValue(scale[2])
 	Scale3:SetValue(scale[3])
-	Entry3:SetValue(scale[1] .. " " .. scale[2] .. " " .. scale[3])
+	Entry3:SetValue(math.Round(scale[1], 2) .. " " .. math.Round(scale[2], 2) .. " " .. math.Round(scale[3], 2))
 
 	ManipSliderUpdating = false
 
