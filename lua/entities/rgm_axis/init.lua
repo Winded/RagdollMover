@@ -383,6 +383,12 @@ function ENT:Think()
 	self.ArrowZ:SetLocalAngles(ZAng)
 	self.ScaleZ:SetLocalAngles(ZAng)
 
+	if not pl.rgm.Moving then
+		self.ArrowX.GizmoAngle = self.ArrowX:GetAngles()
+		self.ArrowY.GizmoAngle = self.ArrowY:GetAngles()
+		self.ArrowZ.GizmoAngle = self.ArrowZ:GetAngles()
+	end
+
 	self:NextThink(CurTime()+0.001)
 	return true
 end

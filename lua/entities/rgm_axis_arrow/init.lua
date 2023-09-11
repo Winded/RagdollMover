@@ -19,13 +19,14 @@ function ENT:ProcessMovement(offpos,offang,eyepos,eyeang,ent,bone,ppos,pnorm, mo
 		offset = offset + entoffset
 	end
 	local pos, ang
+	local selfangle = self.GizmoAngle and self.GizmoAngle or self:GetAngles()
 
 	if movetype == 1 then
 		local obj = ent:GetPhysicsObjectNum(bone)
 		localized = Vector(localized.x,0,0)
 		intersect = self:LocalToWorld(localized)
 		ang = obj:GetAngles()
-		pos = LocalToWorld(Vector(offpos.x,0,0),angle_zero,intersect - offset,self:GetAngles())
+		pos = LocalToWorld(Vector(offpos.x,0,0),angle_zero,intersect - offset,selfangle)
 	elseif movetype == 2 then
 		pos = ent:GetManipulateBonePosition(bone)
 		localized = Vector(localized.x - StartGrab.x,0,0)
@@ -36,7 +37,7 @@ function ENT:ProcessMovement(offpos,offang,eyepos,eyeang,ent,bone,ppos,pnorm, mo
 		localized = Vector(localized.x,0,0)
 		intersect = self:LocalToWorld(localized)
 		ang = ent:GetLocalAngles()
-		pos = LocalToWorld(Vector(offpos.x,0,0),angle_zero,intersect - offset, self:GetAngles())
+		pos = LocalToWorld(Vector(offpos.x,0,0),angle_zero,intersect - offset,selfangle)
 		pos = ent:GetParent():WorldToLocal(pos)
 	end
 	return pos,ang
