@@ -28,11 +28,33 @@ function ENT:ProcessMovement(offpos,offang,eyepos,eyeang,ent,bone,ppos,pnorm, mo
 		ang = obj:GetAngles()
 		pos = LocalToWorld(Vector(offpos.x,0,0),angle_zero,intersect - offset,selfangle)
 	elseif movetype == 2 then
-		pos = ent:GetManipulateBonePosition(bone)
-		localized = Vector(localized.x - StartGrab.x,0,0)
-		local posadd = NPhysPos[self.axistype] + localized.x
+		local finalpos, boneang
+		local pl = self:GetParent().Owner
+
+		if ent:GetBoneParent(bone) ~= -1 then
+			local matrix = ent:GetBoneMatrix(ent:GetBoneParent(bone))
+			boneang = matrix:GetAngles()
+			if not (ent:GetClass() == "prop_physics") then
+				local _ , pang = ent:GetBonePosition(ent:GetBoneParent(bone))
+
+				local _, diff = WorldToLocal(vector_origin, boneang, vector_origin, pang)
+				_, boneang = LocalToWorld(vector_origin, diff, vector_origin, pl.rgm.GizmoParent)
+			end
+		else
+			if IsValid(ent) then
+				boneang = ent:GetAngles()
+			else
+				boneang = angle_zero
+			end
+		end
+
+		intersect = self:LocalToWorld(Vector(localized.x,0,0))
+		localized = LocalToWorld(Vector(offpos.x,0,0),angle_zero,intersect,self:GetAngles())
+		localized = WorldToLocal(localized, angle_zero, self:GetPos(), boneang)
+
+		finalpos = NPhysPos + localized
 		ang = ent:GetManipulateBoneAngles(bone)
-		pos[self.axistype] = posadd
+		pos = finalpos
 	elseif movetype == 0 then
 		localized = Vector(localized.x,0,0)
 		intersect = self:LocalToWorld(localized)

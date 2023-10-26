@@ -25,7 +25,7 @@ function ENT:ProcessMovement(offpos,offang,eyepos,eyeang,ent,bone,ppos,pnorm, mo
 		ang = obj:GetAngles()
 		pos = LocalToWorld(offpos,angle_zero,intersect - offset,self:GetAngles())
 	elseif movetype == 2 then
-		local localized, startmove, finalpos, boneang
+		local localized, finalpos, boneang
 		if ent:GetBoneParent(bone) ~= -1 then
 			local matrix = ent:GetBoneMatrix(ent:GetBoneParent(bone))
 			boneang = matrix:GetAngles()

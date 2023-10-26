@@ -50,16 +50,28 @@ function ENT:ProcessMovement(offpos,offang,eyepos,eyeang,ent,bone,ppos,pnorm, mo
 
 		localized = Vector(localized.y,localized.z,0):Angle()
 		startAngle = Vector(startAngle.y, startAngle.z, 0):Angle()
-		local diff = startAngle.y - localized.y
-		local mathfunc = nil
-		if diff >= 0 then
-			mathfunc = math.floor
-		else
-			mathfunc = math.ceil
-		end
 
 		local rotationangle = localized.y
 		if snapamount ~= 0 then
+			local localAng = math.fmod(localized.y, 360)
+			if localAng > 181 then localAng = localAng - 360 end
+			if localAng < -181 then localAng = localAng + 360 end
+
+			local localStart = math.fmod(startAngle.y, 360)
+			if localStart > 181 then localStart = localStart - 360 end
+			if localStart < -181 then localStart = localStart + 360 end
+
+			local diff = math.fmod(localStart - localAng, 360)
+			if diff > 181 then diff = diff - 360 end
+			if diff < -181 then diff = diff + 360 end
+
+			local mathfunc = nil
+			if diff >= 0 then
+				mathfunc = math.floor
+			else
+				mathfunc = math.ceil
+			end
+
 			rotationangle = startAngle.y - (mathfunc(diff / snapamount) * snapamount)
 		end
 
@@ -103,11 +115,16 @@ function ENT:ProcessMovement(offpos,offang,eyepos,eyeang,ent,bone,ppos,pnorm, mo
 
 		localized = localized:Angle() - startlocal:Angle()
 
-		local mathfunc = math.floor
-		if localized.y < 0 then mathfunc = math.ceil end
 		local rotationangle = localized.y
 		if snapamount ~= 0 then
-			rotationangle = mathfunc(localized.y / snapamount) * snapamount
+			local localAng = math.fmod(localized.y, 360)
+			if localAng > 181 then localAng = localAng - 360 end
+			if localAng < -181 then localAng = localAng + 360 end
+
+			local mathfunc = math.floor
+			if localAng < 0 then mathfunc = math.ceil end
+
+			rotationangle = mathfunc(localAng / snapamount) * snapamount
 		end
 
 		if self.axistype == 4 then
@@ -136,16 +153,28 @@ function ENT:ProcessMovement(offpos,offang,eyepos,eyeang,ent,bone,ppos,pnorm, mo
 
 		localized = Vector(localized.y,localized.z,0):Angle()
 		startAngle = Vector(startAngle.y, startAngle.z, 0):Angle()
-		local diff = startAngle.y - localized.y
-		local mathfunc = nil
-		if diff >= 0 then
-			mathfunc = math.floor
-		else
-			mathfunc = math.ceil
-		end
 
 		local rotationangle = localized.y
 		if snapamount ~= 0 then
+			local localAng = math.fmod(localized.y, 360)
+			if localAng > 181 then localAng = localAng - 360 end
+			if localAng < -181 then localAng = localAng + 360 end
+
+			local localStart = math.fmod(startAngle.y, 360)
+			if localStart > 181 then localStart = localStart - 360 end
+			if localStart < -181 then localStart = localStart + 360 end
+
+			local diff = math.fmod(localStart - localAng, 360)
+			if diff > 181 then diff = diff - 360 end
+			if diff < -181 then diff = diff + 360 end
+
+			local mathfunc = nil
+			if diff >= 0 then
+				mathfunc = math.floor
+			else
+				mathfunc = math.ceil
+			end
+
 			rotationangle = startAngle.y - (mathfunc(diff / snapamount) * snapamount)
 		end
 
