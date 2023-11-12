@@ -11,9 +11,15 @@ function ENT:ProcessMovement(offpos,offang,eyepos,eyeang,ent,bone,ppos,pnorm,mov
 
 	local axis = self:GetParent()
 	local offset = axis.Owner.rgm.GizmoOffset
+	local entoffset = vector_origin
 	if axis.localizedoffset then
 		offset = LocalToWorld(offset, angle_zero, axis:GetPos(), axis.LocalAngles)
 		offset =  offset - axis:GetPos()
+	end
+	if ent.rgmPRoffset then
+		entoffset = LocalToWorld(ent.rgmPRoffset, angle_zero, axis:GetPos(), axis.LocalAngles)
+		entoffset = entoffset - axis:GetPos()
+		offset = offset + entoffset
 	end
 	local pos, ang
 	local pl = self:GetParent().Owner
@@ -27,6 +33,12 @@ function ENT:ProcessMovement(offpos,offang,eyepos,eyeang,ent,bone,ppos,pnorm,mov
 		if ent:GetBoneParent(bone) ~= -1 then
 			local matrix = ent:GetBoneMatrix(ent:GetBoneParent(bone))
 			boneang = matrix:GetAngles()
+			if not (ent:GetClass() == "prop_physics") then
+				local _ , pang = ent:GetBonePosition(ent:GetBoneParent(bone))
+
+				local _, diff = WorldToLocal(vector_origin, boneang, vector_origin, pang)
+				_, boneang = LocalToWorld(vector_origin, diff, vector_origin, pl.rgm.GizmoParent)
+			end
 		else
 			if IsValid(ent) then
 				boneang = ent:GetAngles()

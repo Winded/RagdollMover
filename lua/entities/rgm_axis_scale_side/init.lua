@@ -10,8 +10,12 @@ function ENT:ProcessMovement(offpos,offang,eyepos,eyeang,ent,bone,ppos,pnorm, mo
 
 	local localized, startmove, finalpos, boneang
 	if ent:GetBoneParent(bone) ~= -1 then
-		local matrix = ent:GetBoneMatrix(ent:GetBoneParent(bone))
-		boneang = matrix:GetAngles()
+		if pl.rgm.GizmoAng then
+			boneang = pl.rgm.GizmoAng
+		else
+			local matrix = ent:GetBoneMatrix(ent:GetBoneParent(bone))
+			boneang = matrix:GetAngles()
+		end
 	else
 		if IsValid(ent) then
 			boneang = ent:GetAngles()

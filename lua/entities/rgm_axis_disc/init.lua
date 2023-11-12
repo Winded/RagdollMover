@@ -37,23 +37,41 @@ function ENT:ProcessMovement(offpos,offang,eyepos,eyeang,ent,bone,ppos,pnorm, mo
 	if movetype == 1 then
 		local axis = self:GetParent()
 		local offset = axis.Owner.rgm.GizmoOffset
+		local entoffset = vector_origin
 		if axis.localizedoffset and not axis.relativerotate then
 			offset = LocalToWorld(offset, angle_zero, axis:GetPos(), axis.LocalAngles)
 			offset = offset - axis:GetPos()
 		end
+		if ent.rgmPRoffset then
+			entoffset = LocalToWorld(ent.rgmPRoffset, angle_zero, axis:GetPos(), axis.LocalAngles)
+			entoffset = entoffset - axis:GetPos()
+			offset = offset + entoffset
+		end
 
 		localized = Vector(localized.y,localized.z,0):Angle()
 		startAngle = Vector(startAngle.y, startAngle.z, 0):Angle()
-		local diff = startAngle.y - localized.y
-		local mathfunc = nil
-		if diff >= 0 then
-			mathfunc = math.floor
-		else
-			mathfunc = math.ceil
-		end
 
 		local rotationangle = localized.y
 		if snapamount ~= 0 then
+			local localAng = math.fmod(localized.y, 360)
+			if localAng > 181 then localAng = localAng - 360 end
+			if localAng < -181 then localAng = localAng + 360 end
+
+			local localStart = math.fmod(startAngle.y, 360)
+			if localStart > 181 then localStart = localStart - 360 end
+			if localStart < -181 then localStart = localStart + 360 end
+
+			local diff = math.fmod(localStart - localAng, 360)
+			if diff > 181 then diff = diff - 360 end
+			if diff < -181 then diff = diff + 360 end
+
+			local mathfunc = nil
+			if diff >= 0 then
+				mathfunc = math.floor
+			else
+				mathfunc = math.ceil
+			end
+
 			rotationangle = startAngle.y - (mathfunc(diff / snapamount) * snapamount)
 		end
 
@@ -72,6 +90,21 @@ function ENT:ProcessMovement(offpos,offang,eyepos,eyeang,ent,bone,ppos,pnorm, mo
 		axisangle = axistable[self.axistype]
 
 		local _, boneang = ent:GetBonePosition(bone)
+		if ent:GetClass() == "prop_physics" then
+			local manang = ent:GetManipulateBoneAngles(bone)
+			manang:Normalize()
+
+			_, boneang = LocalToWorld(vector_origin, Angle(0, 0, -manang[3]), vector_origin, boneang)
+			_, boneang = LocalToWorld(vector_origin, Angle(-manang[1], 0, 0), vector_origin, boneang)
+			_, boneang = LocalToWorld(vector_origin, Angle(0, -manang[2], 0), vector_origin, boneang)
+		else
+			if ent:GetBoneParent(bone) ~= -1 then
+				local _ , pang = ent:GetBonePosition(ent:GetBoneParent(bone))
+
+				local _, diff = WorldToLocal(vector_origin, boneang, vector_origin, pang)
+				_, boneang = LocalToWorld(vector_origin, diff, vector_origin, pl.rgm.GizmoParent)
+			end
+		end
 		local startlocal = LocalToWorld(startAngle, startAngle:Angle(), vector_origin, axisangle) -- first we get our vectors into world coordinates, relative to the axis angles
 		localized = LocalToWorld(localized, localized:Angle(), vector_origin, axisangle)
 		localized = WorldToLocal(localized, localized:Angle(), vector_origin, boneang) -- then convert that vector to the angles of the bone
@@ -82,11 +115,16 @@ function ENT:ProcessMovement(offpos,offang,eyepos,eyeang,ent,bone,ppos,pnorm, mo
 
 		localized = localized:Angle() - startlocal:Angle()
 
-		local mathfunc = math.floor
-		if localized.y < 0 then mathfunc = math.ceil end
 		local rotationangle = localized.y
 		if snapamount ~= 0 then
-			rotationangle = mathfunc(localized.y / snapamount) * snapamount
+			local localAng = math.fmod(localized.y, 360)
+			if localAng > 181 then localAng = localAng - 360 end
+			if localAng < -181 then localAng = localAng + 360 end
+
+			local mathfunc = math.floor
+			if localAng < 0 then mathfunc = math.ceil end
+
+			rotationangle = mathfunc(localAng / snapamount) * snapamount
 		end
 
 		if self.axistype == 4 then
@@ -102,23 +140,41 @@ function ENT:ProcessMovement(offpos,offang,eyepos,eyeang,ent,bone,ppos,pnorm, mo
 	elseif movetype == 0 then
 		local axis = self:GetParent()
 		local offset = axis.Owner.rgm.GizmoOffset
+		local entoffset = vector_origin
 		if axis.localizedoffset and not axis.relativerotate then
 			offset = LocalToWorld(offset, angle_zero, axis:GetPos(), axis.LocalAngles)
 			offset = offset - axis:GetPos()
 		end
+		if ent.rgmPRoffset then
+			entoffset = LocalToWorld(ent.rgmPRoffset, angle_zero, axis:GetPos(), axis.LocalAngles)
+			entoffset = entoffset - axis:GetPos()
+			offset = offset + entoffset
+		end
 
 		localized = Vector(localized.y,localized.z,0):Angle()
 		startAngle = Vector(startAngle.y, startAngle.z, 0):Angle()
-		local diff = startAngle.y - localized.y
-		local mathfunc = nil
-		if diff >= 0 then
-			mathfunc = math.floor
-		else
-			mathfunc = math.ceil
-		end
 
 		local rotationangle = localized.y
 		if snapamount ~= 0 then
+			local localAng = math.fmod(localized.y, 360)
+			if localAng > 181 then localAng = localAng - 360 end
+			if localAng < -181 then localAng = localAng + 360 end
+
+			local localStart = math.fmod(startAngle.y, 360)
+			if localStart > 181 then localStart = localStart - 360 end
+			if localStart < -181 then localStart = localStart + 360 end
+
+			local diff = math.fmod(localStart - localAng, 360)
+			if diff > 181 then diff = diff - 360 end
+			if diff < -181 then diff = diff + 360 end
+
+			local mathfunc = nil
+			if diff >= 0 then
+				mathfunc = math.floor
+			else
+				mathfunc = math.ceil
+			end
+
 			rotationangle = startAngle.y - (mathfunc(diff / snapamount) * snapamount)
 		end
 
