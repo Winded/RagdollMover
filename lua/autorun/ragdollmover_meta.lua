@@ -24,19 +24,19 @@ local function Sync(self)
 
 		local Type = string.lower(type(v))
 		if Type == "entity" then
-			net.WriteInt(TYPE_ENTITY, 8)
+			net.WriteUInt(TYPE_ENTITY, 3)
 			net.WriteEntity(v)
 		elseif Type == "number" then
-			net.WriteInt(TYPE_NUMBER, 8)
+			net.WriteUInt(TYPE_NUMBER, 3)
 			net.WriteFloat(v)
 		elseif Type == "vector" then
-			net.WriteInt(TYPE_VECTOR, 8)
+			net.WriteUInt(TYPE_VECTOR, 3)
 			net.WriteVector(v)
 		elseif Type == "angle" then
-			net.WriteInt(TYPE_ANGLE, 8)
+			net.WriteUInt(TYPE_ANGLE, 3)
 			net.WriteAngle(v)
 		elseif Type == "boolean" then
-			net.WriteInt(TYPE_BOOL, 8)
+			net.WriteUInt(TYPE_BOOL, 3)
 			net.WriteBit(v)
 		end
 	end
@@ -59,19 +59,19 @@ local function SyncOne(self, name)
 
 	local Type = string.lower(type(v))
 	if Type == "entity" then
-		net.WriteInt(TYPE_ENTITY, 8)
+		net.WriteUInt(TYPE_ENTITY, 3)
 		net.WriteEntity(v)
 	elseif Type == "number" then
-		net.WriteInt(TYPE_NUMBER, 8)
+		net.WriteUInt(TYPE_NUMBER, 3)
 		net.WriteFloat(v)
 	elseif Type == "vector" then
-		net.WriteInt(TYPE_VECTOR, 8)
+		net.WriteUInt(TYPE_VECTOR, 3)
 		net.WriteVector(v)
 	elseif Type == "angle" then
-		net.WriteInt(TYPE_ANGLE, 8)
+		net.WriteUInt(TYPE_ANGLE, 3)
 		net.WriteAngle(v)
 	elseif Type == "boolean" then
-		net.WriteInt(TYPE_BOOL, 8)
+		net.WriteUInt(TYPE_BOOL, 3)
 		net.WriteBit(v)
 	end
 
@@ -106,26 +106,23 @@ net.Receive("rgmSyncClient", function(len, ply)
 	local pl = ply
 	if not pl.rgm then pl.rgm = {} end
 
-	local count = net.ReadInt(32)
+	local name = net.ReadString()
 
-	for i=1, count do
-		local name = net.ReadString()
-
-		local type = net.ReadInt(8)
-		local value = nil
-		if type == TYPE_ENTITY then
-			value = net.ReadEntity()
-		elseif type == TYPE_NUMBER then
-			value = net.ReadFloat()
-		elseif type == TYPE_VECTOR then
-			value = net.ReadVector()
-		elseif type == TYPE_ANGLE then
-			value = net.ReadAngle()
-		elseif type == TYPE_BOOL then
-			value = net.ReadBit() == 1
-		end
-		pl.rgm[name] = value
+	local type = net.ReadUInt(3)
+	local value = nil
+	if type == TYPE_ENTITY then
+		value = net.ReadEntity()
+	elseif type == TYPE_NUMBER then
+		value = net.ReadFloat()
+	elseif type == TYPE_VECTOR then
+		value = net.ReadVector()
+	elseif type == TYPE_ANGLE then
+		value = net.ReadAngle()
+	elseif type == TYPE_BOOL then
+		value = net.ReadBit() == 1
 	end
+	pl.rgm[name] = value
+
 end)
 
 else
@@ -139,7 +136,7 @@ net.Receive("rgmSync",function(len)
 	for i=1, count do
 		local name = net.ReadString()
 
-		local type = net.ReadInt(8)
+		local type = net.ReadUInt(3)
 		local value = nil
 		if type == TYPE_ENTITY then
 			value = net.ReadEntity()

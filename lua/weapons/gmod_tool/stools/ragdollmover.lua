@@ -101,10 +101,9 @@ local function rgmFindEntityChildren(parent)
 end
 
 local function rgmGetConstrainedEntities(parent)
-	local conents = {}
+	local conents = constraint.GetAllConstrainedEntities(parent)
 	local children = {}
 
-	conents = constraint.GetAllConstrainedEntities(parent)
 	conents[parent] = nil
 	if parent.rgmPRidtoent then
 		for k, ent in pairs(parent.rgmPRidtoent) do
@@ -1570,7 +1569,7 @@ local function CBinder(cpanel)
 
 	function bindrot:OnChange(keycode)
 		net.Start("rgmSetToggleRot")
-		net.WriteInt(keycode, 32)
+		net.WriteInt(keycode, 8)
 		net.SendToServer()
 	end
 
@@ -1585,7 +1584,7 @@ local function CBinder(cpanel)
 
 	function bindsc:OnChange(keycode)
 		net.Start("rgmSetToggleScale")
-		net.WriteInt(keycode, 32)
+		net.WriteInt(keycode, 8)
 		net.SendToServer()
 	end
 
