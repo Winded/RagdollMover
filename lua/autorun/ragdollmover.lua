@@ -789,6 +789,8 @@ function IsIKBone(tool, ent, bone)
 	return false
 end
 
+if CLIENT then
+
 local COLOR_RGMGREEN = Color(0, 200, 0, 255)
 
 function DrawBoneName(ent, bone, name)
@@ -850,11 +852,14 @@ function DrawBoneConnections(ent, bone)
 	end
 end
 
+local SkeletonData = {}
+
 local function DrawRecursiveBones(ent, bone)
 	local mainpos = ent:GetBonePosition(bone)
 	mainpos = mainpos:ToScreen()
 
 	for _, boneid in ipairs(ent:GetChildBones(bone)) do
+		SkeletonData[boneid] = bone
 		local pos = ent:GetBonePosition(boneid)
 		pos = pos:ToScreen()
 
@@ -866,21 +871,49 @@ local function DrawRecursiveBones(ent, bone)
 end
 
 function DrawSkeleton(ent)
-	local num = ent:GetBoneCount() - 1
-	for v = 0, num do
-		if ent:GetBoneName(v) == "__INVALIDBONE__" then continue end
+	if SkeletonData.ent ~= ent then
+		SkeletonData = {}
 
-		if ent:GetBoneParent(v) == -1 then
-			local pos = ent:GetBonePosition(v)
-			if not pos then
-				pos = ent:GetPos()
+		local num = ent:GetBoneCount() - 1
+		for v = 0, num do
+			if ent:GetBoneName(v) == "__INVALIDBONE__" then continue end
+
+			if ent:GetBoneParent(v) == -1 then
+				SkeletonData[v] = -1
+				local pos = ent:GetBonePosition(v)
+				if not pos then
+					pos = ent:GetPos()
+				end
+
+				DrawRecursiveBones(ent, v)
+
+				pos = pos:ToScreen()
+				surface.DrawCircle(pos.x, pos.y, 2.5, COLOR_RGMGREEN)
 			end
+		end
 
-			DrawRecursiveBones(ent, v)
-
+		SkeletonData.ent = ent
+	else
+		for bone, parent in pairs(SkeletonData) do
+			if type(bone) ~= "number" or parent == -1 then continue end
+			local pos = ent:GetBonePosition(bone)
 			pos = pos:ToScreen()
+
+			local parentpos = ent:GetBonePosition(parent)
+			parentpos = parentpos:ToScreen()
+			surface.SetDrawColor(255, 255, 255, 255)
+			surface.DrawLine(parentpos.x, parentpos.y, pos.x, pos.y)
+		end
+
+		for bone, parent in pairs(SkeletonData) do
+			if type(bone) ~= "number" then continue end
+			local pos = ent:GetBonePosition(bone)
+			pos = pos:ToScreen()
+
 			surface.DrawCircle(pos.x, pos.y, 2.5, COLOR_RGMGREEN)
 		end
 	end
+
+end
 
 end
