@@ -33,12 +33,13 @@ function ENT:ProcessMovement(offpos,offang,eyepos,eyeang,ent,bone,ppos,pnorm, mo
 		(self:GetPos()-pl:EyePos()):Angle()
 	}
 
+	local mfmod = math.fmod
 
 	if movetype == 1 then
 		local axis = self:GetParent()
 		local offset = axis.Owner.rgm.GizmoOffset
 		local entoffset = vector_origin
-		if axis.localizedoffset and not axis.relativerotate then
+		if axis.localoffset and not axis.relativerotate then
 			offset = LocalToWorld(offset, angle_zero, axis:GetPos(), axis.LocalAngles)
 			offset = offset - axis:GetPos()
 		end
@@ -53,15 +54,15 @@ function ENT:ProcessMovement(offpos,offang,eyepos,eyeang,ent,bone,ppos,pnorm, mo
 
 		local rotationangle = localized.y
 		if snapamount ~= 0 then
-			local localAng = math.fmod(localized.y, 360)
+			local localAng = mfmod(localized.y, 360)
 			if localAng > 181 then localAng = localAng - 360 end
 			if localAng < -181 then localAng = localAng + 360 end
 
-			local localStart = math.fmod(startAngle.y, 360)
+			local localStart = mfmod(startAngle.y, 360)
 			if localStart > 181 then localStart = localStart - 360 end
 			if localStart < -181 then localStart = localStart + 360 end
 
-			local diff = math.fmod(localStart - localAng, 360)
+			local diff = mfmod(localStart - localAng, 360)
 			if diff > 181 then diff = diff - 360 end
 			if diff < -181 then diff = diff + 360 end
 
@@ -117,7 +118,7 @@ function ENT:ProcessMovement(offpos,offang,eyepos,eyeang,ent,bone,ppos,pnorm, mo
 
 		local rotationangle = localized.y
 		if snapamount ~= 0 then
-			local localAng = math.fmod(localized.y, 360)
+			local localAng = mfmod(localized.y, 360)
 			if localAng > 181 then localAng = localAng - 360 end
 			if localAng < -181 then localAng = localAng + 360 end
 
@@ -141,7 +142,7 @@ function ENT:ProcessMovement(offpos,offang,eyepos,eyeang,ent,bone,ppos,pnorm, mo
 		local axis = self:GetParent()
 		local offset = axis.Owner.rgm.GizmoOffset
 		local entoffset = vector_origin
-		if axis.localizedoffset and not axis.relativerotate then
+		if axis.localoffset and not axis.relativerotate then
 			offset = LocalToWorld(offset, angle_zero, axis:GetPos(), axis.LocalAngles)
 			offset = offset - axis:GetPos()
 		end
@@ -156,15 +157,15 @@ function ENT:ProcessMovement(offpos,offang,eyepos,eyeang,ent,bone,ppos,pnorm, mo
 
 		local rotationangle = localized.y
 		if snapamount ~= 0 then
-			local localAng = math.fmod(localized.y, 360)
+			local localAng = mfmod(localized.y, 360)
 			if localAng > 181 then localAng = localAng - 360 end
 			if localAng < -181 then localAng = localAng + 360 end
 
-			local localStart = math.fmod(startAngle.y, 360)
+			local localStart = mfmod(startAngle.y, 360)
 			if localStart > 181 then localStart = localStart - 360 end
 			if localStart < -181 then localStart = localStart + 360 end
 
-			local diff = math.fmod(localStart - localAng, 360)
+			local diff = mfmod(localStart - localAng, 360)
 			if diff > 181 then diff = diff - 360 end
 			if diff < -181 then diff = diff + 360 end
 

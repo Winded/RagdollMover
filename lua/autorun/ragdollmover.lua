@@ -639,28 +639,28 @@ function ProcessIK(ent, IKTable, sbone, RT, footlock)
 		anklepos = hippos + (anklenorm * (thighlength + shinlength))
 	end
 
-	local KneePos = FindKnee(hippos, anklepos, thighlength, shinlength, kneedir)
-	hang = SetAngleOffset(ent, hippos,(KneePos - hippos):Angle(), hipang, hipoffang)
-	local HipAng = hang*1
-	hang = SetAngleOffset(ent, KneePos,(anklepos - KneePos):Angle(), kneeang, kneeoffang)
-	local KneeAng = hang*1
+	local kneepos = FindKnee(hippos, anklepos, thighlength, shinlength, kneedir)
+	hang = SetAngleOffset(ent, hippos,(kneepos - hippos):Angle(), hipang, hipoffang)
+	hipang = hang*1
+	hang = SetAngleOffset(ent, kneepos,(anklepos - kneepos):Angle(), kneeang, kneeoffang)
+	kneeang = hang*1
 
 	if propragdoll then
 		local ent1, ent2, ent3 = ent.rgmPRidtoent[IKTable.hip], ent.rgmPRidtoent[IKTable.knee], ent.rgmPRidtoent[IKTable.foot]
 
 		if ent1 and ent1.rgmPRoffset then
-			hippos = LocalToWorld(-ent1.rgmPRoffset, angle_zero, hippos, HipAng)
+			hippos = LocalToWorld(-ent1.rgmPRoffset, angle_zero, hippos, hipang)
 		end
 		if ent2 and ent2.rgmPRoffset then
-			KneePos = LocalToWorld(-ent2.rgmPRoffset, angle_zero, KneePos, KneeAng)
+			kneepos = LocalToWorld(-ent2.rgmPRoffset, angle_zero, kneepos, kneeang)
 		end
 		if ent3 and ent3.rgmPRoffset then
 			anklepos = LocalToWorld(-ent3.rgmPRoffset, angle_zero, anklepos, ankleang)
 		end
 	end
 
-	RTable[IKTable.hip] = {pos = hippos, ang = HipAng}
-	RTable[IKTable.knee] = {pos = KneePos, ang = KneeAng}
+	RTable[IKTable.hip] = {pos = hippos, ang = hipang}
+	RTable[IKTable.knee] = {pos = kneepos, ang = kneeang}
 	if IKTable.rotate and sbone.b == IKTable.hip then
 		RTable[IKTable.hip].dontset = true
 	elseif IKTable.rotate and sbone.b == IKTable.knee then

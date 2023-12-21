@@ -12,7 +12,7 @@ function ENT:ProcessMovement(offpos,offang,eyepos,eyeang,ent,bone,ppos,pnorm,mov
 	local axis = self:GetParent()
 	local offset = axis.Owner.rgm.GizmoOffset
 	local entoffset = vector_origin
-	if axis.localizedoffset then
+	if axis.localoffset then
 		offset = LocalToWorld(offset, angle_zero, axis:GetPos(), axis.LocalAngles)
 		offset =  offset - axis:GetPos()
 	end

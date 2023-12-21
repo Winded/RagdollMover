@@ -248,7 +248,7 @@ function ENT:Think()
 	local pos, ang
 	local rotate = pl.rgm.Rotate or false
 	local scale = pl.rgm.Scale or false
-	local offset, offsetlocal = pl.rgm.GizmoOffset, self.localizedoffset
+	local offset, offsetlocal = pl.rgm.GizmoOffset, self.localoffset
 
 	if IsValid(ent:GetParent()) and pl.rgm.Bone == 0 and not ent:IsEffectActive(EF_BONEMERGE) and not (ent:GetClass() == "prop_ragdoll") then
 		pos = ent:GetParent():LocalToWorld(ent:GetLocalPos())
@@ -342,9 +342,9 @@ function ENT:Think()
 		end
 	end
 
-	local localstate = self.localizedpos
+	local localstate = self.localpos
 	if rotate then 
-		localstate = self.localizedang
+		localstate = self.localang
 	end
 
 	if not pl.rgm.Moving then -- Prevent whole thing from rotating when we do localized rotation - needed for proper angle reading
