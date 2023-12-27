@@ -1171,7 +1171,7 @@ function TOOL:Think()
 
 if SERVER then
 
-	if not pl then pl = self:GetOwner() end
+	local pl = self:GetOwner()
 
 	if not self.LastThink then self.LastThink = CurTime() end
 	if CurTime() < self.LastThink + (pl.rgm.updaterate or 0.01) then return end
