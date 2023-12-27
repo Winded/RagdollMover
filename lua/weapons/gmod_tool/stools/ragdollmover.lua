@@ -755,7 +755,7 @@ net.Receive("rgmUpdateCCVar", function(len, pl)
 	local tool = pl:GetTool("ragdollmover")
 	if not tool then return end
 
-	local axis = pl.rgm and pl.rgm.Axis or nil
+	local axis = pl.rgm.Axis
 	local vars = {
 		"localpos",
 		"localang",
@@ -768,7 +768,7 @@ net.Receive("rgmUpdateCCVar", function(len, pl)
 		"snapamount",
 	}
 
-	if var < 5 and IsValid(axis) then
+	if var < 6 and IsValid(axis) then
 		axis[vars[var]] = (tool:GetClientNumber(vars[var], 1) ~= 0)
 	else
 		pl.rgm[vars[var]] = tool:GetClientNumber(vars[var], 1)
