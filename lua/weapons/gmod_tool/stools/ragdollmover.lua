@@ -165,7 +165,7 @@ util.AddNetworkString("rgmAdjustBone")
 util.AddNetworkString("rgmGizmoOffset")
 
 util.AddNetworkString("rgmUpdateSliders")
-util.AddNetworkString("rgmUpdateAxisVar")
+util.AddNetworkString("rgmUpdateCCVar")
 
 util.AddNetworkString("rgmNotification")
 
@@ -749,22 +749,30 @@ net.Receive("rgmGizmoOffset", function(len, pl)
 	pl.rgm.GizmoOffset[axis] = value
 end)
 
-net.Receive("rgmUpdateAxisVar", function(len, pl)
-	local var = net.ReadUInt(3)
+net.Receive("rgmUpdateCCVar", function(len, pl)
+	local var = net.ReadUInt(4)
 	if not pl.rgm or not IsValid(pl.rgm.Axis) then return end
 	local tool = pl:GetTool("ragdollmover")
 	if not tool then return end
 
-	local axis = pl.rgm.Axis
+	local axis = pl.rgm and pl.rgm.Axis or nil
 	local vars = {
 		"localpos",
 		"localang",
 		"localoffset",
 		"relativerotate",
 		"scalechildren",
+		"updaterate",
+		"unfreeze",
+		"snapenable",
+		"snapamount",
 	}
 
-	axis[vars[var]] = (tool:GetClientNumber(vars[var],1) ~= 0)
+	if var < 5 and IsValid(axis) then
+		axis[vars[var]] = (tool:GetClientNumber(vars[var], 1) ~= 0)
+	else
+		pl.rgm[vars[var]] = tool:GetClientNumber(vars[var], 1)
+	end
 end)
 
 hook.Add("PlayerDisconnected", "RGMCleanupGizmos", function(pl)
@@ -799,7 +807,17 @@ function TOOL:Deploy()
 			axis = ents.Create("rgm_axis")
 			axis:Spawn()
 			axis.Owner = pl
+			axis.localpos = self:GetClientNumber("localpos", 0)
+			axis.localang = self:GetClientNumber("localang", 1)
+			axis.localoffset = self:GetClientNumber("localoffset", 1)
+			axis.relativerotate = self:GetClientNumber("relativerotate", 0)
+			axis.scalechildren = self:GetClientNumber("scalechildren", 0)
 			pl.rgm.Axis = axis
+
+			pl.rgm.updaterate = self:GetClientNumber("updaterate", 0.01)
+			pl.rgm.unfreeze = self:GetClientNumber("unfreeze", 0)
+			pl.rgm.snapenable = self:GetClientNumber("snapenable", 0)
+			pl.rgm.snapamount = self:GetClientNumber("snapamount", 30)
 		end
 	end
 end
@@ -1108,9 +1126,13 @@ function TOOL:Reload()
 	return false
 end
 
+do
+
+local pl
+
 function TOOL:Think()
 	if CLIENT then
-		local pl = self:GetOwner()
+		if not pl then pl = LocalPlayer() end
 		if not pl.rgm then return end
 
 		if pl.rgm.Moving then return end -- don't want to keep updating this stuff when we move stuff, so it'll go smoother
@@ -1149,10 +1171,11 @@ function TOOL:Think()
 
 if SERVER then
 
-	if not self.LastThink then self.LastThink = CurTime() end
-	if CurTime() < self.LastThink + self:GetClientNumber("updaterate",0.01) then return end
+	if not pl then pl = self:GetOwner() end
 
-	local pl = self:GetOwner()
+	if not self.LastThink then self.LastThink = CurTime() end
+	if CurTime() < self.LastThink + (pl.rgm.updaterate or 0.01) then return end
+
 	local ent = pl.rgm.Entity
 	local axis = pl.rgm.Axis
 
@@ -1163,7 +1186,7 @@ if SERVER then
 		if not pl:KeyDown(IN_ATTACK) then
 
 			if pl.rgm.IsPhysBone then
-				if self:GetClientNumber("unfreeze", 1) > 0 then
+				if (pl.rgm.unfreeze or 1) ~= 0 then
 					for i = 0, ent:GetPhysicsObjectCount() - 1 do
 						if pl.rgmOffsetTable[i].moving then
 							local obj = ent:GetPhysicsObjectNum(i)
@@ -1205,8 +1228,8 @@ if SERVER then
 		end
 
 		local snapamount = 0
-		if self:GetClientNumber("snapenable", 0) ~= 0 then
-			snapamount = self:GetClientNumber("snapamount", 1)
+		if (pl.rgm.snapenable or 0) ~= 0 then
+			snapamount = pl.rgm.snapamount or 1
 			snapamount = snapamount < 1 and 1 or snapamount
 		end
 
@@ -1353,6 +1376,8 @@ end
 
 end
 
+end
+
 if CLIENT then
 
 	TOOL.Information = {
@@ -1382,32 +1407,56 @@ hook.Add("InitPostEntity", "rgmSetPlayer", function()
 end)
 
 cvars.AddChangeCallback("ragdollmover_localpos", function()
-	net.Start("rgmUpdateAxisVar")
-		net.WriteUInt(1, 3)
+	net.Start("rgmUpdateCCVar")
+		net.WriteUInt(1, 4)
 	net.SendToServer()
 end)
 
 cvars.AddChangeCallback("ragdollmover_localang", function()
-	net.Start("rgmUpdateAxisVar")
-		net.WriteUInt(2, 3)
+	net.Start("rgmUpdateCCVar")
+		net.WriteUInt(2, 4)
 	net.SendToServer()
 end)
 
 cvars.AddChangeCallback("ragdollmover_localoffset", function()
-	net.Start("rgmUpdateAxisVar")
-		net.WriteUInt(3, 3)
+	net.Start("rgmUpdateCCVar")
+		net.WriteUInt(3, 4)
 	net.SendToServer()
 end)
 
 cvars.AddChangeCallback("ragdollmover_relativerotate", function()
-	net.Start("rgmUpdateAxisVar")
-		net.WriteUInt(4, 3)
+	net.Start("rgmUpdateCCVar")
+		net.WriteUInt(4, 4)
 	net.SendToServer()
 end)
 
 cvars.AddChangeCallback("ragdollmover_scalechildren", function()
-	net.Start("rgmUpdateAxisVar")
-		net.WriteUInt(5, 3)
+	net.Start("rgmUpdateCCVar")
+		net.WriteUInt(5, 4)
+	net.SendToServer()
+end)
+
+cvars.AddChangeCallback("ragdollmover_updaterate", function()
+	net.Start("rgmUpdateCCVar")
+		net.WriteUInt(6, 4)
+	net.SendToServer()
+end)
+
+cvars.AddChangeCallback("ragdollmover_unfreeze", function()
+	net.Start("rgmUpdateCCVar")
+		net.WriteUInt(7, 4)
+	net.SendToServer()
+end)
+
+cvars.AddChangeCallback("ragdollmover_snapenable", function()
+	net.Start("rgmUpdateCCVar")
+		net.WriteUInt(8, 4)
+	net.SendToServer()
+end)
+
+cvars.AddChangeCallback("ragdollmover_snapamount", function()
+	net.Start("rgmUpdateCCVar")
+		net.WriteUInt(9, 4)
 	net.SendToServer()
 end)
 
