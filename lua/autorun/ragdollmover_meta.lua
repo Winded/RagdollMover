@@ -19,7 +19,7 @@ local function Sync(self)
 	local count = table.Count(self.rgm)
 	net.WriteInt(count, 32)
 
-	for k,v in pairs(self.rgm) do
+	for k, v in pairs(self.rgm) do
 		net.WriteString(k)
 
 		local Type = string.lower(type(v))
@@ -78,7 +78,7 @@ local function SyncOne(self, name)
 	net.Send(self)
 end
 
-hook.Add("PlayerSpawn","rgmSpawn",function(pl) --PlayerSpawn is a hook that runs only serverside btw
+hook.Add("PlayerSpawn", "rgmSpawn", function(pl) --PlayerSpawn is a hook that runs only serverside btw
 	if not pl.rgm then
 		pl.rgm = {}
 		pl.rgmPosLocks = {}
@@ -127,7 +127,7 @@ end)
 
 else
 
-net.Receive("rgmSync",function(len)
+net.Receive("rgmSync", function(len)
 	local pl = LocalPlayer()
 	if not pl.rgm then pl.rgm = {} end
 

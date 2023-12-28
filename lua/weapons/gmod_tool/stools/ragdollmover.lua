@@ -316,7 +316,7 @@ net.Receive("rgmLockBone", function(len, pl)
 	if ent:GetClass() ~= "prop_ragdoll" and not ent.rgmPRenttoid then return end
 
 	if ent:GetClass() == "prop_ragdoll" then
-		physbone = rgm.BoneToPhysBone(ent,bone)
+		physbone = rgm.BoneToPhysBone(ent, bone)
 		boneid = physbone
 	else
 		boneid = ent.rgmPRenttoid[ent]
@@ -400,8 +400,8 @@ net.Receive("rgmLockToBone", function(len, pl)
 
 	if lockent == originent then
 		if not RecursiveFindIfParent(lockent, lockedbone, lockorigin) then
-			local bone = rgm.BoneToPhysBone(lockent,lockedbone)
-			lockorigin = rgm.BoneToPhysBone(lockent,lockorigin)
+			local bone = rgm.BoneToPhysBone(lockent, lockedbone)
+			lockorigin = rgm.BoneToPhysBone(lockent, lockorigin)
 
 			pl.rgmBoneLocks[lockent][bone] = { id = lockorigin, ent = lockent }
 			pl.rgmPosLocks[lockent][bone] = nil
@@ -437,7 +437,7 @@ end)
 net.Receive("rgmUnlockToBone", function(len, pl)
 	local ent = net.ReadEntity()
 	local unlockbone = net.ReadUInt(10)
-	local bone = rgm.BoneToPhysBone(ent,unlockbone)
+	local bone = rgm.BoneToPhysBone(ent, unlockbone)
 
 	if ent.rgmPRenttoid then
 		bone = ent.rgmPRenttoid[ent]
@@ -807,11 +807,11 @@ function TOOL:Deploy()
 			axis = ents.Create("rgm_axis")
 			axis:Spawn()
 			axis.Owner = pl
-			axis.localpos = self:GetClientNumber("localpos", 0)
-			axis.localang = self:GetClientNumber("localang", 1)
-			axis.localoffset = self:GetClientNumber("localoffset", 1)
-			axis.relativerotate = self:GetClientNumber("relativerotate", 0)
-			axis.scalechildren = self:GetClientNumber("scalechildren", 0)
+			axis.localpos = self:GetClientNumber("localpos", 0) ~= 0
+			axis.localang = self:GetClientNumber("localang", 1) ~= 0
+			axis.localoffset = self:GetClientNumber("localoffset", 1) ~= 0
+			axis.relativerotate = self:GetClientNumber("relativerotate", 0) ~= 0
+			axis.scalechildren = self:GetClientNumber("scalechildren", 0) ~= 0
 			pl.rgm.Axis = axis
 
 			pl.rgm.updaterate = self:GetClientNumber("updaterate", 0.01)
@@ -880,13 +880,13 @@ function TOOL:LeftClick(tr)
 		axis:Setup()
 	end
 
-	local collision = axis:TestCollision(pl,self:GetClientNumber("scale",10))
+	local collision = axis:TestCollision(pl, self:GetClientNumber("scale", 10))
 	local ent = pl.rgm.Entity
 
 	if collision and IsValid(ent) then
 
 		if _G["physundo"] and _G["physundo"].Create then
-			_G["physundo"].Create(ent,pl)
+			_G["physundo"].Create(ent, pl)
 		end
 
 		local apart = collision.axis
@@ -901,7 +901,7 @@ function TOOL:LeftClick(tr)
 		local grabang = apart:LocalToWorldAngles(Angle(0, 0, Vector(opos.y, opos.z, 0):Angle().y))
 		local _p
 		if obj then 
-			_p,pl.rgmOffsetAng = WorldToLocal(apart:GetPos(), obj:GetAngles(), apart:GetPos(), grabang)
+			_p, pl.rgmOffsetAng = WorldToLocal(apart:GetPos(), obj:GetAngles(), apart:GetPos(), grabang)
 			pl.rgmOffsetTable = rgm.GetOffsetTable(self, ent, pl.rgm.Rotate, pl.rgmBoneLocks, pl.rgmEntLocks)
 		end
 		if IsValid(ent:GetParent()) and not (ent:GetClass() == "prop_ragdoll") then -- ragdolls don't seem to care about parenting
@@ -1253,8 +1253,8 @@ if SERVER then
 				ent:SetLocalAngles(ang)
 
 			elseif pl.rgm.IsPhysBone then -- moving physbones
-				local isik,iknum = rgm.IsIKBone(self,ent,bone)
-				local pos,ang = apart:ProcessMovement(pl.rgmOffsetPos, pl.rgmOffsetAng, eyepos, eyeang, ent, bone, pl.rgmISPos, pl.rgmISDir, 1, snapamount, pl.rgm.StartAngle, nil, nil, nil, tracepos)
+				local isik, iknum = rgm.IsIKBone(self, ent, bone)
+				local pos, ang = apart:ProcessMovement(pl.rgmOffsetPos, pl.rgmOffsetAng, eyepos, eyeang, ent, bone, pl.rgmISPos, pl.rgmISDir, 1, snapamount, pl.rgm.StartAngle, nil, nil, nil, tracepos)
 
 				local physcount = ent:GetPhysicsObjectCount() - 1
 				if pl.rgm.PropRagdoll then
@@ -1271,9 +1271,9 @@ if SERVER then
 					obj:EnableMotion(false)
 					obj:Wake()
 				elseif iknum == 2 then
-					for k,v in pairs(ent.rgmIKChains) do
+					for k, v in pairs(ent.rgmIKChains) do
 						if v.knee == bone or (ent.rgmPRidtoent and ent.rgmPRidtoent[v.knee] == ent) then
-							local intersect = apart:GetGrabPos(eyepos,eyeang)
+							local intersect = apart:GetGrabPos(eyepos, eyeang)
 							local obj1
 							local obj2
 
@@ -1472,6 +1472,11 @@ end)
 
 cvars.AddChangeCallback("ragdollmover_drawskeleton", function(convar, old, new)
 	SkeletonDraw = tonumber(new) ~= 0
+end)
+
+cvars.AddChangeCallback("ragdollmover_fulldisc", function(convar, old, new)
+	if not pl or not pl.rgm or not IsValid(pl.rgm.Axis) then return end
+	pl.rgm.Axis.fulldisc = tonumber(new) ~= 0
 end)
 
 local BONE_PHYSICAL = 1
@@ -2546,10 +2551,10 @@ local function RGMMakeBoneButtonPanel(cat, cpanel)
 end
 
 local function rgmDoNotification(message)
-	if RGM_NOTIFY[message] then
+	if RGM_NOTIFY[message] == true then
 		notification.AddLegacy("#tool.ragdollmover.message" .. message, NOTIFY_ERROR, 5)
 		surface.PlaySound("buttons/button10.wav")
-	else
+	elseif RGM_NOTIFY[message] == false then
 		notification.AddLegacy("#tool.ragdollmover.message" .. message, NOTIFY_GENERIC, 5)
 		surface.PlaySound("buttons/button14.wav")
 	end
@@ -2582,13 +2587,13 @@ function TOOL.BuildCPanel(CPanel)
 		CBAdditionalIKs(Col2, "#tool.ragdollmover.additional")
 
 	local Col3 = CCol(CPanel, "#tool.ragdollmover.miscpanel")
-		CCheckBox(Col3, "#tool.ragdollmover.lockselected","ragdollmover_lockselected")
+		CCheckBox(Col3, "#tool.ragdollmover.lockselected", "ragdollmover_lockselected")
 		local CB = CCheckBox(Col3, "#tool.ragdollmover.unfreeze", "ragdollmover_unfreeze")
 		CB:SetToolTip("#tool.ragdollmover.unfreezetip")
-		local DisFil = CCheckBox(Col3, "#tool.ragdollmover.disablefilter","ragdollmover_disablefilter")
+		local DisFil = CCheckBox(Col3, "#tool.ragdollmover.disablefilter", "ragdollmover_disablefilter")
 		DisFil:SetToolTip("#tool.ragdollmover.disablefiltertip")
 		CCheckBox(Col3, "#tool.ragdollmover.drawskeleton", "ragdollmover_drawskeleton")
-		CNumSlider(Col3, "#tool.ragdollmover.updaterate", "ragdollmover_updaterate",0.01,1.0,2)
+		CNumSlider(Col3, "#tool.ragdollmover.updaterate", "ragdollmover_updaterate", 0.01, 1.0, 2)
 
 	CBinder(CPanel)
 
@@ -2624,7 +2629,7 @@ function TOOL.BuildCPanel(CPanel)
 
 			CButton(ColManip, "#tool.ragdollmover.resetallbones", RGMResetAllBones)
 
-		CCheckBox(Col4,"#tool.ragdollmover.scalechildren","ragdollmover_scalechildren")
+		CCheckBox(Col4, "#tool.ragdollmover.scalechildren", "ragdollmover_scalechildren")
 
 		CCheckBox(Col4, "#tool.ragdollmover.snapenable", "ragdollmover_snapenable")
 		CNumSlider(Col4, "#tool.ragdollmover.snapamount", "ragdollmover_snapamount", 1, 180, 0)
@@ -2968,7 +2973,7 @@ local material = CreateMaterial("rgmGizmoMaterial", "UnlitGeneric", {
 	["$nocull"] = 		1,
 })
 
-local VECTOR_FRONT = Vector(1,0,0)
+local VECTOR_FRONT = Vector(1, 0, 0)
 
 function TOOL:DrawHUD()
 
@@ -2991,7 +2996,7 @@ function TOOL:DrawHUD()
 			moveaxis:DrawLines(true, scale, width)
 
 			cam.End()
-			if moveaxis:GetType() == 3 then
+			if moveaxis:IsDisc() then
 				local intersect = moveaxis:GetGrabPos(rgm.EyePosAng(pl))
 				local fwd = (intersect - axis:GetPos())
 				fwd:Normalize()

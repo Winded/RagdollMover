@@ -405,7 +405,7 @@ function GetOffsetTable(tool, ent, rotate, bonelocks, entlocks)
 		ent.rgmIKChains[k].ikhipoffang = offang*1
 
 		ent.rgmIKChains[k].ikkneedir = kneedir
-		ang,offang = GetAngleOffset(ent, v.knee, v.foot)
+		ang, offang = GetAngleOffset(ent, v.knee, v.foot)
 		ent.rgmIKChains[k].ikkneeang = ang*1
 		ent.rgmIKChains[k].ikkneeoffang = offang*1
 
@@ -640,9 +640,9 @@ function ProcessIK(ent, IKTable, sbone, RT, footlock)
 	end
 
 	local kneepos = FindKnee(hippos, anklepos, thighlength, shinlength, kneedir)
-	hang = SetAngleOffset(ent, hippos,(kneepos - hippos):Angle(), hipang, hipoffang)
+	hang = SetAngleOffset(ent, hippos, (kneepos - hippos):Angle(), hipang, hipoffang)
 	hipang = hang*1
-	hang = SetAngleOffset(ent, kneepos,(anklepos - kneepos):Angle(), kneeang, kneeoffang)
+	hang = SetAngleOffset(ent, kneepos, (anklepos - kneepos):Angle(), kneeang, kneeoffang)
 	kneeang = hang*1
 
 	if propragdoll then

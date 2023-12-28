@@ -134,7 +134,7 @@ net.Receive("rgmikRequestSave", function(len, pl)
 		net.WriteBool(ispropragdoll)
 
 		net.WriteEntity(ent)
-		net.WriteUInt(num,4)
+		net.WriteUInt(num, 4)
 
 		if not ispropragdoll then
 			for i = 1, num do
@@ -256,7 +256,7 @@ function TOOL:LeftClick(tr)
 			end
 
 			if not ent.rgmIKChains then ent.rgmIKChains = {} end
-			local Type = self:GetClientNumber("type",1)
+			local Type = self:GetClientNumber("type", 1)
 			ent.rgmIKChains[Type] = {hip = self.SelectedHip, knee = self.SelectedKnee, foot = tr.PhysicsBone, type = Type}
 
 			self:SetStage(0)
@@ -271,7 +271,7 @@ function TOOL:LeftClick(tr)
 				rgmCallReset(self:GetOwner())
 			end
 
-			local Type = self:GetClientNumber("type",1)
+			local Type = self:GetClientNumber("type", 1)
 			local IKTable = {hip = ent.rgmPRenttoid[self.SelectedHipEnt], knee = ent.rgmPRenttoid[self.SelectedKneeEnt], foot = ent.rgmPRenttoid[ent], type = Type}
 			for id, ent in pairs(ent.rgmPRidtoent) do
 				if not ent.rgmIKChains then ent.rgmIKChains = {} end
@@ -551,7 +551,7 @@ function TOOL:DrawHUD()
 					surface.DrawLine(ppos.x, ppos.y, pos.x, pos.y)
 				end
 
-				surface.DrawCircle(pos.x, pos.y, 2.5, Color(0,200,0,255))
+				surface.DrawCircle(pos.x, pos.y, 2.5, Color(0, 200, 0, 255))
 			end
 		end
 
@@ -559,31 +559,31 @@ function TOOL:DrawHUD()
 		local hipbone, kneebone = pl.ragdollmoverik_hip and pl.ragdollmoverik_hip.bone or 0, pl.ragdollmoverik_knee and pl.ragdollmoverik_knee.bone or 0
 		local hipent, kneeent = pl.ragdollmoverik_hip and pl.ragdollmoverik_hip.ent or nil, pl.ragdollmoverik_knee and pl.ragdollmoverik_knee.ent or nil
 		if aimedbone ~= hipbone and aimedbone ~= kneebone or aimedent ~= hipent and aimedent ~= kneeent then
-			rgm.DrawBoneName(aimedent,aimedbone)
+			rgm.DrawBoneName(aimedent, aimedbone)
 		end
 
 	end
 
-	local iktype = self:GetClientNumber("type",1)
+	local iktype = self:GetClientNumber("type", 1)
 	iktype = ((iktype == 3) or (iktype == 4)) and true or false
 
 	if pl.ragdollmoverik_hip and IsValid(pl.ragdollmoverik_hip.ent) then
 		local hipname = iktype and "#tool.ragmover_ikchains.upperarm" or "#tool.ragmover_ikchains.hip"
-		rgm.DrawBoneName(pl.ragdollmoverik_hip.ent,pl.ragdollmoverik_hip.bone,hipname)
+		rgm.DrawBoneName(pl.ragdollmoverik_hip.ent, pl.ragdollmoverik_hip.bone, hipname)
 	end
 
 	if pl.ragdollmoverik_knee and IsValid(pl.ragdollmoverik_knee.ent) then
 		local kneename = iktype and "#tool.ragmover_ikchains.elbow" or "#tool.ragmover_ikchains.knee"
-		rgm.DrawBoneName(pl.ragdollmoverik_knee.ent,pl.ragdollmoverik_knee.bone,kneename)
+		rgm.DrawBoneName(pl.ragdollmoverik_knee.ent, pl.ragdollmoverik_knee.bone, kneename)
 	end
 
 end
 
 local function rgmDoNotification(message)
-	if RGM_NOTIFY[message] then
+	if RGM_NOTIFY[message] == true then
 		notification.AddLegacy("#tool.ragmover_ikchains.message" .. message, NOTIFY_ERROR, 5)
 		surface.PlaySound("buttons/button10.wav")
-	else
+	elseif RGM_NOTIFY[message] == false then
 		notification.AddLegacy("#tool.ragmover_ikchains.message" .. message, NOTIFY_GENERIC, 5)
 		surface.PlaySound("buttons/button14.wav")
 	end

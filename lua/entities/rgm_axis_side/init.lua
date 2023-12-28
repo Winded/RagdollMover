@@ -3,8 +3,8 @@ include("shared.lua")
 AddCSLuaFile("cl_init.lua")
 AddCSLuaFile("shared.lua")
 
-function ENT:ProcessMovement(offpos,offang,eyepos,eyeang,ent,bone,ppos,pnorm, movetype, garbage, startGrab, NPhysPos)
-	local intersect = self:GetGrabPos(eyepos,eyeang,ppos,pnorm)
+function ENT:ProcessMovement(offpos, _, eyepos, eyeang, ent, bone, ppos, pnorm, movetype, _, _, nphyspos)
+	local intersect = self:GetGrabPos(eyepos, eyeang, ppos, pnorm)
 	local axis = self:GetParent()
 	local offset = axis.Owner.rgm.GizmoOffset
 	local entoffset = vector_origin
@@ -23,7 +23,7 @@ function ENT:ProcessMovement(offpos,offang,eyepos,eyeang,ent,bone,ppos,pnorm, mo
 	if movetype == 1 then
 		local obj = ent:GetPhysicsObjectNum(bone)
 		ang = obj:GetAngles()
-		pos = LocalToWorld(offpos,angle_zero,intersect - offset,self:GetAngles())
+		pos = LocalToWorld(offpos, angle_zero, intersect - offset, self:GetAngles())
 	elseif movetype == 2 then
 		local localized, finalpos, boneang
 		if ent:GetBoneParent(bone) ~= -1 then
@@ -43,17 +43,17 @@ function ENT:ProcessMovement(offpos,offang,eyepos,eyeang,ent,bone,ppos,pnorm, mo
 			end
 		end
 
-		localized = LocalToWorld(offpos,angle_zero,intersect,self:GetAngles())
+		localized = LocalToWorld(offpos, angle_zero, intersect, self:GetAngles())
 		localized = WorldToLocal(localized, angle_zero, self:GetPos(), boneang)
 
-		finalpos = NPhysPos + localized
+		finalpos = nphyspos + localized
 		ang = ent:GetManipulateBoneAngles(bone)
 		pos = finalpos
 	elseif movetype == 0 then
 		ang = ent:GetLocalAngles()
-		pos = LocalToWorld(offpos,angle_zero,intersect - offset,self:GetAngles())
+		pos = LocalToWorld(offpos, angle_zero, intersect - offset, self:GetAngles())
 		pos = ent:GetParent():WorldToLocal(pos)
 	end
 
-	return pos,ang
+	return pos, ang
 end

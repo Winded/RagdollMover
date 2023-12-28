@@ -16,28 +16,26 @@ function ENT:Initialize()
 		self:SetNoDraw(true)
 	end
 	self:DrawShadow(false)
-	self:SetCollisionBounds(Vector(-0.1,-0.1,-0.1),Vector(0.1,0.1,0.1))
+	self:SetCollisionBounds(Vector(-0.1, -0.1, -0.1), Vector(0.1, 0.1, 0.1))
 	self:SetSolid(SOLID_VPHYSICS)
 	self:SetNotSolid(true)
 end
 
-function ENT:TestCollision(pl,scale)
+function ENT:TestCollision(pl, scale)
 	-- PrintTable(self:GetTable())
 	local rotate = pl.rgm.Rotate or false
 	local modescale = pl.rgm.Scale or false
-	local Start,End = 1,7
-	if rotate then Start,End = 8,11 end
-	if modescale then Start, End = 12, 17 end
+	local start, last = 1, 7
 
-	local cols = {}
+	if rotate then start, last = 8, 11 end
+	if modescale then start, last = 12, 17 end
+
 	if not self.Axises then return false end
-	for i=Start,End do
+	for i = start, last do
 		local e = self.Axises[i]
 		-- print(e)
-		cols[i] = e:TestCollision(pl,scale)
-	end
-	for i=Start,End do
-		if cols[i] then return cols[i] end
+		local intersect = e:TestCollision(pl, scale)
+		if intersect then return intersect end
 	end
 	return false
 end

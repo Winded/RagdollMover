@@ -3,8 +3,8 @@ include("shared.lua")
 AddCSLuaFile("cl_init.lua")
 AddCSLuaFile("shared.lua")
 
-function ENT:ProcessMovement(offpos,offang,eyepos,eyeang,ent,bone,ppos,pnorm, movetype, garbage, startGrab, garbage, garbage, NPhysScale)
-	local intersect = self:GetGrabPos(eyepos,eyeang,ppos,pnorm)
+function ENT:ProcessMovement(offpos, offang, eyepos, eyeang, ent, bone, ppos, pnorm, movetype, _, startgrab, _, _, nphysscale)
+	local intersect = self:GetGrabPos(eyepos, eyeang, ppos, pnorm)
 	local pos, ang
 	local pl = self:GetParent().Owner
 
@@ -24,12 +24,12 @@ function ENT:ProcessMovement(offpos,offang,eyepos,eyeang,ent,bone,ppos,pnorm, mo
 		end
 	end
 
-	localized = LocalToWorld(offpos,angle_zero,intersect,self:GetAngles())
+	localized = LocalToWorld(offpos, angle_zero, intersect, self:GetAngles())
 	localized = WorldToLocal(localized, angle_zero, self:GetPos(), boneang)
 
-	finalpos = NPhysScale + localized
+	finalpos = nphysscale + localized
 	ang = ent:GetManipulateBoneAngles(bone)
 	pos = finalpos
 
-	return pos,ang
+	return pos, ang
 end

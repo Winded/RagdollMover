@@ -5,14 +5,12 @@ TOOL.ConfigName = ""
 
 CVMaxPRBones = CreateConVar("sv_ragdollmover_max_prop_ragdoll_bones", 32, FCVAR_ARCHIVE + FCVAR_NOTIFY, "Maximum amount of bones that can be used in single Prop Ragdoll", 0, 4096)
 
-local RGM_NOTIFY = {
-	ENT_SELECTED = {id = 0, iserror = false},
-	ENT_CLEARED = {id = 1, iserror = false},
-	APPLIED = {id = 2, iserror = false},
-	APPLY_FAILED = {id = 3, iserror = true},
-	APPLY_FAILED_LIMIT = {id = 4, iserror = true},
-	PROPRAGDOLL_CLEARED = {id = 5, iserror = false}
-}
+local ENT_SELECTED = 0
+local ENT_CLEARED = 1
+local APPLIED = 2
+local APPLY_FAILED = 3
+local APPLY_FAILED_LIMIT = 4
+local PROPRAGDOLL_CLEARED = 5
 
 local function ClearPropRagdoll(ent)
 	ent.rgmPRidtoent = nil
@@ -29,136 +27,134 @@ end
 
 local function SendNotification(pl, id)
 	net.Start("rgmprDoNotify")
-	net.WriteUInt(id, 3)
+		net.WriteUInt(id, 3)
 	net.Send(pl)
 end
 
 if SERVER then
 
-	util.AddNetworkString("rgmprSendConEnts")
-	util.AddNetworkString("rgmprApplySkeleton")
-	util.AddNetworkString("rgmprDoNotify")
+util.AddNetworkString("rgmprSendConEnts")
+util.AddNetworkString("rgmprApplySkeleton")
+util.AddNetworkString("rgmprDoNotify")
 
 
-	duplicator.RegisterEntityModifier("Ragdoll Mover Prop Ragdoll", function(pl, ent, data)
+duplicator.RegisterEntityModifier("Ragdoll Mover Prop Ragdoll", function(pl, ent, data)
 
-		ent.rgmPRenttoid = table.Copy(data.enttoid)
-		ent.rgmPRidtoent = table.Copy(data.idtoent)
-		ent.rgmPRparent = data.parent
-		ent.rgmPRoffset = data.offset
+	ent.rgmPRenttoid = table.Copy(data.enttoid)
+	ent.rgmPRidtoent = table.Copy(data.idtoent)
+	ent.rgmPRparent = data.parent
+	ent.rgmPRoffset = data.offset
 
-		ent.rgmOldPostEntityPaste = ent.PostEntityPaste
+	ent.rgmOldPostEntityPaste = ent.PostEntityPaste
 
-		ent.PostEntityPaste = function(self, pl, ent, crtEnts)
-			if ent.rgmOldPostEntityPaste then
-				ent:rgmOldPostEntityPaste(pl, ent, crtEnts)
-			end
+	ent.PostEntityPaste = function(self, pl, ent, crtEnts)
+		if ent.rgmOldPostEntityPaste then
+			ent:rgmOldPostEntityPaste(pl, ent, crtEnts)
+		end
 
-			if not ent.rgmPRenttoid or not ent.rgmPRidtoent then return end
+		if not ent.rgmPRenttoid or not ent.rgmPRidtoent then return end
 
-			for oldent, newent in pairs(crtEnts) do
-				local id = ent.rgmPRenttoid[oldent]
-				if not id then continue end
+		for oldent, newent in pairs(crtEnts) do
+			local id = ent.rgmPRenttoid[oldent]
+			if not id then continue end
 
-				ent.rgmPRidtoent[id] = newent
-				ent.rgmPRenttoid[oldent] = nil
-				ent.rgmPRenttoid[newent] = id
-			end
+			ent.rgmPRidtoent[id] = newent
+			ent.rgmPRenttoid[oldent] = nil
+			ent.rgmPRenttoid[newent] = id
+		end
 
-			local newdata = {}
-			newdata.enttoid = {}
-			for e, id in pairs(ent.rgmPRenttoid) do
-				if type(e) ~= "Entity" or not IsValid(e) then continue end
-				newdata.enttoid[e:EntIndex()] = id
-			end
-			newdata.idtoent = table.Copy(ent.rgmPRidtoent)
-			newdata.parent = ent.rgmPRparent
-			newdata.offset = ent.rgmPRoffset
+		local newdata = {}
+		newdata.enttoid = {}
+		for e, id in pairs(ent.rgmPRenttoid) do
+			if type(e) ~= "Entity" or not IsValid(e) then continue end
+			newdata.enttoid[e:EntIndex()] = id
+		end
+		newdata.idtoent = table.Copy(ent.rgmPRidtoent)
+		newdata.parent = ent.rgmPRparent
+		newdata.offset = ent.rgmPRoffset
 
-			duplicator.ClearEntityModifier(ent, "Ragdoll Mover Prop Ragdoll")
-			duplicator.StoreEntityModifier(ent, "Ragdoll Mover Prop Ragdoll", newdata)
+		duplicator.ClearEntityModifier(ent, "Ragdoll Mover Prop Ragdoll")
+		duplicator.StoreEntityModifier(ent, "Ragdoll Mover Prop Ragdoll", newdata)
 
-			for e, id in pairs(ent.rgmPRenttoid) do
-				if type(e) ~= "Entity" or (type(e) == "Entity" and not IsValid(e)) then -- if some of those entities don't exist, then we gotta dissolve the "ragdoll"
-					ClearPropRagdoll(ent)
-					break
-				end
+		for e, id in pairs(ent.rgmPRenttoid) do
+			if type(e) ~= "Entity" or (type(e) == "Entity" and not IsValid(e)) then -- if some of those entities don't exist, then we gotta dissolve the "ragdoll"
+				ClearPropRagdoll(ent)
+				break
 			end
 		end
-	end)
+	end
+end)
 
-	hook.Add("EntityRemoved", "rgmPropRagdollEntRemoved", function(ent)
+hook.Add("EntityRemoved", "rgmPropRagdollEntRemoved", function(ent)
+	if ent.rgmPRidtoent then
+		for id, ent in pairs(ent.rgmPRidtoent) do
+			if not IsValid(ent) then continue end
+			ClearPropRagdoll(ent)
+		end
+	end
+end)
+
+net.Receive("rgmprApplySkeleton", function(len, pl)
+	local count = net.ReadUInt(13)
+	local ents = {}
+	local fail = false
+
+	for i = 0, count - 1 do
+		ents[i] = {}
+		ents[i].ent = net.ReadEntity()
+		ents[i].id = net.ReadUInt(13)
+		local parent = net.ReadUInt(13)
+		ents[i].parent = parent ~= 4100 and parent or nil
+		if not IsValid(ents[i].ent) or not ents[i].ent:GetClass() == "prop_physics" then
+			fail = true
+		end
+		ents[i].offset = net.ReadVector()
+	end
+
+	if fail or count > CVMaxPRBones:GetInt() then
+		if fail then
+			SendNotification(pl, APPLY_FAILED)
+		else
+			SendNotification(pl, APPLY_FAILED_LIMIT)
+		end
+		return
+	end
+
+	for id, data in pairs(ents) do
+		local ent = data.ent
+
 		if ent.rgmPRidtoent then
 			for id, ent in pairs(ent.rgmPRidtoent) do
-				if not IsValid(ent) then continue end
 				ClearPropRagdoll(ent)
 			end
 		end
-	end)
 
-	net.Receive("rgmprApplySkeleton", function(len, pl)
-		local count = net.ReadUInt(13)
-		local ents = {}
-		local fail = false
-
-		for i = 0, count - 1 do
-			ents[i] = {}
-			ents[i].ent = net.ReadEntity()
-			ents[i].id = net.ReadUInt(13)
-			local parent = net.ReadUInt(13)
-			ents[i].parent = parent ~= 4100 and parent or nil
-			if not IsValid(ents[i].ent) or not ents[i].ent:GetClass() == "prop_physics" then
-				fail = true
-			end
-			ents[i].offset = net.ReadVector()
+		ent.rgmPRidtoent = {}
+		ent.rgmPRenttoid = {}
+		ent.rgmPRparent = data.parent
+		ent.rgmPRoffset = data.offset
+		for id, moredata in pairs(ents) do
+			ent.rgmPRidtoent[moredata.id] = moredata.ent
+			ent.rgmPRenttoid[moredata.ent] = moredata.id
 		end
 
-		if fail or count > CVMaxPRBones:GetInt() then
-			if fail then
-				SendNotification(pl, RGM_NOTIFY.APPLY_FAILED.id)
-			else
-				SendNotification(pl, RGM_NOTIFY.APPLY_FAILED_LIMIT.id)
-			end
-			return
+		local data = {}
+		data.idtoent = table.Copy(ent.rgmPRidtoent)
+		data.enttoid = {}
+		for ent, id in pairs(ent.rgmPRenttoid) do
+			data.enttoid[ent:EntIndex()] = id
 		end
+		data.parent = ent.rgmPRparent
+		data.offset = ent.rgmPRoffset
 
-		for id, data in pairs(ents) do
-			local ent = data.ent
+		duplicator.StoreEntityModifier(ent, "Ragdoll Mover Prop Ragdoll", data)
+	end
+	SendNotification(pl, APPLIED)
+end)
 
-			if ent.rgmPRidtoent then
-				for id, ent in pairs(ent.rgmPRidtoent) do
-					ClearPropRagdoll(ent)
-				end
-			end
-
-			ent.rgmPRidtoent = {}
-			ent.rgmPRenttoid = {}
-			ent.rgmPRparent = data.parent
-			ent.rgmPRoffset = data.offset
-			for id, moredata in pairs(ents) do
-				ent.rgmPRidtoent[moredata.id] = moredata.ent
-				ent.rgmPRenttoid[moredata.ent] = moredata.id
-			end
-
-			local data = {}
-			data.idtoent = table.Copy(ent.rgmPRidtoent)
-			data.enttoid = {}
-			for ent, id in pairs(ent.rgmPRenttoid) do
-				data.enttoid[ent:EntIndex()] = id
-			end
-			data.parent = ent.rgmPRparent
-			data.offset = ent.rgmPRoffset
-
-			duplicator.StoreEntityModifier(ent, "Ragdoll Mover Prop Ragdoll", data)
-		end
-		SendNotification(pl, RGM_NOTIFY.APPLIED.id)
-	end)
 end
 
 function TOOL:LeftClick(tr)
-	local stage = self:GetStage()
-	local ent = tr.Entity
-
 	return false
 end
 
@@ -175,21 +171,22 @@ function TOOL:RightClick(tr)
 			for ent, _ in pairs(ents) do
 				if ent:GetClass() == "prop_physics" and not IsValid(ent:GetParent()) then
 					conents[ent] = true
+					count = count + 1
 				end
 			end
-			for ent, _ in pairs(conents) do
-				count = count + 1
-			end
+--			for ent, _ in pairs(conents) do
+--				count = count + 1
+	--		end
 		end
-
+print(count)
 		net.Start("rgmprSendConEnts")
-		net.WriteBool(doweusethis)
-		if doweusethis then
-			net.WriteUInt(count, 13)
-			for ent, _ in pairs(conents) do
-				net.WriteEntity(ent)
+			net.WriteBool(doweusethis)
+			if doweusethis then
+				net.WriteUInt(count, 13)
+				for ent, _ in pairs(conents) do
+					net.WriteEntity(ent)
+				end
 			end
-		end
 		net.Send(self:GetOwner())
 	end
 
@@ -204,7 +201,7 @@ function TOOL:Reload(tr)
 		for id, ent in pairs(ent.rgmPRidtoent) do
 			ClearPropRagdoll(ent)
 		end
-		SendNotification(self:GetOwner(), RGM_NOTIFY.PROPRAGDOLL_CLEARED.id)
+		SendNotification(self:GetOwner(), PROPRAGDOLL_CLEARED)
 	end
 
 	return true
@@ -215,6 +212,15 @@ if CLIENT then
 TOOL.Information = {
 	{name = "right"},
 	{name = "reload"}
+}
+
+local RGM_NOTIFY = {
+	[ENT_SELECTED] = false,
+	[ENT_CLEARED] = false,
+	[APPLIED] = false,
+	[APPLY_FAILED] = true,
+	[APPLY_FAILED_LIMIT] = true,
+	[PROPRAGDOLL_CLEARED] = false
 }
 
 local PRUI
@@ -230,30 +236,24 @@ local function RGMCallApplySkeleton()
 		for id, node in pairs(tree.Nodes) do
 			net.WriteEntity(node.ent)
 			net.WriteUInt(node.id, 13)
-			net.WriteUInt(node.parent or 4100,13)
+			net.WriteUInt(node.parent or 4100, 13)
 			net.WriteVector(node.offset)
 		end
 	net.SendToServer()
 end
 
 local function rgmDoNotification(message)
-	local MessageTable = {}
-
-	for key, data in pairs(RGM_NOTIFY) do
-		if not data.iserror then
-			MessageTable[data.id] = function()
-				notification.AddLegacy("#tool.ragmover_propragdoll.message" .. data.id, NOTIFY_GENERIC, 5)
-				surface.PlaySound("buttons/button14.wav")
-			end
-		else
-			MessageTable[data.id] = function()
-				notification.AddLegacy("#tool.ragmover_propragdoll.message" .. data.id, NOTIFY_ERROR, 5)
-				surface.PlaySound("buttons/button10.wav")
-			end
+	if RGM_NOTIFY[message] == true then
+		MessageTable[message] = function()
+			notification.AddLegacy("#tool.ragmover_propragdoll.message" .. message, NOTIFY_ERROR, 5)
+			surface.PlaySound("buttons/button10.wav")
+		end
+	elseif RGM_NOTIFY[message] == false then
+		MessageTable[message] = function()
+			notification.AddLegacy("#tool.ragmover_propragdoll.message" .. message, NOTIFY_GENERIC, 5)
+			surface.PlaySound("buttons/button14.wav")
 		end
 	end
-
-	MessageTable[message]()
 end
 
 local function DeleteNodeRecursive(node)
@@ -291,7 +291,7 @@ local function TreeUpdateHBar()
 	PRUI.PRTree:UpdateWidth(width + 8 + 32 + 16)
 end
 
-local function AddHBar(self) -- There is no horizontal scrollbars in gmod, so I guess we'll override vertical one from GMod
+local function AddHBar(self) -- Copied over from ragdoll mover's thing
 	self.HBar = vgui.Create("DVScrollBar")
 
 	self.HBar.btnUp.Paint = function(panel, w, h) derma.SkinHook("Paint", "ButtonLeft", panel, w, h) end
@@ -439,8 +439,8 @@ local function AddHBar(self) -- There is no horizontal scrollbars in gmod, so I 
 	end
 end
 
-local function CCol(cpanel,text, notexpanded)
-	local cat = vgui.Create("DCollapsibleCategory",cpanel)
+local function CCol(cpanel, text, notexpanded)
+	local cat = vgui.Create("DCollapsibleCategory", cpanel)
 	cat:SetExpanded(1)
 	cat:SetLabel(text)
 	cpanel:AddItem(cat)
@@ -457,13 +457,15 @@ local function CCol(cpanel,text, notexpanded)
 	return col, cat
 end
 local function CSlider(cpanel, axis, text)
-	local sliderman = vgui.Create("DNumSlider",cpanel)
+	local sliderman = vgui.Create("DNumSlider", cpanel)
 	sliderman:SetDark(true)
 	sliderman:SetText(text)
 	sliderman:SetDecimals(1)
 	sliderman:SetDefaultValue(0)
 	sliderman:SetMinMax(-1024, 1024)
 	sliderman:SetValue(0)
+
+	local mround = math.Round
 
 	sliderman.OnValueChanged = function(self, val)
 		if self.busy then return end
@@ -474,7 +476,7 @@ local function CSlider(cpanel, axis, text)
 			return
 		end
 		node.offset[axis] = val
-		PRUI.PRTree.OffsetEntry:SetValue(math.Round(node.offset[1], 1) .. " " .. math.Round(node.offset[2], 1) .. " " .. math.Round(node.offset[3], 1))
+		PRUI.PRTree.OffsetEntry:SetValue(mround(node.offset[1], 1) .. " " .. mround(node.offset[2], 1) .. " " .. mround(node.offset[3], 1))
 		self.busy = false
 	end
 
@@ -498,7 +500,7 @@ local function AddPRNode(parent, node)
 	PRUI.PRTree.Nodes[id] = parent:AddNode(id .. " [" .. node.text .. "]", "icon16/brick.png")
 	PRUI.PRTree.Nodes[id].ent = node.ent
 	PRUI.PRTree.Nodes[id].id = id
-	PRUI.PRTree.Nodes[id].offset = Vector(0,0,0)
+	PRUI.PRTree.Nodes[id].offset = Vector(0, 0, 0)
 	PRUI.PRTree.Nodes[id].parent = parent.id or nil
 	PRUI.PRTree.Nodes[id].depth = parent.depth and parent.depth + 1 or 1
 	PRUI.PRTree.Nodes[id]:Droppable("rgmPRMove")
@@ -682,7 +684,7 @@ local function UpdateConstrainedEnts(ents)
 	PRUI.PRTree.Bones = 0
 	PRUI.PRTree.Nodes = {}
 
-	if not next(ents) then 	rgmDoNotification(RGM_NOTIFY.ENT_CLEARED.id) return end
+	if not next(ents) then 	rgmDoNotification(ENT_CLEARED) return end
 	for _, ent in ipairs(ents) do
 		local text = GetModelName(ent)
 		PRUI.EntNodes[ent] = PRUI.EntTree:AddNode(text, "icon16/brick.png")
@@ -700,7 +702,7 @@ local function UpdateConstrainedEnts(ents)
 			HoveredEnt = nil
 		end
 	end
-	rgmDoNotification(RGM_NOTIFY.ENT_SELECTED.id)
+	rgmDoNotification(ENT_SELECTED)
 end
 
 function TOOL.BuildCPanel(CPanel)
@@ -709,9 +711,9 @@ function TOOL.BuildCPanel(CPanel)
 
 end
 
-local COLOR_RGMGREEN = Color(0,200,0,255)
-local VECTOR_FORWARD = Vector(1,0,0)
-local VECTOR_LEFT = Vector(0,1,0)
+local COLOR_RGMGREEN = Color(0, 200, 0, 255)
+local VECTOR_FORWARD = Vector(1, 0, 0)
+local VECTOR_LEFT = Vector(0, 1, 0)
 
 function TOOL:DrawHUD()
 
@@ -723,9 +725,9 @@ function TOOL:DrawHUD()
 			pos = LocalToWorld(node.offset, angle_zero, pos, ent:GetAngles())
 			pos = pos:ToScreen()
 
-			local textpos = { x = pos.x+5, y = pos.y-5 }
+			local textpos = { x = pos.x + 5, y = pos.y - 5 }
 			surface.DrawCircle(pos.x, pos.y, 3.5, COLOR_RGMGREEN)
-			draw.SimpleText(node.id,"Default",textpos.x,textpos.y,COLOR_RGMGREEN,TEXT_ALIGN_LEFT,TEXT_ALIGN_BOTTOM)
+			draw.SimpleText(node.id, "Default", textpos.x, textpos.y, COLOR_RGMGREEN, TEXT_ALIGN_LEFT, TEXT_ALIGN_BOTTOM)
 
 			if not node.parent then continue end
 			local parentnode = PRUI.PRTree.Nodes[node.parent]
@@ -744,9 +746,9 @@ function TOOL:DrawHUD()
 			if not IsValid(ent) then goto skip end
 			local pos, ang = ent:GetPos(), ent:GetAngles()
 			pos = LocalToWorld(selnode.offset, angle_zero, pos, ang)
-			local xpos = LocalToWorld(VECTOR_FORWARD*50, angle_zero, pos, ang)
-			local ypos = LocalToWorld(VECTOR_LEFT*50, angle_zero, pos, ang)
-			local zpos = LocalToWorld(vector_up*50, angle_zero, pos, ang)
+			local xpos = LocalToWorld(VECTOR_FORWARD * 50, angle_zero, pos, ang)
+			local ypos = LocalToWorld(VECTOR_LEFT * 50, angle_zero, pos, ang)
+			local zpos = LocalToWorld(vector_up * 50, angle_zero, pos, ang)
 
 			pos, xpos, ypos, zpos = pos:ToScreen(), xpos:ToScreen(), ypos:ToScreen(), zpos:ToScreen()
 
