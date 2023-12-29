@@ -47,6 +47,8 @@ local ENTLOCK_FAILED_NONPHYS = 4
 local ENTLOCK_FAILED_NOTALLOWED = 5
 local ENTLOCK_SUCCESS = 6
 local ENTSELECT_LOCKRESPONSE = 20
+local BONE_FROZEN = 7
+local BONE_UNFROZEN = 8
 
 local function RGMGetBone(pl, ent, bone)
 	--------------------------------------------------------- yeah this part is from locrotscale
@@ -148,6 +150,7 @@ util.AddNetworkString("rgmUnlockToBoneResponse")
 util.AddNetworkString("rgmLockConstrained")
 util.AddNetworkString("rgmLockConstrainedResponse")
 util.AddNetworkString("rgmUnlockConstrained")
+util.AddNetworkString("rgmBoneFreezer")
 
 util.AddNetworkString("rgmSelectEntity")
 
@@ -346,6 +349,35 @@ net.Receive("rgmLockBone", function(len, pl)
 	net.Send(pl)
 end)
 
+net.Receive("rgmBoneFreezer", function(len, pl)
+	local ent = net.ReadEntity()
+	local bone = net.ReadUInt(10)
+	local boneid
+
+	if not IsValid(ent) or ent:TranslateBoneToPhysBone(bone) == -1 then return end
+
+	if ent:GetClass() == "prop_ragdoll" then
+		boneid = rgm.BoneToPhysBone(ent, bone)
+	else
+		boneid = 0
+	end
+
+	local physbone = ent:GetPhysicsObjectNum(boneid)
+	if physbone:IsMotionEnabled() then
+		physbone:EnableMotion(false)
+		physbone:Wake()
+		net.Start("rgmNotification")
+			net.WriteUInt(BONE_FROZEN, 5)
+		net.Send(pl)
+	else
+		physbone:EnableMotion(true)
+		physbone:Wake()
+		net.Start("rgmNotification")
+			net.WriteUInt(BONE_UNFROZEN, 5)
+		net.Send(pl)
+	end
+end)
+
 local function RecursiveFindIfParent(ent, lockbone, locktobone)
 	local parent = ent:GetBoneParent(locktobone)
 	if parent then
@@ -506,6 +538,7 @@ end)
 
 net.Receive("rgmSelectEntity", function(len, pl)
 	local ent = net.ReadEntity()
+	local resetlists = net.ReadBool()
 	local tool = pl:GetTool("ragdollmover")
 	if not tool then return end
 
@@ -550,14 +583,63 @@ net.Receive("rgmSelectEntity", function(len, pl)
 
 	local physchildren = rgmGetConstrainedEntities(ent)
 
-	net.Start("rgmUpdateEntInfo")
-		net.WriteEntity(ent)
-
-		net.WriteUInt(#physchildren, 13)
-		for _, ent in ipairs(physchildren) do
+	if not resetlists then
+		net.Start("rgmUpdateEntInfo")
 			net.WriteEntity(ent)
-		end
-	net.Send(pl)
+
+			net.WriteUInt(#physchildren, 13)
+			for _, ent in ipairs(physchildren) do
+				net.WriteEntity(ent)
+			end
+		net.Send(pl)
+	else
+		local children = rgmFindEntityChildren(ent)
+		pl.rgm.PropRagdoll = ent.rgmPRidtoent and true or false
+
+		net.Start("rgmUpdateLists")
+			net.WriteBool(pl.rgm.PropRagdoll)
+			if pl.rgm.PropRagdoll then
+				local rgment = pl.rgm.Entity
+				local count = #rgment.rgmPRidtoent + 1
+
+				net.WriteUInt(count, 13) -- technically entity limit is 4096, but doubtful single prop ragdoll would reach that, but still...
+
+				for id, entp in pairs(rgment.rgmPRidtoent) do
+					net.WriteEntity(entp)
+					net.WriteUInt(id, 13)
+
+					net.WriteBool(entp.rgmPRparent and true or false)
+					if entp.rgmPRparent then
+						net.WriteUInt(entp.rgmPRparent, 13)
+					end
+
+					if entp == ent then
+						net.WriteUInt(0, 13)
+						continue
+					end
+
+					local entchildren = rgmFindEntityChildren(entp)
+					net.WriteUInt(#entchildren, 13)
+
+					for k, v in ipairs(entchildren) do
+						net.WriteEntity(v)
+					end
+				end
+			end
+
+			net.WriteEntity(ent)
+
+			net.WriteUInt(#children, 13)
+			for k, v in ipairs(children) do
+				net.WriteEntity(v)
+			end
+
+			net.WriteUInt(#physchildren, 13)
+			for _, ent in ipairs(physchildren) do
+				net.WriteEntity(ent)
+			end
+		net.Send(pl)
+	end
 end)
 
 net.Receive("rgmResetGizmo", function(len, pl)
@@ -910,9 +992,7 @@ function TOOL:LeftClick(tr)
 		end
 
 		pl.rgm.StartAngle = WorldToLocal(collision.hitpos, angle_zero, apart:GetPos(), apart:GetAngles())
---		if ent:GetClass() ~= "prop_ragdoll" and pl.rgm.IsPhysBone then
---			pl.rgm.Bone = 0
---		end
+
 		pl.rgm.NPhysBonePos = ent:GetManipulateBonePosition(pl.rgm.Bone)
 		pl.rgm.NPhysBoneAng = ent:GetManipulateBoneAngles(pl.rgm.Bone)
 		pl.rgm.NPhysBoneScale = ent:GetManipulateBoneScale(pl.rgm.Bone)
@@ -1398,6 +1478,8 @@ local RGM_NOTIFY = { -- table with info for messages, true for errors
 	[ENTLOCK_FAILED_NOTALLOWED] = true,
 	[ENTLOCK_SUCCESS] = false,
 	[ENTSELECT_LOCKRESPONSE] = true,
+	[BONE_FROZEN] = false,
+	[BONE_UNFROZEN] = false,
 }
 
 local pl
@@ -2003,9 +2085,9 @@ local function SetBoneNodes(bonepanel, sortedbones)
 
 			nodes[ent][v.id].DoRightClick = function()
 				local bonemenu = DermaMenu(false, bonepanel)
-				local ResetMenu = bonemenu:AddSubMenu("#tool.ragdollmover.resetmenu")
+				local resetmenu = bonemenu:AddSubMenu("#tool.ragdollmover.resetmenu")
 
-				local option = ResetMenu:AddOption("#tool.ragdollmover.reset", function()
+				local option = resetmenu:AddOption("#tool.ragdollmover.reset", function()
 					if not IsValid(ent) then return end
 					net.Start("rgmResetAll")
 						net.WriteEntity(ent)
@@ -2015,7 +2097,7 @@ local function SetBoneNodes(bonepanel, sortedbones)
 				end)
 				option:SetIcon("icon16/connect.png")
 
-				option = ResetMenu:AddOption("#tool.ragdollmover.resetpos", function()
+				option = resetmenu:AddOption("#tool.ragdollmover.resetpos", function()
 					if not IsValid(ent) then return end
 					net.Start("rgmResetPos")
 						net.WriteEntity(ent)
@@ -2025,7 +2107,7 @@ local function SetBoneNodes(bonepanel, sortedbones)
 				end)
 				option:SetIcon("icon16/connect.png")
 
-				option = ResetMenu:AddOption("#tool.ragdollmover.resetrot", function()
+				option = resetmenu:AddOption("#tool.ragdollmover.resetrot", function()
 					if not IsValid(ent) then return end
 					net.Start("rgmResetAng")
 						net.WriteEntity(ent)
@@ -2035,7 +2117,7 @@ local function SetBoneNodes(bonepanel, sortedbones)
 				end)
 				option:SetIcon("icon16/connect.png")
 
-				option = ResetMenu:AddOption("#tool.ragdollmover.resetscale", function()
+				option = resetmenu:AddOption("#tool.ragdollmover.resetscale", function()
 					if not IsValid(ent) then return end
 					net.Start("rgmResetScale")
 						net.WriteEntity(ent)
@@ -2045,7 +2127,7 @@ local function SetBoneNodes(bonepanel, sortedbones)
 				end)
 				option:SetIcon("icon16/connect.png")
 
-				option = ResetMenu:AddOption("#tool.ragdollmover.resetchildren", function()
+				option = resetmenu:AddOption("#tool.ragdollmover.resetchildren", function()
 					if not IsValid(ent) then return end
 					net.Start("rgmResetAll")
 						net.WriteEntity(ent)
@@ -2055,7 +2137,7 @@ local function SetBoneNodes(bonepanel, sortedbones)
 				end)
 				option:SetIcon("icon16/bricks.png")
 
-				option = ResetMenu:AddOption("#tool.ragdollmover.resetposchildren", function()
+				option = resetmenu:AddOption("#tool.ragdollmover.resetposchildren", function()
 					if not IsValid(ent) then return end
 					net.Start("rgmResetPos")
 						net.WriteEntity(ent)
@@ -2065,7 +2147,7 @@ local function SetBoneNodes(bonepanel, sortedbones)
 				end)
 				option:SetIcon("icon16/bricks.png")
 
-				option = ResetMenu:AddOption("#tool.ragdollmover.resetrotchildren", function()
+				option = resetmenu:AddOption("#tool.ragdollmover.resetrotchildren", function()
 					if not IsValid(ent) then return end
 					net.Start("rgmResetAng")
 						net.WriteEntity(ent)
@@ -2075,7 +2157,7 @@ local function SetBoneNodes(bonepanel, sortedbones)
 				end)
 				option:SetIcon("icon16/bricks.png")
 
-				option = ResetMenu:AddOption("#tool.ragdollmover.resetscalechildren", function()
+				option = resetmenu:AddOption("#tool.ragdollmover.resetscalechildren", function()
 					if not IsValid(ent) then return end
 					net.Start("rgmResetScale")
 						net.WriteEntity(ent)
@@ -2085,9 +2167,9 @@ local function SetBoneNodes(bonepanel, sortedbones)
 				end)
 				option:SetIcon("icon16/bricks.png")
 
-				local ScaleZeroMenu = bonemenu:AddSubMenu("#tool.ragdollmover.scalezero")
+				local scalezeromenu = bonemenu:AddSubMenu("#tool.ragdollmover.scalezero")
 
-				option = ScaleZeroMenu:AddOption("#tool.ragdollmover.bone", function()
+				option = scalezeromenu:AddOption("#tool.ragdollmover.bone", function()
 					if not IsValid(ent) then return end
 					net.Start("rgmScaleZero")
 						net.WriteEntity(ent)
@@ -2097,7 +2179,7 @@ local function SetBoneNodes(bonepanel, sortedbones)
 				end)
 				option:SetIcon("icon16/connect.png")
 
-				option = ScaleZeroMenu:AddOption("#tool.ragdollmover.bonechildren", function()
+				option = scalezeromenu:AddOption("#tool.ragdollmover.bonechildren", function()
 					if not IsValid(ent) then return end
 					net.Start("rgmScaleZero")
 						net.WriteEntity(ent)
@@ -2165,6 +2247,18 @@ local function SetBoneNodes(bonepanel, sortedbones)
 					bonemenu:AddSpacer()
 				end
 
+				if nodes[ent][v.id].Type == BONE_PHYSICAL and IsValid(ent) and ( ent:GetClass() == "prop_ragdoll" or IsPropRagdoll ) then
+					option = bonemenu:AddOption("#tool.ragdollmover.freezebone", function()
+						if not IsValid(ent) then return end
+
+						net.Start("rgmBoneFreezer")
+							net.WriteEntity(ent)
+							net.WriteUInt(v.id, 10)
+						net.SendToServer()
+					end)
+					option:SetIcon("icon16/transmit_blue.png")
+				end
+
 				bonemenu:AddOption("#tool.ragdollmover.putgizmopos", function()
 					if not IsValid(ent) then return end
 
@@ -2180,7 +2274,7 @@ local function SetBoneNodes(bonepanel, sortedbones)
 					net.SendToServer()
 				end)
 
-				local x, y = bonepanel:LocalToScreen(5, 0)
+				local x = bonepanel:LocalToScreen(5, 0)
 
 				bonemenu:Open(x)
 			end
@@ -2379,6 +2473,7 @@ local function RGMBuildEntMenu(ents, children, entpanel)
 		entnodes[parent].DoClick = function()
 			net.Start("rgmSelectEntity")
 				net.WriteEntity(parent)
+				net.WriteBool(false)
 			net.SendToServer()
 		end
 
@@ -2419,6 +2514,7 @@ local function RGMBuildEntMenu(ents, children, entpanel)
 				entnodes[v].DoClick = function()
 					net.Start("rgmSelectEntity")
 						net.WriteEntity(v)
+						net.WriteBool(false)
 					net.SendToServer()
 				end
 
@@ -2500,6 +2596,21 @@ local function RGMBuildConstrainedEnts(parent, children, entpanel)
 					conentnodes[ent].Label:SetToolTip("#tool.ragdollmover.entlock")
 				end
 			end
+		end
+
+		conentnodes[ent].DoRightClick = function()
+			local entmenu = DermaMenu(false, entpanel)
+
+			local option = entmenu:AddOption("#tool.ragdollmover.entselect", function()
+				if not IsValid(ent) then return end
+				net.Start("rgmSelectEntity")
+					net.WriteEntity(ent)
+					net.WriteBool(true)
+				net.SendToServer()
+			end)
+
+			local x = entpanel:LocalToScreen(5, 0)
+			entmenu:Open()
 		end
 
 		conentnodes[ent].Label.OnCursorEntered = function()

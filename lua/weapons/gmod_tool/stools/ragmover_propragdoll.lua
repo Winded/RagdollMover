@@ -178,7 +178,7 @@ function TOOL:RightClick(tr)
 --				count = count + 1
 	--		end
 		end
-print(count)
+
 		net.Start("rgmprSendConEnts")
 			net.WriteBool(doweusethis)
 			if doweusethis then
@@ -244,15 +244,11 @@ end
 
 local function rgmDoNotification(message)
 	if RGM_NOTIFY[message] == true then
-		MessageTable[message] = function()
-			notification.AddLegacy("#tool.ragmover_propragdoll.message" .. message, NOTIFY_ERROR, 5)
-			surface.PlaySound("buttons/button10.wav")
-		end
+		notification.AddLegacy("#tool.ragmover_propragdoll.message" .. message, NOTIFY_ERROR, 5)
+		surface.PlaySound("buttons/button10.wav")
 	elseif RGM_NOTIFY[message] == false then
-		MessageTable[message] = function()
-			notification.AddLegacy("#tool.ragmover_propragdoll.message" .. message, NOTIFY_GENERIC, 5)
-			surface.PlaySound("buttons/button14.wav")
-		end
+		notification.AddLegacy("#tool.ragmover_propragdoll.message" .. message, NOTIFY_GENERIC, 5)
+		surface.PlaySound("buttons/button14.wav")
 	end
 end
 
@@ -684,7 +680,7 @@ local function UpdateConstrainedEnts(ents)
 	PRUI.PRTree.Bones = 0
 	PRUI.PRTree.Nodes = {}
 
-	if not next(ents) then 	rgmDoNotification(ENT_CLEARED) return end
+	if not next(ents) then rgmDoNotification(ENT_CLEARED) return end
 	for _, ent in ipairs(ents) do
 		local text = GetModelName(ent)
 		PRUI.EntNodes[ent] = PRUI.EntTree:AddNode(text, "icon16/brick.png")
