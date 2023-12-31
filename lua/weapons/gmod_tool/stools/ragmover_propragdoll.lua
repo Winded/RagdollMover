@@ -552,10 +552,10 @@ local function AddPRNode(parent, node)
 	end)
 
 	PRUI.PRTree.Nodes[id].OnRemove = function()
-		if not PRUI.PRTree.Nodes[id] then return end
 		node.used = false
 		node:SetIcon("icon16/brick.png")
 		PRUI.PRTree.Bones = PRUI.PRTree.Bones - 1
+		if not PRUI.PRTree.Nodes[id] then return end -- after some gmod update it seems like on remove is being called after the Nodes thing is emptied?
 		PRUI.PRTree.Nodes[id] = nil
 	end
 
