@@ -5,8 +5,6 @@ TOOL.ConfigName = ""
 
 CVMaxPRBones = CreateConVar("sv_ragdollmover_max_prop_ragdoll_bones", 32, FCVAR_ARCHIVE + FCVAR_NOTIFY, "Maximum amount of bones that can be used in single Prop Ragdoll", 0, 4096)
 
-local ENT_SELECTED = 0
-local ENT_CLEARED = 1
 local APPLIED = 2
 local APPLY_FAILED = 3
 local APPLY_FAILED_LIMIT = 4
@@ -31,12 +29,13 @@ local function SendNotification(pl, id)
 	net.Send(pl)
 end
 
+
 if SERVER then
 
 util.AddNetworkString("rgmprSendConEnts")
 util.AddNetworkString("rgmprApplySkeleton")
 util.AddNetworkString("rgmprDoNotify")
-
+util.AddNetworkString("rgmprSendEnt")
 
 duplicator.RegisterEntityModifier("Ragdoll Mover Prop Ragdoll", function(pl, ent, data)
 
@@ -155,11 +154,26 @@ end)
 end
 
 function TOOL:LeftClick(tr)
+	local pl = self:GetOwner()
+	local ent = tr.Entity
+
+	if IsValid(ent) then
+		if SERVER then
+			net.Start("rgmprSendEnt")
+				net.WriteEntity(ent)
+				net.WriteBool(pl:KeyDown(IN_USE))
+			net.Send(pl)
+		end
+
+		return true
+	end
+
 	return false
 end
 
 function TOOL:RightClick(tr)
 	if SERVER then
+		local pl = self:GetOwner()
 		local ent = tr.Entity
 		local doweusethis = false
 		local conents = {}
@@ -169,14 +183,11 @@ function TOOL:RightClick(tr)
 			doweusethis = true
 			local ents = constraint.GetAllConstrainedEntities(ent)
 			for ent, _ in pairs(ents) do
-				if ent:GetClass() == "prop_physics" and not IsValid(ent:GetParent()) then
+				if ent:GetClass() == "prop_physics" and not IsValid(ent:GetParent()) and IsValid(ent) then
 					conents[ent] = true
 					count = count + 1
 				end
 			end
---			for ent, _ in pairs(conents) do
---				count = count + 1
-	--		end
 		end
 
 		net.Start("rgmprSendConEnts")
@@ -188,6 +199,7 @@ function TOOL:RightClick(tr)
 				end
 			end
 		net.Send(self:GetOwner())
+
 	end
 
 	return true
@@ -210,9 +222,15 @@ end
 if CLIENT then
 
 TOOL.Information = {
+	{name = "left"},
+	{name = "left_use"},
 	{name = "right"},
-	{name = "reload"}
+	{name = "reload"},
 }
+
+local ENT_SELECTED = 0
+local ENT_CLEARED = 1
+local PROP_NOT_IN_SET = 6
 
 local RGM_NOTIFY = {
 	[ENT_SELECTED] = false,
@@ -220,7 +238,8 @@ local RGM_NOTIFY = {
 	[APPLIED] = false,
 	[APPLY_FAILED] = true,
 	[APPLY_FAILED_LIMIT] = true,
-	[PROPRAGDOLL_CLEARED] = false
+	[PROPRAGDOLL_CLEARED] = false,
+	[PROP_NOT_IN_SET] = true,
 }
 
 local PRUI
@@ -493,6 +512,8 @@ local function AddPRNode(parent, node)
 		id = id + 1
 	end
 
+	node.id = id
+
 	PRUI.PRTree.Nodes[id] = parent:AddNode(id .. " [" .. node.text .. "]", "icon16/brick.png")
 	PRUI.PRTree.Nodes[id].ent = node.ent
 	PRUI.PRTree.Nodes[id].id = id
@@ -552,9 +573,14 @@ local function AddPRNode(parent, node)
 	end)
 
 	PRUI.PRTree.Nodes[id].OnRemove = function()
-		node.used = false
-		node:SetIcon("icon16/brick.png")
-		PRUI.PRTree.Bones = PRUI.PRTree.Bones - 1
+		if IsValid(node) then
+			node.used = false
+			node.id = nil
+			node:SetIcon("icon16/brick.png")
+		end
+		if PRUI.PRTree.Bones > 0 then
+			PRUI.PRTree.Bones = PRUI.PRTree.Bones - 1
+		end
 		if not PRUI.PRTree.Nodes[id] then return end -- after some gmod update it seems like on remove is being called after the Nodes thing is emptied?
 		PRUI.PRTree.Nodes[id] = nil
 	end
@@ -610,6 +636,7 @@ local function PropRagdollCreator(cpanel)
 			parent:SetVisible(false)
 			self:Root():InsertNode(v)
 			v.parent = nil
+			v.depth = 1
 			if next(parent:GetChildren()) then
 				parent:SetVisible(true)
 			else
@@ -701,6 +728,78 @@ local function UpdateConstrainedEnts(ents)
 	rgmDoNotification(ENT_SELECTED)
 end
 
+local function AddEntity(ent, setnext)
+	if not PRUI or not PRUI.EntNodes or not PRUI.EntNodes[ent] then
+		rgmDoNotification(PROP_NOT_IN_SET)
+		return
+	end
+
+	local node = PRUI.EntNodes[ent]
+
+	if not node.used then
+		local selected = PRUI.PRTree:GetSelectedItem()
+		if not IsValid(selected) then
+			AddPRNode(PRUI.PRTree, node)
+			notification.AddLegacy("#tool.ragmover_propragdoll.setroot", NOTIFY_GENERIC, 5)
+			surface.PlaySound("buttons/button14.wav")
+		else
+			AddPRNode(selected, node)
+			notification.AddLegacy(language.GetPhrase("tool.ragmover_propragdoll.attach") .. " " .. selected.id, NOTIFY_GENERIC, 5)
+			surface.PlaySound("buttons/button14.wav")
+		end
+
+		if setnext then
+			PRUI.PRTree:SetSelectedItem(PRUI.PRTree.Nodes[node.id])
+		end
+	else
+		local selected = PRUI.PRTree:GetSelectedItem()
+
+		if IsValid(selected) then
+			local prnode = PRUI.PRTree.Nodes[node.id]
+			if FindSelfRecursive(prnode, selected) then return end
+			local parent = prnode:GetParent()
+			parent:SetVisible(false)
+			selected:InsertNode(prnode)
+			prnode.parent = selected.id
+			prnode.depth = selected.depth + 1
+			if next(parent:GetChildren()) then
+				parent:SetVisible(true)
+			else
+				parent:GetParent().ChildNodes = nil
+			end
+
+			TreeUpdateHBar()
+
+			notification.AddLegacy(language.GetPhrase("tool.ragmover_propragdoll.attach") .. " " .. selected.id, NOTIFY_GENERIC, 5)
+			surface.PlaySound("buttons/button14.wav")
+		else
+			local prnode = PRUI.PRTree.Nodes[node.id]
+			local root = PRUI.PRTree
+			if FindSelfRecursive(prnode, root) then return end
+			local parent = prnode:GetParent()
+			parent:SetVisible(false)
+			root:Root():InsertNode(prnode)
+			prnode.parent = nil
+			prnode.depth = 1
+			if next(parent:GetChildren()) then
+				parent:SetVisible(true)
+			else
+				parent:GetParent().ChildNodes = nil
+			end
+
+			TreeUpdateHBar()
+
+			notification.AddLegacy("#tool.ragmover_propragdoll.setroot", NOTIFY_GENERIC, 5)
+			surface.PlaySound("buttons/button14.wav")
+		end
+
+		if setnext then
+			PRUI.PRTree:SetSelectedItem(PRUI.PRTree.Nodes[node.id])
+		end
+	end
+
+end
+
 function TOOL.BuildCPanel(CPanel)
 
 	PRUI = PropRagdollCreator(CPanel)
@@ -778,6 +877,13 @@ net.Receive("rgmprSendConEnts", function(len)
 	end
 
 	UpdateConstrainedEnts(ents)
+end)
+
+net.Receive("rgmprSendEnt", function(len)
+	local ent = net.ReadEntity()
+	local setnext = net.ReadBool()
+	if not IsValid(ent) then return end
+	AddEntity(ent, setnext)
 end)
 
 net.Receive("rgmprDoNotify", function(len)
