@@ -100,30 +100,6 @@ end)
 if SERVER then
 
 util.AddNetworkString("rgmSync")
-util.AddNetworkString("rgmSyncClient")
-
-net.Receive("rgmSyncClient", function(len, ply)
-	local pl = ply
-	if not pl.rgm then pl.rgm = {} end
-
-	local name = net.ReadString()
-
-	local type = net.ReadUInt(3)
-	local value = nil
-	if type == TYPE_ENTITY then
-		value = net.ReadEntity()
-	elseif type == TYPE_NUMBER then
-		value = net.ReadFloat()
-	elseif type == TYPE_VECTOR then
-		value = net.ReadVector()
-	elseif type == TYPE_ANGLE then
-		value = net.ReadAngle()
-	elseif type == TYPE_BOOL then
-		value = net.ReadBit() == 1
-	end
-	pl.rgm[name] = value
-
-end)
 
 else
 

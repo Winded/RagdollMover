@@ -124,6 +124,36 @@ local function rgmGetConstrainedEntities(parent)
 	return children
 end
 
+local function rgmCalcGizmoPos(pl)
+	if not pl.rgm or not pl.rgm.GizmoAng then return end
+	local axis, ent = pl.rgm.Axis, pl.rgm.Entity
+	local bone = pl.rgm.Bone
+
+	axis.GizmoAng = pl.rgm.GizmoAng
+
+	local manang = ent:GetManipulateBoneAngles(bone)
+	manang:Normalize()
+
+	_, axis.GizmoAng = LocalToWorld(vector_origin, Angle(0, manang[2], 0), vector_origin, axis.GizmoAng)
+	_, axis.GizmoAng = LocalToWorld(vector_origin, Angle(manang[1], 0, 0), vector_origin, axis.GizmoAng)
+	_, axis.GizmoAng = LocalToWorld(vector_origin, Angle(0, 0, manang[3]), vector_origin, axis.GizmoAng)
+
+	local nonpos
+	if pl.rgm.GizmoParentID ~= -1 then
+		local physobj = ent:GetPhysicsObjectNum(pl.rgm.GizmoParentID)
+		if not physobj then return end
+		local ppos, pang = LocalToWorld(pl.rgm.GizmoPParent, pl.rgm.GizmoParent, physobj:GetPos(), physobj:GetAngles())
+		nonpos = LocalToWorld(ent:GetManipulateBonePosition(bone), angle_zero, ppos, pang)
+		nonpos = WorldToLocal(nonpos, pang, physobj:GetPos(), physobj:GetAngles())
+	else
+		local ppos, pang = LocalToWorld(pl.rgm.GizmoPParent, pl.rgm.GizmoParent, ent:GetPos(), ent:GetAngles())
+		nonpos = LocalToWorld(ent:GetManipulateBonePosition(bone), angle_zero, ppos, pang)
+		nonpos = WorldToLocal(nonpos, pang, ent:GetPos(), ent:GetAngles())
+	end
+
+	axis.GizmoPos = pl.rgm.GizmoPos + nonpos
+end
+
 if SERVER then
 
 util.AddNetworkString("rgmUpdateLists")
@@ -153,6 +183,8 @@ util.AddNetworkString("rgmUnlockConstrained")
 util.AddNetworkString("rgmBoneFreezer")
 
 util.AddNetworkString("rgmSelectEntity")
+util.AddNetworkString("rgmSendBonePos")
+util.AddNetworkString("rgmRequestBonePos")
 
 util.AddNetworkString("rgmResetGizmo")
 util.AddNetworkString("rgmOperationSwitch")
@@ -642,6 +674,60 @@ net.Receive("rgmSelectEntity", function(len, pl)
 	end
 end)
 
+net.Receive("rgmSendBonePos", function(len, pl)
+	local pos, ang, ppos, pang = net.ReadVector(), net.ReadAngle(), net.ReadVector(), net.ReadAngle()
+	if not pl.rgm then return end
+	local ent = pl.rgm.Entity
+	local axis = pl.rgm.Axis
+
+	local physbones = {}
+
+	for i = 0, ent:GetPhysicsObjectCount() - 1 do
+		physbones[ent:TranslatePhysBoneToBone(i)] = i
+	end
+
+	local function FindPhysParentRecursive(ent, bone, physbones)
+		if physbones[bone] then 
+			return physbones[bone]
+		elseif bone == -1 then
+			return -1
+		else
+			local parent = ent:GetBoneParent(bone)
+			return FindPhysParentRecursive(ent, parent, physbones)
+		end
+	end
+	
+	local bone = pl.rgm.Bone
+	local parent = FindPhysParentRecursive(ent, bone, physbones)
+	local physobj
+	if parent ~= -1 then physobj = ent:GetPhysicsObjectNum(parent) end
+	pl.rgm.GizmoParentID = parent
+
+	local newpos, newang, nonpos
+	nonpos = LocalToWorld(ent:GetManipulateBonePosition(bone), angle_zero, ppos, pang)
+	if parent ~= -1 then
+		newpos, newang = WorldToLocal(pos, ang, physobj:GetPos(), physobj:GetAngles())
+		pl.rgm.GizmoPParent, pl.rgm.GizmoParent = WorldToLocal(ppos, pang, physobj:GetPos(), physobj:GetAngles())
+		nonpos = WorldToLocal(nonpos, pang, physobj:GetPos(), physobj:GetAngles())
+	else
+		newpos, newang = WorldToLocal(pos, ang, ent:GetPos(), ent:GetAngles())
+		pl.rgm.GizmoPParent, pl.rgm.GizmoParent = WorldToLocal(ppos, pang, ent:GetPos(), ent:GetAngles())
+		nonpos = WorldToLocal(nonpos, pang, ent:GetPos(), ent:GetAngles())
+	end
+
+	axis.GizmoAng = newang
+	axis.GizmoPos = newpos
+
+	pl.rgm.GizmoPos = newpos - nonpos
+	local manang = ent:GetManipulateBoneAngles(bone)
+	manang:Normalize()
+
+	_, pl.rgm.GizmoAng = LocalToWorld(vector_origin, Angle(0, 0, -manang[3]), vector_origin, newang)
+	_, pl.rgm.GizmoAng = LocalToWorld(vector_origin, Angle(-manang[1], 0, 0), vector_origin, pl.rgm.GizmoAng)
+	_, pl.rgm.GizmoAng = LocalToWorld(vector_origin, Angle(0, -manang[2], 0), vector_origin, pl.rgm.GizmoAng)
+
+end)
+
 net.Receive("rgmResetGizmo", function(len, pl)
 	if not pl.rgm then return end
 	pl.rgm.GizmoOffset:Set(vector_origin)
@@ -712,6 +798,11 @@ net.Receive("rgmResetAll", function(len, pl)
 
 	net.Start("rgmUpdateSliders")
 	net.Send(pl)
+
+	timer.Simple(0.1, function() -- ask client to get new bone position info in case if the parent bone was moved. put into timer as it takes a bit of time for position to update on client?
+		net.Start("rgmRequestBonePos")
+		net.Send(pl)
+	end)
 end)
 
 net.Receive("rgmResetPos", function(len, pl)
@@ -729,6 +820,11 @@ net.Receive("rgmResetPos", function(len, pl)
 
 	net.Start("rgmUpdateSliders")
 	net.Send(pl)
+
+	timer.Simple(0.1, function()
+		net.Start("rgmRequestBonePos")
+		net.Send(pl)
+	end)
 end)
 
 net.Receive("rgmResetAng", function(len, pl)
@@ -744,6 +840,11 @@ net.Receive("rgmResetAng", function(len, pl)
 
 	net.Start("rgmUpdateSliders")
 	net.Send(pl)
+
+	timer.Simple(0.1, function()
+		net.Start("rgmRequestBonePos")
+		net.Send(pl)
+	end)
 end)
 
 net.Receive("rgmResetScale", function(len, pl)
@@ -760,6 +861,11 @@ net.Receive("rgmResetScale", function(len, pl)
 
 	net.Start("rgmUpdateSliders")
 	net.Send(pl)
+
+	timer.Simple(0.1, function()
+		net.Start("rgmRequestBonePos")
+		net.Send(pl)
+	end)
 end)
 
 net.Receive("rgmScaleZero", function(len, pl)
@@ -775,6 +881,11 @@ net.Receive("rgmScaleZero", function(len, pl)
 
 	net.Start("rgmUpdateSliders")
 	net.Send(pl)
+
+	timer.Simple(0.1, function()
+		net.Start("rgmRequestBonePos")
+		net.Send(pl)
+	end)
 end)
 
 net.Receive("rgmAdjustBone", function(len, pl)
@@ -822,6 +933,8 @@ net.Receive("rgmAdjustBone", function(len, pl)
 
 	local mode, axis, value = net.ReadInt(3), net.ReadInt(3), net.ReadFloat()
 	manipulate_bone[mode](axis, value)
+
+	rgmCalcGizmoPos(pl)
 end)
 
 net.Receive("rgmGizmoOffset", function(len, pl)
@@ -1211,43 +1324,6 @@ do
 local pl
 
 function TOOL:Think()
-	if CLIENT then
-		if not pl then pl = LocalPlayer() end
-		if not pl.rgm then return end
-
-		if pl.rgm.Moving then return end -- don't want to keep updating this stuff when we move stuff, so it'll go smoother
-
-		local ent, axis = pl.rgm.Entity, pl.rgm.Axis -- so, this thing... bone position and angles seem to work clientside best, whereas server's ones are kind of shite
-		if IsValid(ent) and IsValid(axis) and pl.rgm.Bone then
-			local bone = pl.rgm.Bone
-			local pos, ang = ent:GetBonePosition(bone)
-			if pos == ent:GetPos() then
-				local matrix = ent:GetBoneMatrix(bone)
-				pos = matrix:GetTranslation()
-				ang = matrix:GetAngles()
-			end
-			if ent:GetBoneParent(bone) ~= -1 then
-				local matrix = ent:GetBoneMatrix(ent:GetBoneParent(bone))
-				local ang = matrix:GetAngles()
-				pl.rgm.GizmoParent = ang
-			else
-				pl.rgm.GizmoParent = nil
-			end
-
-			pl.rgm.GizmoPos = pos
-			pl.rgm.GizmoAng = ang
-			pl:rgmSyncClient("GizmoPos")
-			pl:rgmSyncClient("GizmoAng")
-			pl:rgmSyncClient("GizmoParent")
-		else
-			pl.rgm.GizmoPos = nil
-			pl.rgm.GizmoAng = nil
-			pl.rgm.GizmoParent = nil
-			pl:rgmSyncClient("GizmoPos")
-			pl:rgmSyncClient("GizmoAng")
-			pl:rgmSyncClient("GizmoParent")
-		end
-	end
 
 if SERVER then
 
@@ -1287,6 +1363,8 @@ if SERVER then
 					end
 				end
 			end
+
+			rgmCalcGizmoPos(pl)
 
 			pl.rgm.Moving = false
 			pl:rgmSyncOne("Moving")
@@ -1615,6 +1693,45 @@ local function GetModelName(ent)
 	local name = ent:GetModel()
 	local splitname = string.Split(name, "/")
 	return splitname[#splitname]
+end
+
+local function rgmSendBonePos(pl, ent, boneid)
+	if not pl then pl = LocalPlayer() end
+	if not pl.rgm then return end
+
+	local gizmopos, gizmoang, gizmoppos, gizmopang
+	local axis = pl.rgm.Axis
+	if IsValid(ent) and IsValid(axis) and boneid then
+		local pos, ang = ent:GetBonePosition(boneid)
+		if pos == ent:GetPos() then
+			local matrix = ent:GetBoneMatrix(boneid)
+			pos = matrix:GetTranslation()
+			ang = matrix:GetAngles()
+		end
+		if ent:GetBoneParent(boneid) ~= -1 then
+			local matrix = ent:GetBoneMatrix(ent:GetBoneParent(boneid))
+			gizmoppos = matrix:GetTranslation()
+			gizmopang = matrix:GetAngles()
+		else
+			gizmoppos = vector_origin
+			gizmopang = angle_zero
+		end
+
+		gizmopos = pos
+		gizmoang = ang
+	else
+		gizmopos = vector_origin
+		gizmoang = angle_zero
+		gizmoppos = vector_origin
+		gizmopang = angle_zero
+	end
+
+	net.Start("rgmSendBonePos")
+		net.WriteVector(gizmopos)
+		net.WriteAngle(gizmoang)
+		net.WriteVector(gizmoppos)
+		net.WriteAngle(gizmopang)
+	net.SendToServer()
 end
 
 local function CCheckBox(cpanel, text, cvar)
@@ -3043,6 +3160,8 @@ net.Receive("rgmSelectBoneResponse", function(len)
 
 		Col4:InvalidateLayout()
 	end
+
+	rgmSendBonePos(pl, ent, boneid)
 end)
 
 net.Receive("rgmAskForNodeUpdatePhysicsResponse", function(len)
@@ -3066,6 +3185,11 @@ net.Receive("rgmAskForNodeUpdatePhysicsResponse", function(len)
 
 	if not IsValid(BonePanel) then return end
 	UpdateBoneNodes(BonePanel, physids, isphys)
+end)
+
+net.Receive("rgmRequestBonePos", function(len)
+	if not pl.rgm then return end
+	rgmSendBonePos(pl, pl.rgm.Entity, pl.rgm.Bone)
 end)
 
 net.Receive("rgmNotification", function(len)

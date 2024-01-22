@@ -37,7 +37,7 @@ function ENT:ProcessMovement(offpos, _, eyepos, eyeang, ent, bone, ppos, pnorm, 
 				local _ , pang = ent:GetBonePosition(ent:GetBoneParent(bone))
 
 				local _, diff = WorldToLocal(vector_origin, boneang, vector_origin, pang)
-				_, boneang = LocalToWorld(vector_origin, diff, vector_origin, pl.rgm.GizmoParent)
+				_, boneang = LocalToWorld(vector_origin, diff, vector_origin, axis.GizmoParent)
 			end
 		else
 			if IsValid(ent) then

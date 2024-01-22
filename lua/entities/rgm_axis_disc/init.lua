@@ -34,9 +34,9 @@ function ENT:ProcessMovement(_, offang, eyepos, eyeang, ent, bone, ppos, pnorm, 
 	}
 
 	local mfmod = math.fmod
+	local axis = self:GetParent()
 
 	if movetype == 1 then
-		local axis = self:GetParent()
 		local offset = axis.Owner.rgm.GizmoOffset
 		local entoffset = vector_origin
 		if axis.localoffset and not axis.relativerotate then
@@ -103,7 +103,7 @@ function ENT:ProcessMovement(_, offang, eyepos, eyeang, ent, bone, ppos, pnorm, 
 				local _ , pang = ent:GetBonePosition(ent:GetBoneParent(bone))
 
 				local _, diff = WorldToLocal(vector_origin, boneang, vector_origin, pang)
-				_, boneang = LocalToWorld(vector_origin, diff, vector_origin, pl.rgm.GizmoParent)
+				_, boneang = LocalToWorld(vector_origin, diff, vector_origin, axis.GizmoParent)
 			end
 		end
 		local startlocal = LocalToWorld(startangle, startangle:Angle(), vector_origin, axisangle) -- first we get our vectors into world coordinates, relative to the axis angles
@@ -139,7 +139,6 @@ function ENT:ProcessMovement(_, offang, eyepos, eyeang, ent, bone, ppos, pnorm, 
 
 		_p = ent:GetManipulateBonePosition(bone)
 	elseif movetype == 0 then
-		local axis = self:GetParent()
 		local offset = axis.Owner.rgm.GizmoOffset
 		local entoffset = vector_origin
 		if axis.localoffset and not axis.relativerotate then

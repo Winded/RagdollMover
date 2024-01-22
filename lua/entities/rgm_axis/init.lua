@@ -227,6 +227,17 @@ function ENT:Think()
 	local bone = pl.rgm.PhysBone
 	if not IsValid(ent) or not pl.rgm.Bone or not self.Axises then return end
 
+	if pl.rgm.GizmoParentID ~= -1 then
+		local physobj = ent:GetPhysicsObjectNum(pl.rgm.GizmoParentID)
+		if physobj then
+			_, self.GizmoParent = LocalToWorld(vector_origin, pl.rgm.GizmoParent, physobj:GetPos(), physobj:GetAngles())
+		else
+			return
+		end
+	else
+		_, self.GizmoParent = LocalToWorld(vector_origin, pl.rgm.GizmoParent, ent:GetPos(), ent:GetAngles())
+	end
+
 	local pos, ang
 	local rotate = pl.rgm.Rotate or false
 	local scale = pl.rgm.Scale or false
@@ -242,14 +253,24 @@ function ENT:Think()
 
 	else
 		bone = pl.rgm.Bone
-		if not pl.rgm.GizmoPos then
+		if not self.GizmoPos then
 			local matrix = ent:GetBoneMatrix(bone)
 			pos = ent:GetBonePosition(bone)
 			if pos == ent:GetPos() then
 				pos = matrix:GetTranslation()
 			end
 		else
-			pos = pl.rgm.GizmoPos
+			if pl.rgm.GizmoParentID then
+				if pl.rgm.GizmoParentID ~= -1 then
+					local physobj = ent:GetPhysicsObjectNum(pl.rgm.GizmoParentID)
+					pos = LocalToWorld(self.GizmoPos, self.GizmoAng, physobj:GetPos(), physobj:GetAngles())
+				else
+					pos = LocalToWorld(self.GizmoPos, self.GizmoAng, ent:GetPos(), ent:GetAngles())
+				end
+			else
+				pos = self.GizmoPos
+			end
+			
 		end
 	end
 	if IsValid(ent:GetParent()) and pl.rgm.Bone == 0 and not ent:IsEffectActive(EF_BONEMERGE) and not (ent:GetClass() == "prop_ragdoll") and not scale then
@@ -271,7 +292,7 @@ function ENT:Think()
 						_ , ang = ent:GetBonePosition(bone)
 
 						local _, diff = WorldToLocal(vector_origin, ang, vector_origin, pang)
-						_, ang = LocalToWorld(vector_origin, diff, vector_origin, pl.rgm.GizmoParent)
+						_, ang = LocalToWorld(vector_origin, diff, vector_origin, self.GizmoParent)
 					else
 						local manang = ent:GetManipulateBoneAngles(bone)
 						manang:Normalize()
@@ -285,15 +306,24 @@ function ENT:Think()
 			else
 				_ , ang = ent:GetBonePosition(bone)
 			end
-		elseif scale and pl.rgm.GizmoAng then
-			ang = pl.rgm.GizmoAng
+		elseif scale and self.GizmoAng then
+			if pl.rgm.GizmoParentID then
+				if pl.rgm.GizmoParentID ~= -1 then
+					local physobj = ent:GetPhysicsObjectNum(pl.rgm.GizmoParentID)
+					_, ang = LocalToWorld(vector_origin, self.GizmoAng, physobj:GetPos(), physobj:GetAngles())
+				else
+					_, ang = LocalToWorld(vector_origin, self.GizmoAng, ent:GetPos(), ent:GetAngles())
+				end
+			else
+				ang = self.GizmoAng
+			end
 		else
 			if ent:GetBoneParent(bone) ~= -1 then
 				if not pl.rgm.GizmoParent then
 					local matrix = ent:GetBoneMatrix(ent:GetBoneParent(bone)) -- never would have guessed that when moving bones they use angles of their parent bone rather than their own angles. happened to get to know that after looking at vanilla bone manipulator!
 					ang = matrix:GetAngles()
 				else
-					ang = pl.rgm.GizmoParent
+					ang = self.GizmoParent
 				end
 			else
 				if IsValid(ent) then

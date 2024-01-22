@@ -7,11 +7,17 @@ function ENT:ProcessMovement(offpos, offang, eyepos, eyeang, ent, bone, ppos, pn
 	local intersect = self:GetGrabPos(eyepos, eyeang, ppos, pnorm)
 	local pos, ang
 	local pl = self:GetParent().Owner
+	local axis = self:GetParent()
 
-	local localized, startmove, finalpos, boneang
-	if ent:GetBoneParent(bone) ~= -1 then
-		if pl.rgm.GizmoAng then
-			boneang = pl.rgm.GizmoAng
+	local localized, finalpos, boneang
+	if ent:GetBoneCount() ~= 0 then
+		if axis.GizmoAng then
+			if pl.rgm.GizmoParentID ~= -1 then
+				local physobj = ent:GetPhysicsObjectNum(pl.rgm.GizmoParentID)
+				_, boneang = LocalToWorld(vector_origin, axis.GizmoAng, physobj:GetPos(), physobj:GetAngles())
+			else
+				_, boneang = LocalToWorld(vector_origin, axis.GizmoAng, ent:GetPos(), ent:GetAngles())
+			end
 		else
 			local matrix = ent:GetBoneMatrix(ent:GetBoneParent(bone))
 			boneang = matrix:GetAngles()

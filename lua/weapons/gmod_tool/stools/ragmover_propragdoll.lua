@@ -95,12 +95,16 @@ end)
 
 net.Receive("rgmprApplySkeleton", function(len, pl)
 	local count = net.ReadUInt(13)
-	local ents = {}
+	local ents, filter = {}, {}
 	local fail = false
 
 	for i = 0, count - 1 do
 		ents[i] = {}
-		ents[i].ent = net.ReadEntity()
+
+		local ent = net.ReadEntity()
+		ents[i].ent = ent
+		filter[ent] = true
+
 		ents[i].id = net.ReadUInt(13)
 		local parent = net.ReadUInt(13)
 		ents[i].parent = parent ~= 4100 and parent or nil
@@ -148,6 +152,14 @@ net.Receive("rgmprApplySkeleton", function(len, pl)
 
 		duplicator.StoreEntityModifier(ent, "Ragdoll Mover Prop Ragdoll", data)
 	end
+
+	for id, ply in ipairs(player.GetAll()) do
+		if filter[ply.rgm.Entity]  then
+			ply.rgm.Entity = nil
+			ply:rgmSync()
+		end
+	end
+
 	SendNotification(pl, APPLIED)
 end)
 
