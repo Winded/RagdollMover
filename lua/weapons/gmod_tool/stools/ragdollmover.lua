@@ -868,15 +868,17 @@ net.Receive("rgmResetScale", function(len, pl)
 	end)
 end)
 
+local VECTOR_NEARZERO = Vector(0.01, 0.01, 0.01)
+
 net.Receive("rgmScaleZero", function(len, pl)
 	local ent = net.ReadEntity()
 	local children = net.ReadBool()
 	local bone = net.ReadUInt(10)
 
 	if children then
-		RecursiveBoneFunc(bone, ent, function(bone, param) ent:ManipulateBoneScale(bone, param) end, vector_origin)
+		RecursiveBoneFunc(bone, ent, function(bone, param) ent:ManipulateBoneScale(bone, param) end, VECTOR_NEARZERO)
 	else
-		ent:ManipulateBoneScale(bone, vector_origin)
+		ent:ManipulateBoneScale(bone, VECTOR_NEARZERO)
 	end
 
 	net.Start("rgmUpdateSliders")
@@ -1702,14 +1704,20 @@ local function rgmSendBonePos(pl, ent, boneid)
 	local gizmopos, gizmoang, gizmoppos, gizmopang
 	local axis = pl.rgm.Axis
 	if IsValid(ent) and IsValid(axis) and boneid then
-		local pos, ang = ent:GetBonePosition(boneid)
-		if pos == ent:GetPos() then
-			local matrix = ent:GetBoneMatrix(boneid)
-			pos = matrix:GetTranslation()
-			ang = matrix:GetAngles()
-		end
+		local pos, ang
+
+		local matrix = ent:GetBoneMatrix(boneid)
+		local scale = ent:GetManipulateBoneScale(boneid)
+		scale = Vector(1 / scale.x, 1 / scale.y, 1 / scale.z) -- Scale and angles are kinda weirdly related with the whole matrix stuff, so we gotta turn scale back to 1 to get precise angle or else it gets messed up (Can't get any angle from 0 scale tho)
+		matrix:Scale(scale)
+		pos = matrix:GetTranslation()
+		ang = matrix:GetAngles()
+
 		if ent:GetBoneParent(boneid) ~= -1 then
 			local matrix = ent:GetBoneMatrix(ent:GetBoneParent(boneid))
+			local scale = ent:GetManipulateBoneScale(boneid)
+			scale = Vector(1 / scale.x, 1 / scale.y, 1 / scale.z)
+			matrix:Scale(scale)
 			gizmoppos = matrix:GetTranslation()
 			gizmopang = matrix:GetAngles()
 		else
