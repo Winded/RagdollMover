@@ -11,6 +11,16 @@ local APPLY_FAILED_LIMIT = 4
 local PROPRAGDOLL_CLEARED = 5
 
 local function ClearPropRagdoll(ent)
+	if SERVER then
+		for id, pl in ipairs(player.GetAll()) do
+			if pl.rgm and pl.rgm.Entity == ent then
+				pl.rgm.Entity = nil
+				net.Start("rgmDeselectEntity")
+				net.Send(pl)
+			end
+		end
+	end
+
 	ent.rgmPRidtoent = nil
 	ent.rgmPRenttoid = nil
 	ent.rgmPRparent = nil
@@ -156,7 +166,8 @@ net.Receive("rgmprApplySkeleton", function(len, pl)
 	for id, ply in ipairs(player.GetAll()) do
 		if filter[ply.rgm.Entity]  then
 			ply.rgm.Entity = nil
-			ply:rgmSync()
+			net.Start("rgmDeselectEntity")
+			net.Send(ply)
 		end
 	end
 
@@ -222,6 +233,7 @@ function TOOL:Reload(tr)
 	if not IsValid(ent) or not ent.rgmPRidtoent then return false end
 
 	if SERVER then
+		local pl = self:GetOwner()
 		for id, ent in pairs(ent.rgmPRidtoent) do
 			ClearPropRagdoll(ent)
 		end

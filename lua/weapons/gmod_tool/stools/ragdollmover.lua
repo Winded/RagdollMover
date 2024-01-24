@@ -199,6 +199,7 @@ util.AddNetworkString("rgmScaleZero")
 util.AddNetworkString("rgmAdjustBone")
 util.AddNetworkString("rgmGizmoOffset")
 
+util.AddNetworkString("rgmDeselectEntity")
 util.AddNetworkString("rgmUpdateSliders")
 util.AddNetworkString("rgmUpdateCCVar")
 
@@ -975,6 +976,16 @@ end)
 hook.Add("PlayerDisconnected", "RGMCleanupGizmos", function(pl)
 	if IsValid(pl.rgm.Axis) then
 		pl.rgm.Axis:Remove()
+	end
+end)
+
+hook.Add("EntityRemoved", "RGMDeselectEntity", function(ent)
+	for id, pl in ipairs(player.GetAll()) do
+		if pl.rgm and pl.rgm.Entity == ent  then
+			pl.rgm.Entity = nil
+			net.Start("rgmDeselectEntity")
+			net.Send(pl)
+		end
 	end
 end)
 
@@ -2926,6 +2937,17 @@ local function UpdateManipulationSliders(boneid, ent)
 	ManipSliderUpdating = false
 
 end
+
+net.Receive("rgmDeselectEntity", function(len)
+	if IsValid(BonePanel) then BonePanel:Clear() end
+	if IsValid(EntPanel) then EntPanel:Clear() end
+	if IsValid(ConEntPanel) then ConEntPanel:Clear() end
+	if pl.rgm and pl.rgm.Entity then
+		pl.rgm.Entity = nil
+	end
+	IsPropRagdoll = false
+	TreeEntities = {}
+end)
 
 net.Receive("rgmUpdateSliders", function(len)
 	UpdateManipulationSliders(pl.rgm.Bone, pl.rgm.Entity)

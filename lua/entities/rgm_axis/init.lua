@@ -227,7 +227,7 @@ function ENT:Think()
 	local bone = pl.rgm.PhysBone
 	if not IsValid(ent) or not pl.rgm.Bone or not self.Axises then return end
 
-	if pl.rgm.GizmoParentID ~= -1 then
+	if pl.rgm.GizmoParentID and pl.rgm.GizmoParentID ~= -1 then
 		local physobj = ent:GetPhysicsObjectNum(pl.rgm.GizmoParentID)
 		if physobj then
 			_, self.GizmoParent = LocalToWorld(vector_origin, pl.rgm.GizmoParent, physobj:GetPos(), physobj:GetAngles())
