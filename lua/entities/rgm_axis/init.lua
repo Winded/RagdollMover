@@ -339,11 +339,26 @@ function ENT:Think()
 			entoffset = ent.rgmPRoffset
 		end
 
-		if offsetlocal then 
+		if offsetlocal or (rotate and self.relativerotate and not pl.rgm.IsPhysBone) then 
 			if IsValid(ent:GetParent()) and pl.rgm.Bone == 0 and not ent:IsEffectActive(EF_BONEMERGE) and not (ent:GetClass() == "prop_ragdoll") then
 				self:SetPos(LocalToWorld(offset + entoffset, angle_zero, pos, ent:GetParent():LocalToWorldAngles(ent:GetLocalAngles())))
 			else
-				self:SetPos(LocalToWorld(offset + entoffset, angle_zero, pos, ang))
+				if pl.rgm.IsPhysBone then
+					self:SetPos(LocalToWorld(offset + entoffset, angle_zero, pos, ang))
+				else
+					local offsetang
+					if pl.rgm.GizmoParentID then
+						if pl.rgm.GizmoParentID ~= -1 then
+							local physobj = ent:GetPhysicsObjectNum(pl.rgm.GizmoParentID)
+							_, offsetang = LocalToWorld(vector_origin, self.GizmoAng, physobj:GetPos(), physobj:GetAngles())
+						else
+							_, offsetang = LocalToWorld(vector_origin, self.GizmoAng, ent:GetPos(), ent:GetAngles())
+						end
+					else
+						offsetang = self.GizmoAng
+					end
+					self:SetPos(LocalToWorld(offset + entoffset, angle_zero, pos, offsetang))
+				end
 			end
 		else
 			if ent.rgmPRoffset then
@@ -377,6 +392,7 @@ function ENT:Think()
 		end
 		self.LocalAngles = ang
 		self.BonePos = pos
+		self.NMBonePos = LocalToWorld(-ent:GetManipulateBonePosition(bone), angle_zero, pos, self.GizmoParent)
 	end
 
 	local pos, poseye = self:GetPos(), pl:EyePos()
