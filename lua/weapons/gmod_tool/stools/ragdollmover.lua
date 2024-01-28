@@ -14,6 +14,7 @@ TOOL.ClientConVar["fulldisc"] = 0
 TOOL.ClientConVar["disablefilter"] = 0
 TOOL.ClientConVar["lockselected"] = 0
 TOOL.ClientConVar["scalechildren"] = 0
+TOOL.ClientConVar["smovechildren"] = 0
 TOOL.ClientConVar["drawskeleton"] = 0
 TOOL.ClientConVar["snapenable"] = 0
 TOOL.ClientConVar["snapamount"] = 30
@@ -677,6 +678,15 @@ end)
 
 net.Receive("rgmSendBonePos", function(len, pl)
 	local pos, ang, ppos, pang = net.ReadVector(), net.ReadAngle(), net.ReadVector(), net.ReadAngle()
+	local childbones = {}
+
+	for i = 1, net.ReadUInt(10) do
+		local id, parent, pos = net.ReadUInt(10), net.ReadUInt(10), net.ReadVector()
+		if not childbones[parent] then
+			childbones[parent] = {}
+		end
+		childbones[parent][id] = pos
+	end
 	if not pl.rgm then return end
 	local ent = pl.rgm.Entity
 	local axis = pl.rgm.Axis
@@ -726,6 +736,11 @@ net.Receive("rgmSendBonePos", function(len, pl)
 	_, pl.rgm.GizmoAng = LocalToWorld(vector_origin, Angle(0, 0, -manang[3]), vector_origin, newang)
 	_, pl.rgm.GizmoAng = LocalToWorld(vector_origin, Angle(-manang[1], 0, 0), vector_origin, pl.rgm.GizmoAng)
 	_, pl.rgm.GizmoAng = LocalToWorld(vector_origin, Angle(0, -manang[2], 0), vector_origin, pl.rgm.GizmoAng)
+
+	pl.rgmBoneChildren = {}
+	if next(childbones) then
+		pl.rgmBoneChildren = childbones
+	end
 
 end)
 
@@ -894,6 +909,7 @@ end)
 net.Receive("rgmAdjustBone", function(len, pl)
 	local manipulate_bone = {}
 	local ent = pl.rgm.Entity
+	local childbones = pl.rgmBoneChildren
 	if not IsValid(ent) then net.ReadInt(3) net.ReadInt(3) net.ReadFloat() return end
 
 	manipulate_bone[1] = function(axis, value)
@@ -918,18 +934,52 @@ net.Receive("rgmAdjustBone", function(len, pl)
 
 		if rgmaxis.scalechildren then
 			local scalediff = change - prevscale
+			local diff
+			local RecursiveBoneScale
 
-			local function RecursiveBoneScale(ent, bone, scale)
-				local oldscale = ent:GetManipulateBoneScale(bone)
-				ent:ManipulateBoneScale(bone, oldscale + scale)
+			if rgmaxis.smovechildren and childbones and childbones[bone] then
+				diff = Vector(change.x / prevscale.x, change.y / prevscale.y, change.z / prevscale.z)
 
-				for _, cbone in ipairs(ent:GetChildBones(bone)) do
-					RecursiveBoneScale(ent, cbone, scale)
+				RecursiveBoneScale = function(ent, bone, scale)
+					local oldscale = ent:GetManipulateBoneScale(bone)
+					ent:ManipulateBoneScale(bone, oldscale + scale)
+
+					if childbones[bone] then
+						for cbone, pos in pairs(childbones[bone]) do
+							local bonepos = ent:GetManipulateBonePosition(cbone)
+							local newpos = Vector(pos.x * diff.x, pos.y * diff.y, pos.z * diff.z)
+							ent:ManipulateBonePosition(cbone, bonepos + (newpos - pos))
+							childbones[bone][cbone] = newpos
+						end
+					end
+
+					for _, cbone in ipairs(ent:GetChildBones(bone)) do
+						RecursiveBoneScale(ent, cbone, scale)
+					end
+				end
+			else
+				RecursiveBoneScale = function(ent, bone, scale)
+					local oldscale = ent:GetManipulateBoneScale(bone)
+					ent:ManipulateBoneScale(bone, oldscale + scale)
+
+					for _, cbone in ipairs(ent:GetChildBones(bone)) do
+						RecursiveBoneScale(ent, cbone, scale)
+					end
 				end
 			end
 
 			RecursiveBoneScale(ent, bone, scalediff)
 		else
+			if rgmaxis.smovechildren and childbones and childbones[bone] then
+				local diff = Vector(change.x / prevscale.x, change.y / prevscale.y, change.z / prevscale.z)
+				for cbone, pos in pairs(childbones[bone]) do
+					local bonepos = ent:GetManipulateBonePosition(cbone)
+					local newpos = Vector(pos.x * diff.x, pos.y * diff.y, pos.z * diff.z)
+					ent:ManipulateBonePosition(cbone, bonepos + (newpos - pos))
+					childbones[bone][cbone] = newpos
+				end
+			end
+
 			ent:ManipulateBoneScale(bone, change)
 		end
 	end
@@ -960,13 +1010,14 @@ net.Receive("rgmUpdateCCVar", function(len, pl)
 		"localoffset",
 		"relativerotate",
 		"scalechildren",
+		"smovechildren",
 		"updaterate",
 		"unfreeze",
 		"snapenable",
 		"snapamount",
 	}
 
-	if var < 6 and IsValid(axis) then
+	if var < 7 and IsValid(axis) then
 		axis[vars[var]] = (tool:GetClientNumber(vars[var], 1) ~= 0)
 	else
 		pl.rgm[vars[var]] = tool:GetClientNumber(vars[var], 1)
@@ -1020,6 +1071,7 @@ function TOOL:Deploy()
 			axis.localoffset = self:GetClientNumber("localoffset", 1) ~= 0
 			axis.relativerotate = self:GetClientNumber("relativerotate", 0) ~= 0
 			axis.scalechildren = self:GetClientNumber("scalechildren", 0) ~= 0
+			axis.smovechildren = self:GetClientNumber("smovechildren", 0) ~= 0
 			pl.rgm.Axis = axis
 
 			pl.rgm.updaterate = self:GetClientNumber("updaterate", 0.01)
@@ -1511,21 +1563,56 @@ if SERVER then
 			bone = pl.rgm.Bone
 			local prevscale = ent:GetManipulateBoneScale(bone)
 			local sc, ang = apart:ProcessMovement(pl.rgmOffsetPos, pl.rgmOffsetAng, eyepos, eyeang, ent, bone, pl.rgmISPos, pl.rgmISDir, 2, snapamount, pl.rgm.StartAngle, pl.rgm.NPhysBonePos, pl.rgm.NPhysBoneAng, pl.rgm.NPhysBoneScale)
+			local childbones = pl.rgmBoneChildren
 
 			if axis.scalechildren then
 				local scalediff = sc - prevscale
+				local diff
+				local RecursiveBoneScale
 
-				local function RecursiveBoneScale(ent, bone, scale)
-					local oldscale = ent:GetManipulateBoneScale(bone)
-					ent:ManipulateBoneScale(bone, oldscale + scale)
+				if axis.smovechildren and childbones and childbones[bone] then
+					diff = Vector(sc.x / prevscale.x, sc.y / prevscale.y, sc.z / prevscale.z)
 
-					for _, cbone in ipairs(ent:GetChildBones(bone)) do
-						RecursiveBoneScale(ent, cbone, scale)
+					RecursiveBoneScale = function(ent, bone, scale)
+						local oldscale = ent:GetManipulateBoneScale(bone)
+						ent:ManipulateBoneScale(bone, oldscale + scale)
+
+						if childbones[bone] then
+							for cbone, pos in pairs(childbones[bone]) do
+								local bonepos = ent:GetManipulateBonePosition(cbone)
+								local newpos = Vector(pos.x * diff.x, pos.y * diff.y, pos.z * diff.z)
+								ent:ManipulateBonePosition(cbone, bonepos + (newpos - pos))
+								childbones[bone][cbone] = newpos
+							end
+						end
+
+						for _, cbone in ipairs(ent:GetChildBones(bone)) do
+							RecursiveBoneScale(ent, cbone, scale)
+						end
+					end
+				else
+					RecursiveBoneScale = function(ent, bone, scale)
+						local oldscale = ent:GetManipulateBoneScale(bone)
+						ent:ManipulateBoneScale(bone, oldscale + scale)
+
+						for _, cbone in ipairs(ent:GetChildBones(bone)) do
+							RecursiveBoneScale(ent, cbone, scale)
+						end
 					end
 				end
 
 				RecursiveBoneScale(ent, bone, scalediff)
 			else
+				if axis.smovechildren and childbones and childbones[bone] then
+					local diff = Vector(sc.x / prevscale.x, sc.y / prevscale.y, sc.z / prevscale.z)
+					for cbone, pos in pairs(childbones[bone]) do
+						local bonepos = ent:GetManipulateBonePosition(cbone)
+						local newpos = Vector(pos.x * diff.x, pos.y * diff.y, pos.z * diff.z)
+						ent:ManipulateBonePosition(cbone, bonepos + (newpos - pos))
+						childbones[bone][cbone] = newpos
+					end
+				end
+
 				ent:ManipulateBoneScale(bone, sc)
 			end
 
@@ -1609,27 +1696,33 @@ cvars.AddChangeCallback("ragdollmover_scalechildren", function()
 	net.SendToServer()
 end)
 
-cvars.AddChangeCallback("ragdollmover_updaterate", function()
+cvars.AddChangeCallback("ragdollmover_smovechildren", function()
 	net.Start("rgmUpdateCCVar")
 		net.WriteUInt(6, 4)
 	net.SendToServer()
 end)
 
-cvars.AddChangeCallback("ragdollmover_unfreeze", function()
+cvars.AddChangeCallback("ragdollmover_updaterate", function()
 	net.Start("rgmUpdateCCVar")
 		net.WriteUInt(7, 4)
 	net.SendToServer()
 end)
 
-cvars.AddChangeCallback("ragdollmover_snapenable", function()
+cvars.AddChangeCallback("ragdollmover_unfreeze", function()
 	net.Start("rgmUpdateCCVar")
 		net.WriteUInt(8, 4)
 	net.SendToServer()
 end)
 
-cvars.AddChangeCallback("ragdollmover_snapamount", function()
+cvars.AddChangeCallback("ragdollmover_snapenable", function()
 	net.Start("rgmUpdateCCVar")
 		net.WriteUInt(9, 4)
+	net.SendToServer()
+end)
+
+cvars.AddChangeCallback("ragdollmover_snapamount", function()
+	net.Start("rgmUpdateCCVar")
+		net.WriteUInt(10, 4)
 	net.SendToServer()
 end)
 
@@ -1745,11 +1838,37 @@ local function rgmSendBonePos(pl, ent, boneid)
 		gizmopang = angle_zero
 	end
 
+	local childbones = {}
+	local count = 1
+	local function RecursiveGrabChildBones(b, tab, ent)
+		for k, bone in ipairs(ent:GetChildBones(b)) do
+			tab[count] = {}
+			tab[count].id = bone
+			tab[count].parent = b
+			local pmatrix = ent:GetBoneMatrix(b)
+			local pos, ang = pmatrix:GetTranslation(), pmatrix:GetAngles()
+			local matrix = ent:GetBoneMatrix(bone)
+			local bonepos = matrix:GetTranslation()
+			tab[count].pos = WorldToLocal(bonepos, angle_zero, pos, ang)
+			count = count + 1
+			RecursiveGrabChildBones(bone, tab, ent)
+		end
+	end
+
+	RecursiveGrabChildBones(boneid, childbones, ent)
+
 	net.Start("rgmSendBonePos")
 		net.WriteVector(gizmopos)
 		net.WriteAngle(gizmoang)
 		net.WriteVector(gizmoppos)
 		net.WriteAngle(gizmopang)
+
+		net.WriteUInt(#childbones, 10)
+		for _, data in ipairs(childbones) do
+			net.WriteUInt(data.id, 10)
+			net.WriteUInt(data.parent, 10)
+			net.WriteVector(data.pos)
+		end
 	net.SendToServer()
 end
 
@@ -2877,6 +2996,7 @@ function TOOL.BuildCPanel(CPanel)
 			CButton(ColManip, "#tool.ragdollmover.resetallbones", RGMResetAllBones)
 
 		CCheckBox(Col4, "#tool.ragdollmover.scalechildren", "ragdollmover_scalechildren")
+		CCheckBox(Col4, "#tool.ragdollmover.smovechildren", "ragdollmover_smovechildren")
 
 		CCheckBox(Col4, "#tool.ragdollmover.snapenable", "ragdollmover_snapenable")
 		CNumSlider(Col4, "#tool.ragdollmover.snapamount", "ragdollmover_snapamount", 1, 180, 0)
