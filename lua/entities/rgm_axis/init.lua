@@ -339,7 +339,7 @@ function ENT:Think()
 			entoffset = ent.rgmPRoffset
 		end
 
-		if offsetlocal or (rotate and self.relativerotate and not pl.rgm.IsPhysBone) then 
+		if offsetlocal then 
 			if IsValid(ent:GetParent()) and pl.rgm.Bone == 0 and not ent:IsEffectActive(EF_BONEMERGE) and not (ent:GetClass() == "prop_ragdoll") then
 				self:SetPos(LocalToWorld(offset + entoffset, angle_zero, pos, ent:GetParent():LocalToWorldAngles(ent:GetLocalAngles())))
 			else

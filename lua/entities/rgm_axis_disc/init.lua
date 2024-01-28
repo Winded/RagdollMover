@@ -128,34 +128,33 @@ function ENT:ProcessMovement(_, offang, eyepos, eyeang, ent, bone, ppos, pnorm, 
 			rotationangle = mathfunc(localAng / snapamount) * snapamount
 		end
 
+		if self.axistype == 4 then
+			rotateang = nphysangle + localized
+			_a = rotateang
+		else
+			_a = ent:GetManipulateBoneAngles(bone)
+			rotateang = nphysangle[self.axistype] + rotationangle
+			_a[self.axistype] = rotateang
+		end
+
 		if axis.relativerotate then
 			local pos = axis:GetPos()
-			local offset = -pl.rgm.GizmoOffset
+			local offset
 
-			if self.axistype == 4 then
-				 rotateang = nphysangle + localized
-				 _a = rotateang
-			else
-				_a = ent:GetManipulateBoneAngles(bone)
-				rotateang = nphysangle[self.axistype] + rotationangle
-				_a[self.axistype] = rotateang
-			end
-
+			local worldang
 			_p, worldang = LocalToWorld(vector_origin, _a, pos, boneang)
-			_p = LocalToWorld(offset, axis.LocalAngles, _p, worldang)
+			if axis.localoffset then
+				offset = -pl.rgm.GizmoOffset
+				_p = LocalToWorld(offset, axis.LocalAngles, _p, worldang)
+			else
+				local _, oldang = LocalToWorld(vector_origin, nphysangle, vector_origin, axis.LocalAngles)
+				offset = WorldToLocal(axis.BonePos, angle_zero, axis:GetPos(), oldang)
+				_p = LocalToWorld(offset, angle_zero, _p, worldang)
+			end
 			_p = WorldToLocal(_p, angle_zero, axis.BonePos, axis.GizmoParent)
 			local nonphyspos = WorldToLocal(axis.BonePos, angle_zero, axis.NMBonePos, axis.GizmoParent)
 			_p = _p + nonphyspos
 		else
-			if self.axistype == 4 then
-				 rotateang = nphysangle + localized
-				 _a = rotateang
-			else
-				_a = ent:GetManipulateBoneAngles(bone)
-				rotateang = nphysangle[self.axistype] + rotationangle
-				_a[self.axistype] = rotateang
-			end
-
 			_p = ent:GetManipulateBonePosition(bone)
 		end
 
