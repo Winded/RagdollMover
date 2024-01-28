@@ -25,6 +25,7 @@ local function ClearPropRagdoll(ent)
 	ent.rgmPRenttoid = nil
 	ent.rgmPRparent = nil
 	ent.rgmPRoffset = nil
+	ent.rgmIKChains = nil
 	if ent.rgmOldPostEntityPaste then
 		ent.PostEntityPaste = ent.rgmOldPostEntityPaste
 		ent.rgmOldPostEntityPaste = nil
