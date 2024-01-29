@@ -531,7 +531,10 @@ local function AddPRNode(parent, node)
 	if not PRUI then return end
 	local bones = PRUI.PRTree.Bones
 
-	if bones + 1 > CVMaxPRBones:GetInt() then return end
+	if bones + 1 > CVMaxPRBones:GetInt() then
+		rgmDoNotification(APPLY_FAILED_LIMIT)
+		return
+	end
 	local id = 0
 	while PRUI.PRTree.Nodes[id] do
 		id = id + 1
