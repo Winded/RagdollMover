@@ -441,15 +441,137 @@ function GetOffsetTable(tool, ent, rotate, bonelocks, entlocks)
 	return RTable
 end
 
-local function RecursiveSetParent(ostable, sbone, ent, rlocks, plocks, RTable, bone)
+function GetNPOffsetTable(tool, ent, rotate, nphysinfo, nphyschildren, bonelocks, entlocks)
+	local RTable = {}
+	local physcount = ent:GetPhysicsObjectCount() - 1
+
+	if not ent.rgmIKChains then
+		CreateDefaultIKs(tool, ent)
+	end
+
+	for a = 0, physcount do -- getting all "root" bones - so it'll work for ragdoll with detached bones.
+		local Bone = ent:TranslatePhysBoneToBone(a)
+		local Parent = ent:GetBoneParent(Bone)
+		if ent:TranslateBoneToPhysBone(Parent) == -1 or not GetPhysBoneParent(ent, a) then -- root physbones seem to be "parented" to the -1. and the physboneparent function will not find its parent either.
+			local obj1 = ent:GetPhysicsObjectNum(a)
+			local obj2 = nil
+			if bonelocks[ent][a] then
+				obj2 = ent:GetPhysicsObjectNum(bonelocks[ent][a].id)
+			end
+			GetRootBones(bonelocks[ent][a], a, obj1, obj2, RTable)
+		end
+	end
+
+	for pb = 0, physcount do
+		local parent = GetPhysBoneParent(ent, pb)
+		if bonelocks[ent][pb] then
+			parent = bonelocks[ent][pb].id
+		end
+
+		if pb and parent and not RTable[pb] then
+			local obj1 = ent:GetPhysicsObjectNum(pb)
+			local obj2 = ent:GetPhysicsObjectNum(parent)
+			GetBones(bonelocks[ent][pb], parent, pb, obj1, obj2, RTable)
+			local iktable = IsIKBone(tool, ent, pb)
+			if iktable then
+				RTable[pb].isik = true
+			end
+		end
+	end
+
+	do
+		local parent = nphysinfo.p
+		local obj = ent:GetPhysicsObjectNum(parent)
+		local npos, nang = LocalToWorld(nphysinfo.pos, nphysinfo.ang, obj:GetPos(), obj:GetAngles())
+		RTable[parent].nppos, RTable[parent].npang = nphysinfo.pos, nphysinfo.ang
+		for physbone, data in pairs(nphyschildren) do
+			if data.depth == 1 and not RTable[physbone].lock then
+				RTable[physbone].nphysbone = true
+				local obj = ent:GetPhysicsObjectNum(physbone)
+				local pos, ang = WorldToLocal(obj:GetPos(), obj:GetAngles(), npos, nang)
+				RTable[physbone].pos = pos
+				RTable[physbone].ang = ang
+			end
+		end
+	end
+
+	for k, v in pairs(ent.rgmIKChains) do
+
+		local obj1, obj2, obj3 = ent:GetPhysicsObjectNum(v.hip), ent:GetPhysicsObjectNum(v.knee), ent:GetPhysicsObjectNum(v.foot)
+
+		local pos1, pos2, pos3 = obj1:GetPos(), obj2:GetPos(), obj3:GetPos()
+		local hippos = RTable[v.hip].pos*1
+
+		ent.rgmIKChains[k].rotate = rotate
+
+		local kneedir = GetKneeDir(ent, v.hip, v.knee, v.foot)
+
+		ent.rgmIKChains[k].ikhippos = hippos
+		if RTable[v.hip].parent then
+			ent.rgmIKChains[k].ikhipparent = RTable[v.hip].parent*1
+		end
+		local ang, offang = GetAngleOffset(ent, v.hip, v.knee)
+		ent.rgmIKChains[k].ikhipang = ang*1
+		ent.rgmIKChains[k].ikhipoffang = offang*1
+
+		ent.rgmIKChains[k].ikkneedir = kneedir
+		ang, offang = GetAngleOffset(ent, v.knee, v.foot)
+		ent.rgmIKChains[k].ikkneeang = ang*1
+		ent.rgmIKChains[k].ikkneeoffang = offang*1
+
+		ent.rgmIKChains[k].ikfootpos = pos3
+		ent.rgmIKChains[k].ikfootang = obj3:GetAngles()
+
+		ent.rgmIKChains[k].thighlength = pos1:Distance(pos2)
+		ent.rgmIKChains[k].shinlength = pos2:Distance(pos3)
+
+		ent.rgmIKChains[k].nphyship = RTable[v.hip].nphysbone
+		ent.rgmIKChains[k].nphysknee = RTable[v.knee].nphysbone
+		ent.rgmIKChains[k].nphysfoot = RTable[v.foot].nphysbone
+
+	end
+
+	for lockent, pb in pairs(entlocks) do -- getting offsets from physical entities that are locked to our bones
+		if not RTable[pb.id].locked then
+			RTable[pb.id].locked = {}
+		end
+
+		local locktable = {}
+
+		for i=0, lockent:GetPhysicsObjectCount() - 1 do
+			local obj1 = lockent:GetPhysicsObjectNum(i)
+			local obj2 = pb.ent:GetPhysicsObjectNum(pb.id)
+			local pos1, ang1 = obj1:GetPos(), obj1:GetAngles()
+			local pos2, ang2 = obj2:GetPos(), obj2:GetAngles()
+			local pos3, ang3 = WorldToLocal(pos1, ang1, pos2, ang2)
+			local mov = obj1:IsMoveable()
+
+			locktable[i] = {pos = pos3, ang = ang3, moving = mov, parent = -1}
+		end
+
+		RTable[pb.id].locked[lockent] = locktable
+	end
+
+	return RTable
+end
+
+local function RecursiveSetParent(ostable, sbone, ent, rlocks, plocks, RTable, bone, nphysinfo)
 
 	local parent = ostable[bone].parent
-	if not RTable[parent] then RecursiveSetParent(ostable, sbone, ent, rlocks, plocks, RTable, parent) end
+	local nphys = nil
+	if not RTable[parent] then RecursiveSetParent(ostable, sbone, ent, rlocks, plocks, RTable, parent, nphysinfo) end
 	if ostable[bone].ent then
 		ent = ostable[bone].ent
 	end
 
 	local ppos, pang = RTable[parent].pos, RTable[parent].ang
+	if not ostable[bone].nphysbone then
+		ppos, pang = RTable[parent].pos, RTable[parent].ang
+	else
+		ppos = nphysinfo.pos
+		pang = nphysinfo.ang
+		nphys = true
+	end
 	local pos, ang = LocalToWorld(ostable[bone].pos, ostable[bone].ang, ppos, pang)
 	if bone == sbone.b then
 		pos = sbone.p
@@ -465,9 +587,12 @@ local function RecursiveSetParent(ostable, sbone, ent, rlocks, plocks, RTable, b
 	RTable[bone] = {}
 	RTable[bone].pos = pos*1
 	RTable[bone].ang = ang*1
+	RTable[bone].nphys = nphys
 end
 
-local function SetBoneOffsets(tool, ent, ostable, sbone, rlocks, plocks)
+--Set bone positions from the local positions on the offset table.
+--And process IK chains.
+function SetOffsets(tool, ent, ostable, sbone, rlocks, plocks, nphysinfo)
 	local RTable = {}
 
 	local propragdoll = false
@@ -492,15 +617,15 @@ local function SetBoneOffsets(tool, ent, ostable, sbone, rlocks, plocks)
 	for k, v in pairs(ent.rgmIKChains) do
 		if tool:GetClientNumber(DefIKnames[v.type]) ~= 0 then
 			if v.ikhipparent then
-				if not RTable[v.ikhipparent] then RecursiveSetParent(ostable, sbone, ent, rlocks, plocks, RTable, v.ikhipparent) end
+				if not RTable[v.ikhipparent] then RecursiveSetParent(ostable, sbone, ent, rlocks, plocks, RTable, v.ikhipparent, nphysinfo) end
 			end
 
 			local footdata = ostable[v.foot]
 			if footdata ~= nil and (footdata.parent ~= v.knee and footdata.parent ~= v.hip) and not RTable[footdata.parent] and footdata.lock then 
-				RecursiveSetParent(ostable, sbone, ent, rlocks, plocks, RTable, footdata.parent)
+				RecursiveSetParent(ostable, sbone, ent, rlocks, plocks, RTable, footdata.parent, nphysinfo)
 			end
 
-			local RT = ProcessIK(ent, v, sbone, RTable, footdata)
+			local RT = ProcessIK(ent, v, sbone, RTable, footdata, nphysinfo)
 			table.Merge(RTable, RT)
 		end
 	end
@@ -510,17 +635,17 @@ local function SetBoneOffsets(tool, ent, ostable, sbone, rlocks, plocks)
 
 			local footdata = ostable[v.foot]
 			if not RTable[footdata.parent] then
-				RecursiveSetParent(ostable, sbone, ent, rlocks, plocks, RTable, footdata.parent)
+				RecursiveSetParent(ostable, sbone, ent, rlocks, plocks, RTable, footdata.parent, nphysinfo)
 			end
 
-			local RT = ProcessIK(ent, v, sbone, RTable, footdata)
+			local RT = ProcessIK(ent, v, sbone, RTable, footdata, nphysinfo)
 			table.Merge(RTable, RT)
 		end
 	end
 
 	for pb = 0, physcount do
 		if ostable[pb] and not RTable[pb] then
-			RecursiveSetParent(ostable, sbone, ent, rlocks, plocks, RTable, pb)
+			RecursiveSetParent(ostable, sbone, ent, rlocks, plocks, RTable, pb, nphysinfo)
 		end
 	end
 
@@ -557,14 +682,6 @@ local function SetBoneOffsets(tool, ent, ostable, sbone, rlocks, plocks)
 	return RTable
 end
 
---Set bone positions from the local positions on the offset table.
---And process IK chains (In SetBoneOffsets).
-function SetOffsets(tool, ent, ostable, sbone, rlocks, plocks)
-	local RTable = SetBoneOffsets(tool, ent, ostable, sbone, rlocks, plocks)
-
-	return RTable
-
-end
 
 -----
 --Inverse kinematics library
@@ -589,7 +706,7 @@ function FindKnee(pHip, pAnkle, fThigh, fShin, vKneeDir)
 end
 
 --Process one IK chain, and set it's positions.
-function ProcessIK(ent, IKTable, sbone, RT, footlock)
+function ProcessIK(ent, IKTable, sbone, RT, footlock, nphysinfo)
 
 	local propragdoll = ent.rgmPRidtoent and true or false
 
@@ -610,7 +727,11 @@ function ProcessIK(ent, IKTable, sbone, RT, footlock)
 
 	if IKTable.ikhipparent then
 		obj = RT[IKTable.ikhipparent]
-		hpos, hang = LocalToWorld(hippos, angle_zero, obj.pos, obj.ang)
+		if not IKTable.nphyship then
+			hpos, hang = LocalToWorld(hippos, angle_zero, obj.pos, obj.ang)
+		else
+			hpos, hang = LocalToWorld(hippos, angle_zero, nphysinfo.pos, nphysinfo.ang)
+		end
 	else
 		hpos, hang = LocalToWorld(hippos, angle_zero, vector_origin, angle_zero)
 	end

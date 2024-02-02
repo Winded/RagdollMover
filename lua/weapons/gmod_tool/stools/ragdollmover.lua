@@ -15,6 +15,7 @@ TOOL.ClientConVar["disablefilter"] = 0
 TOOL.ClientConVar["lockselected"] = 0
 TOOL.ClientConVar["scalechildren"] = 0
 TOOL.ClientConVar["smovechildren"] = 0
+TOOL.ClientConVar["physmove"] = 0
 TOOL.ClientConVar["drawskeleton"] = 0
 TOOL.ClientConVar["snapenable"] = 0
 TOOL.ClientConVar["snapamount"] = 30
@@ -58,6 +59,7 @@ local function RGMGetBone(pl, ent, bone)
 
 	local count = ent:GetPhysicsObjectCount()
 	local isragdoll = ent:GetClass() == "prop_ragdoll"
+	local physbones = {}
 
 	for i = 0, count - 1 do
 		local b = ent:TranslatePhysBoneToBone(i)
@@ -65,6 +67,7 @@ local function RGMGetBone(pl, ent, bone)
 			phys = i
 			pl.rgm.IsPhysBone = true
 		end
+		physbones[b] = i
 	end
 
 	if count == 1 then
@@ -77,10 +80,48 @@ local function RGMGetBone(pl, ent, bone)
 	local bonen = phys or bone
 
 	pl.rgm.PhysBone = bonen
-	if pl.rgm.IsPhysBone and isragdoll then -- physics props only have 1 phys object which is tied to bone -1, and that bone doesn't really exist
-		pl.rgm.Bone = ent:TranslatePhysBoneToBone(bonen)
+	if isragdoll then -- physics props only have 1 phys object which is tied to bone -1, and that bone doesn't really exist
+		if pl.rgm.IsPhysBone then
+			pl.rgm.Bone = ent:TranslatePhysBoneToBone(bonen)
+			pl.rgm.NextPhysBone = nil
+			pl.rgmPhysMove = {} -- bones for the nonphysics moving thing
+		else
+			pl.rgm.Bone = bonen
+			pl.rgmPhysMove = {}
+
+			local function FindPhysBone(boneid, ent)
+				local parent = ent:GetBoneParent(boneid)
+				if parent == -1 then
+					return nil
+				else
+					if physbones[parent] then
+						return physbones[parent]
+					else
+						return FindPhysBone(parent, ent)
+					end
+				end
+			end
+
+			local function GetUsedBones(bone, ent, depth)
+				for _, cbone in ipairs(ent:GetChildBones(bone)) do
+					local add = 0
+					if physbones[cbone] then
+						local phys = physbones[cbone]
+						add = 1
+						pl.rgmPhysMove[phys] = {}
+						pl.rgmPhysMove[phys].bone = cbone
+						pl.rgmPhysMove[phys].depth = depth
+					end
+					GetUsedBones(cbone, ent, depth + add)
+				end
+			end
+			pl.rgm.NextPhysBone = FindPhysBone(bonen, ent)
+			GetUsedBones(bonen, ent, 1)
+		end
 	else
 		pl.rgm.Bone = bonen
+		pl.rgm.NextPhysBone = nil
+		pl.rgmPhysMove = {}
 	end
 end
 
@@ -1015,6 +1056,7 @@ net.Receive("rgmUpdateCCVar", function(len, pl)
 		"unfreeze",
 		"snapenable",
 		"snapamount",
+		"physmove"
 	}
 
 	if var < 7 and IsValid(axis) then
@@ -1078,6 +1120,7 @@ function TOOL:Deploy()
 			pl.rgm.unfreeze = self:GetClientNumber("unfreeze", 0)
 			pl.rgm.snapenable = self:GetClientNumber("snapenable", 0)
 			pl.rgm.snapamount = self:GetClientNumber("snapamount", 30)
+			pl.rgm.physmove = self:GetClientNumber("physmove", 0)
 		end
 	end
 end
@@ -1157,12 +1200,19 @@ function TOOL:LeftClick(tr)
 		pl.rgmOffsetPos = WorldToLocal(apart:GetPos(), apart:GetAngles(), collision.hitpos, apart:GetAngles())
 
 		local opos = apart:WorldToLocal(collision.hitpos)
-		local obj = ent:GetPhysicsObjectNum(pl.rgm.PhysBone)
 		local grabang = apart:LocalToWorldAngles(Angle(0, 0, Vector(opos.y, opos.z, 0):Angle().y))
-		local _p
-		if obj then 
-			_p, pl.rgmOffsetAng = WorldToLocal(apart:GetPos(), obj:GetAngles(), apart:GetPos(), grabang)
-			pl.rgmOffsetTable = rgm.GetOffsetTable(self, ent, pl.rgm.Rotate, pl.rgmBoneLocks, pl.rgmEntLocks)
+		if pl.rgm.IsPhysBone then
+			local obj = ent:GetPhysicsObjectNum(pl.rgm.PhysBone)
+			if obj then 
+				_, pl.rgmOffsetAng = WorldToLocal(apart:GetPos(), obj:GetAngles(), apart:GetPos(), grabang)
+				pl.rgmOffsetTable = rgm.GetOffsetTable(self, ent, pl.rgm.Rotate, pl.rgmBoneLocks, pl.rgmEntLocks)
+			end
+		elseif pl.rgm.NextPhysBone and pl.rgm.physmove ~= 0 then
+			local obj = ent:GetPhysicsObjectNum(pl.rgm.NextPhysBone)
+			if obj then 
+				_, pl.rgmOffsetAng = WorldToLocal(apart:GetPos(), obj:GetAngles(), apart:GetPos(), grabang)
+				pl.rgmOffsetTable = rgm.GetNPOffsetTable(self, ent, pl.rgm.Rotate, {p = pl.rgm.NextPhysBone, pos = axis.GizmoPos, ang = axis.GizmoAng}, pl.rgmPhysMove, pl.rgmBoneLocks, pl.rgmEntLocks)
+			end
 		end
 		if IsValid(ent:GetParent()) and not (ent:GetClass() == "prop_ragdoll") then -- ragdolls don't seem to care about parenting
 			local pang = ent:GetParent():LocalToWorldAngles(ent:GetLocalAngles())
@@ -1204,7 +1254,7 @@ function TOOL:LeftClick(tr)
 			end
 		end
 
-		if pl.rgm.IsPhysBone then
+		if pl.rgm.IsPhysBone or (pl.rgm.NextPhysBone and pl.rgm.physmove ~= 0) then
 			for lockent, data in pairs(pl.rgmEntLocks) do
 				if FindRecursiveIfParent(data.id, pl.rgm.PhysBone, ent) then continue end
 				ignore[#ignore + 1] = lockent
@@ -1403,10 +1453,11 @@ if SERVER then
 	local moving = pl.rgm.Moving or false
 	local rotate = pl.rgm.Rotate or false
 	local scale = pl.rgm.Scale or false
+	local physmove = pl.rgm.physmove ~= 0
 	if moving then
 		if not pl:KeyDown(IN_ATTACK) then
 
-			if pl.rgm.IsPhysBone then
+			if pl.rgm.IsPhysBone or (physmove and pl.rgm.NextPhysBone) then
 				if (pl.rgm.unfreeze or 1) ~= 0 then
 					for i = 0, ent:GetPhysicsObjectCount() - 1 do
 						if pl.rgmOffsetTable[i].moving then
@@ -1558,6 +1609,52 @@ if SERVER then
 
 				ent:ManipulateBoneAngles(bone, ang)
 				ent:ManipulateBonePosition(bone, pos)
+
+				if ent:GetClass() == "prop_ragdoll" and physmove and pl.rgm.NextPhysBone then -- moving physical if allowed
+					local pbone = pl.rgm.NextPhysBone
+					local obj = ent:GetPhysicsObjectNum(pbone)
+
+					local opos, oang = obj:GetPos(), obj:GetAngles()
+					local nbpos = LocalToWorld(axis.GizmoPos, axis.GizmoAng, opos, oang)
+					local _, gizmoang = LocalToWorld(vector_origin, pl.rgm.GizmoAng, vector_origin, oang)
+
+					local npos, nang = LocalToWorld(vector_origin, ang, vector_origin, gizmoang)
+					npos = LocalToWorld(pos - pl.rgm.NPhysBonePos, angle_zero, nbpos, axis.GizmoParent)
+
+					local postable = rgm.SetOffsets(self, ent, pl.rgmOffsetTable, {b = pbone, p = obj:GetPos(), a = obj:GetAngles()}, pl.rgmAngLocks, pl.rgmPosLocks, {pos = npos, ang = nang})
+
+					for i = 0, ent:GetPhysicsObjectCount() - 1 do
+						if postable[i] and not postable[i].dontset then
+							local ent = not pl.rgm.PropRagdoll and ent or ent.rgmPRidtoent[i]
+							local boneid = not pl.rgm.PropRagdoll and i or 0
+							local obj = ent:GetPhysicsObjectNum(boneid)
+
+							obj:EnableMotion(true)
+							obj:Wake()
+							obj:SetPos(postable[i].pos)
+							obj:SetAngles(postable[i].ang)
+							obj:EnableMotion(false)
+							obj:Wake()
+						end
+
+						if postable[i] and postable[i].locked and ConstrainedAllowed:GetBool() then
+							for lockent, bones in pairs(postable[i].locked) do
+								for j = 0, lockent:GetPhysicsObjectCount() - 1 do
+									if bones[j] then
+										local obj = lockent:GetPhysicsObjectNum(j)
+
+										obj:EnableMotion(true)
+										obj:Wake()
+										obj:SetPos(bones[j].pos)
+										obj:SetAngles(bones[j].ang)
+										obj:EnableMotion(false)
+										obj:Wake()
+									end
+								end
+							end
+						end
+					end
+				end
 			end
 		else -- scaling
 			bone = pl.rgm.Bone
@@ -1723,6 +1820,12 @@ end)
 cvars.AddChangeCallback("ragdollmover_snapamount", function()
 	net.Start("rgmUpdateCCVar")
 		net.WriteUInt(10, 4)
+	net.SendToServer()
+end)
+
+cvars.AddChangeCallback("ragdollmover_physmove", function()
+	net.Start("rgmUpdateCCVar")
+		net.WriteUInt(11, 4)
 	net.SendToServer()
 end)
 
@@ -2997,6 +3100,7 @@ function TOOL.BuildCPanel(CPanel)
 
 		CCheckBox(Col4, "#tool.ragdollmover.scalechildren", "ragdollmover_scalechildren")
 		CCheckBox(Col4, "#tool.ragdollmover.smovechildren", "ragdollmover_smovechildren")
+		CCheckBox(Col4, "#tool.ragdollmover.physmove", "ragdollmover_physmove")
 
 		CCheckBox(Col4, "#tool.ragdollmover.snapenable", "ragdollmover_snapenable")
 		CNumSlider(Col4, "#tool.ragdollmover.snapamount", "ragdollmover_snapamount", 1, 180, 0)
