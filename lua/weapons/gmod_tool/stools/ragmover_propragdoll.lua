@@ -569,6 +569,14 @@ local function AddPRNode(parent, node)
 		return true
 	end
 
+	PRUI.PRTree.Nodes[id].Label.OnCursorEntered = function()
+		HoveredEnt = node.ent
+	end
+
+	PRUI.PRTree.Nodes[id].Label.OnCursorExited = function()
+		HoveredEnt = nil
+	end
+
 	PRUI.PRTree.Nodes[id]:Receiver("rgmprNew", function(self, received, dropped)
 		PRUI.PRTree:SetSelectedItem(PRUI.PRTree.Nodes[id])
 		if not dropped then return end
@@ -850,7 +858,9 @@ function TOOL:DrawHUD()
 
 			local textpos = { x = pos.x + 5, y = pos.y - 5 }
 			surface.DrawCircle(pos.x, pos.y, 3.5, COLOR_RGMGREEN)
-			draw.SimpleText(node.id, "Default", textpos.x, textpos.y, COLOR_RGMGREEN, TEXT_ALIGN_LEFT, TEXT_ALIGN_BOTTOM)
+			if ent ~= HoveredEnt then
+				draw.SimpleText(node.id, "Default", textpos.x, textpos.y, COLOR_RGMGREEN, TEXT_ALIGN_LEFT, TEXT_ALIGN_BOTTOM)
+			end
 
 			if not node.parent then continue end
 			local parentnode = PRUI.PRTree.Nodes[node.parent]
@@ -891,6 +901,14 @@ function TOOL:DrawHUD()
 	end
 
 end
+
+local COLOR_YOU_KNOW_WHO_ELSE_IS_THE_HONORED_ONE = Color(255, 0, 255)
+
+hook.Add("PreDrawHalos", "rgmPRDrawSelectedHalo", function()
+	if IsValid(HoveredEnt) then
+		halo.Add({HoveredEnt}, COLOR_YOU_KNOW_WHO_ELSE_IS_THE_HONORED_ONE, 2, 2, 1, true, true)
+	end
+end)
 
 net.Receive("rgmprSendConEnts", function(len)
 

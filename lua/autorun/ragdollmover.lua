@@ -18,6 +18,8 @@ function IntersectRayWithPlane(planepoint, norm, line, linenormal)
 	return vec
 end
 
+local VECTOR_ONE = Vector(1, 1, 1)
+
 if SERVER then
 
 local NumpadBindRot, NumpadBindScale = {}, {}
@@ -526,8 +528,6 @@ function GetNPOffsetTable(tool, ent, rotate, nphysinfo, nphyschildren, bonelocks
 		ent.rgmIKChains[k].shinlength = pos2:Distance(pos3)
 
 		ent.rgmIKChains[k].nphyship = RTable[v.hip].nphysbone
-		ent.rgmIKChains[k].nphysknee = RTable[v.knee].nphysbone
-		ent.rgmIKChains[k].nphysfoot = RTable[v.foot].nphysbone
 
 	end
 
@@ -564,7 +564,7 @@ local function RecursiveSetParent(ostable, sbone, ent, rlocks, plocks, RTable, b
 		ent = ostable[bone].ent
 	end
 
-	local ppos, pang = RTable[parent].pos, RTable[parent].ang
+	local ppos, pang
 	if not ostable[bone].nphysbone then
 		ppos, pang = RTable[parent].pos, RTable[parent].ang
 	else
@@ -674,6 +674,102 @@ function SetOffsets(tool, ent, ostable, sbone, rlocks, plocks, nphysinfo)
 			for j = 0, lockent:GetPhysicsObjectCount() - 1 do
 				if bones[j] and not RTable[i].locked[lockent][j] then
 					RecursiveSetParent(bones, {}, ent, {}, {}, RTable[i].locked[lockent], j)
+				end
+			end
+		end
+	end
+
+	return RTable
+end
+
+local function RecursiveSetScale(ostable, sbone, ent, plocks, slocks, RTable, bone, scale, scalechildren, nphysinfo)
+
+	local parent = ostable[bone].parent
+	local nphys = nil
+	if not RTable[parent] then RecursiveSetScale(ostable, sbone, ent, plocks, slocks, RTable, parent, scale, scalechildren, nphysinfo) end
+
+	local ppos, pang = RTable[parent].pos, RTable[parent].ang
+	local bsc = RTable[parent].sc
+
+	local pos, ang, sc
+	if scalechildren then
+		sc = RTable[parent].sc
+	else
+		local scaleorig
+		if ostable[bone].nphysbone then
+			scaleorig = nphysinfo.b
+		elseif sbone.b then
+			scaleorig = ent:TranslatePhysBoneToBone(sbone.b)
+		else
+			scaleorig = -2
+		end
+		sc = (ent:GetBoneParent(ent:TranslatePhysBoneToBone(bone)) == scaleorig) and scale or VECTOR_ONE
+	end
+
+	if ostable[bone].nphysbone then
+		ppos = nphysinfo.pos
+		pang = nphysinfo.ang
+		bsc = scale
+	end
+
+	pos, ang = LocalToWorld(ostable[bone].pos * sc, ostable[bone].ang, ppos, pang)
+
+	if bone == sbone.b then
+		bsc = scale
+		pos = sbone.p
+		ang = sbone.a
+	else
+		if plocks[ent] and IsValid(plocks[ent][bone]) then
+			pos = plocks[ent][bone]:GetPos()
+		end
+		if slocks[ent] and slocks[ent][ent:TranslatePhysBoneToBone(bone)] then
+			bsc = VECTOR_ONE
+		end
+	end
+	RTable[bone] = {}
+	RTable[bone].pos = pos*1
+	RTable[bone].ang = ang*1
+	RTable[bone].sc = bsc
+end
+
+function SetScaleOffsets(tool, ent, ostable, sbone, scale, plocks, slocks, scalechildren, nphysinfo)
+	local RTable = {}
+
+	local physcount = ent:GetPhysicsObjectCount() - 1
+
+	for id, value in pairs(ostable) do
+		if value.root then
+			RTable[id] = {}
+			RTable[id].pos = value.pos
+			RTable[id].ang = value.ang
+			RTable[id].sc = VECTOR_ONE
+			if sbone.b == id then
+				RTable[id].pos = sbone.p
+				RTable[id].ang = sbone.a
+				RTable[id].sc = scale
+			end
+		end
+	end
+
+	for pb = 0, physcount do
+		if ostable[pb] and not RTable[pb] then
+			RecursiveSetScale(ostable, sbone, ent, plocks, slocks, RTable, pb, scale, scalechildren, nphysinfo)
+		end
+	end
+
+	for i = 0, physcount do
+		if not ostable[i].locked then continue end
+
+		for lockent, bones in pairs(ostable[i].locked) do
+			if not RTable[i].locked then
+				RTable[i].locked = {}
+			end
+			RTable[i].locked[lockent] = {}
+			RTable[i].locked[lockent][-1] = {pos = RTable[i].pos, ang = RTable[i].ang, sc = VECTOR_ONE}
+
+			for j = 0, lockent:GetPhysicsObjectCount() - 1 do
+				if bones[j] and not RTable[i].locked[lockent][j] then
+					RecursiveSetScale(bones, {}, ent, {}, {}, RTable[i].locked[lockent], j, scale, scalechildren)
 				end
 			end
 		end
