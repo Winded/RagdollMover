@@ -54,6 +54,7 @@ duplicator.RegisterEntityModifier("Ragdoll Mover Prop Ragdoll", function(pl, ent
 	ent.rgmPRidtoent = table.Copy(data.idtoent)
 	ent.rgmPRparent = data.parent
 	ent.rgmPRoffset = data.offset
+	ent.rgmPRaoffset = data.aoffset -- a stands for angle
 
 	ent.rgmOldPostEntityPaste = ent.PostEntityPaste
 
@@ -82,6 +83,7 @@ duplicator.RegisterEntityModifier("Ragdoll Mover Prop Ragdoll", function(pl, ent
 		newdata.idtoent = table.Copy(ent.rgmPRidtoent)
 		newdata.parent = ent.rgmPRparent
 		newdata.offset = ent.rgmPRoffset
+		newdata.aoffset = ent.rgmPRaoffset
 
 		duplicator.ClearEntityModifier(ent, "Ragdoll Mover Prop Ragdoll")
 		duplicator.StoreEntityModifier(ent, "Ragdoll Mover Prop Ragdoll", newdata)
@@ -123,6 +125,7 @@ net.Receive("rgmprApplySkeleton", function(len, pl)
 			fail = true
 		end
 		ents[i].offset = net.ReadVector()
+		ents[i].aoffset = net.ReadAngle()
 	end
 
 	if fail or count > CVMaxPRBones:GetInt() then
@@ -147,6 +150,7 @@ net.Receive("rgmprApplySkeleton", function(len, pl)
 		ent.rgmPRenttoid = {}
 		ent.rgmPRparent = data.parent
 		ent.rgmPRoffset = data.offset
+		ent.rgmPRaoffset = data.aoffset
 		for id, moredata in pairs(ents) do
 			ent.rgmPRidtoent[moredata.id] = moredata.ent
 			ent.rgmPRenttoid[moredata.ent] = moredata.id
@@ -160,6 +164,7 @@ net.Receive("rgmprApplySkeleton", function(len, pl)
 		end
 		data.parent = ent.rgmPRparent
 		data.offset = ent.rgmPRoffset
+		data.aoffset = ent.rgmPRaoffset
 
 		duplicator.StoreEntityModifier(ent, "Ragdoll Mover Prop Ragdoll", data)
 	end
@@ -257,6 +262,8 @@ local ENT_SELECTED = 0
 local ENT_CLEARED = 1
 local PROP_NOT_IN_SET = 6
 
+local IsEditingSliders = false
+
 local RGM_NOTIFY = {
 	[ENT_SELECTED] = false,
 	[ENT_CLEARED] = false,
@@ -282,6 +289,7 @@ local function RGMCallApplySkeleton()
 			net.WriteUInt(node.id, 13)
 			net.WriteUInt(node.parent or 4100, 13)
 			net.WriteVector(node.offset)
+			net.WriteAngle(node.aoffset)
 		end
 	net.SendToServer()
 end
@@ -508,16 +516,43 @@ local function CSlider(cpanel, axis, text)
 	local mround = math.Round
 
 	sliderman.OnValueChanged = function(self, val)
-		if self.busy then return end
-		self.busy = true
+		if IsEditingSliders then return end
+		IsEditingSliders = true
 		local node = PRUI.PRTree:GetSelectedItem()
 		if not IsValid(node) then 
-			self.busy = false
+			IsEditingSliders = false
 			return
 		end
 		node.offset[axis] = val
 		PRUI.PRTree.OffsetEntry:SetValue(mround(node.offset[1], 1) .. " " .. mround(node.offset[2], 1) .. " " .. mround(node.offset[3], 1))
-		self.busy = false
+		IsEditingSliders = false
+	end
+
+	cpanel:AddItem(sliderman)
+	return sliderman
+end
+local function CASlider(cpanel, axis, text)
+	local sliderman = vgui.Create("DNumSlider", cpanel)
+	sliderman:SetDark(true)
+	sliderman:SetText(text)
+	sliderman:SetDecimals(1)
+	sliderman:SetDefaultValue(0)
+	sliderman:SetMinMax(-360, 360)
+	sliderman:SetValue(0)
+
+	local mround = math.Round
+
+	sliderman.OnValueChanged = function(self, val)
+		if IsEditingSliders then return end
+		IsEditingSliders = true
+		local node = PRUI.PRTree:GetSelectedItem()
+		if not IsValid(node) then 
+			IsEditingSliders = false
+			return
+		end
+		node.aoffset[axis] = val
+		PRUI.PRTree.AOffsetEntry:SetValue(mround(node.aoffset[1], 1) .. " " .. mround(node.aoffset[2], 1) .. " " .. mround(node.aoffset[3], 1))
+		IsEditingSliders = false
 	end
 
 	cpanel:AddItem(sliderman)
@@ -546,6 +581,7 @@ local function AddPRNode(parent, node)
 	PRUI.PRTree.Nodes[id].ent = node.ent
 	PRUI.PRTree.Nodes[id].id = id
 	PRUI.PRTree.Nodes[id].offset = Vector(0, 0, 0)
+	PRUI.PRTree.Nodes[id].aoffset = Angle(0, 0, 0)
 	PRUI.PRTree.Nodes[id].parent = parent.id or nil
 	PRUI.PRTree.Nodes[id].depth = parent.depth and parent.depth + 1 or 1
 	PRUI.PRTree.Nodes[id]:Droppable("rgmPRMove")
@@ -689,6 +725,10 @@ local function PropRagdollCreator(cpanel)
 		PropRagdollUI.PRTree.Offsets[1]:SetValue(node.offset[1])
 		PropRagdollUI.PRTree.Offsets[2]:SetValue(node.offset[2])
 		PropRagdollUI.PRTree.Offsets[3]:SetValue(node.offset[3])
+
+		PropRagdollUI.PRTree.AOffsets[1]:SetValue(node.aoffset[1])
+		PropRagdollUI.PRTree.AOffsets[2]:SetValue(node.aoffset[2])
+		PropRagdollUI.PRTree.AOffsets[3]:SetValue(node.aoffset[3])
 	end
 
 	AddHBar(PropRagdollUI.PRTree)
@@ -699,16 +739,23 @@ local function PropRagdollCreator(cpanel)
 	PropRagdollUI.PRTree.OffsetEntry:SetValue("0 0 0")
 	PropRagdollUI.PRTree.OffsetEntry:SetUpdateOnType(true)
 	PropRagdollUI.PRTree.OffsetEntry.OnValueChange = function(self, value)
-		if self.busy then return end
-		self.busy = true
+		if IsEditingSliders then return end
+		IsEditingSliders = true
+		local node = PropRagdollUI.PRTree:GetSelectedItem()
+		if not IsValid(node) then 
+			IsEditingSliders = false
+			return
+		end
+
 		local values = string.Explode(" ", value)
 
 		for i = 1, 3 do
 			if values[i] and tonumber(values[i]) then
 				PropRagdollUI.PRTree.Offsets[i]:SetValue(tonumber(values[i]))
+				node.offset[i] = tonumber(values[i])
 			end
 		end
-		self.busy = false
+		IsEditingSliders = false
 	end
 	creatorpanel:AddItem(PropRagdollUI.PRTree.OffsetEntry)
 
@@ -717,6 +764,36 @@ local function PropRagdollCreator(cpanel)
 	PropRagdollUI.PRTree.Offsets[1] = CSlider(creatorpanel, 1, "X")
 	PropRagdollUI.PRTree.Offsets[2] = CSlider(creatorpanel, 2, "Y")
 	PropRagdollUI.PRTree.Offsets[3] = CSlider(creatorpanel, 3, "Z")
+
+	PropRagdollUI.PRTree.AOffsetEntry = vgui.Create("DTextEntry", creatorpanel)
+	PropRagdollUI.PRTree.AOffsetEntry:SetValue("0 0 0")
+	PropRagdollUI.PRTree.AOffsetEntry:SetUpdateOnType(true)
+	PropRagdollUI.PRTree.AOffsetEntry.OnValueChange = function(self, value)
+		if IsEditingSliders then return end
+		IsEditingSliders = true
+		local node = PropRagdollUI.PRTree:GetSelectedItem()
+		if not IsValid(node) then 
+			IsEditingSliders = false
+			return
+		end
+
+		local values = string.Explode(" ", value)
+
+		for i = 1, 3 do
+			if values[i] and tonumber(values[i]) then
+				PropRagdollUI.PRTree.AOffsets[i]:SetValue(tonumber(values[i]))
+				node.aoffset[i] = tonumber(values[i])
+			end
+		end
+		IsEditingSliders = false
+	end
+	creatorpanel:AddItem(PropRagdollUI.PRTree.AOffsetEntry)
+
+	PropRagdollUI.PRTree.AOffsets = {}
+
+	PropRagdollUI.PRTree.AOffsets[1] = CASlider(creatorpanel, 1, "#tool.ragdollmover.rot1")
+	PropRagdollUI.PRTree.AOffsets[2] = CASlider(creatorpanel, 2, "#tool.ragdollmover.rot2")
+	PropRagdollUI.PRTree.AOffsets[3] = CASlider(creatorpanel, 3, "#tool.ragdollmover.rot3")
 
 	local applybutt = vgui.Create("DButton", creatorpanel)
 	applybutt:SetText("#tool.ragmover_propragdoll.apply")
@@ -854,6 +931,7 @@ function TOOL:DrawHUD()
 			if not IsValid(ent) then break end
 			local pos = ent:GetPos()
 			pos = LocalToWorld(node.offset, angle_zero, pos, ent:GetAngles())
+
 			pos = pos:ToScreen()
 
 			local textpos = { x = pos.x + 5, y = pos.y - 5 }
@@ -883,7 +961,22 @@ function TOOL:DrawHUD()
 			local ypos = LocalToWorld(VECTOR_LEFT * 50, angle_zero, pos, ang)
 			local zpos = LocalToWorld(vector_up * 50, angle_zero, pos, ang)
 
+			_, ang = LocalToWorld(vector_origin, selnode.aoffset, vector_origin, ang)
+			local rxpos = LocalToWorld(VECTOR_FORWARD * 25, angle_zero, pos, ang)
+			local rypos = LocalToWorld(VECTOR_LEFT * 25, angle_zero, pos, ang)
+			local rzpos = LocalToWorld(vector_up * 25, angle_zero, pos, ang)
+
 			pos, xpos, ypos, zpos = pos:ToScreen(), xpos:ToScreen(), ypos:ToScreen(), zpos:ToScreen()
+			rxpos, rypos, rzpos = rxpos:ToScreen(), rypos:ToScreen(), rzpos:ToScreen()
+
+			surface.SetDrawColor(175, 0, 0)
+			surface.DrawLine(pos.x, pos.y, rxpos.x, rxpos.y)
+
+			surface.SetDrawColor(0, 175, 0)
+			surface.DrawLine(pos.x, pos.y, rypos.x, rypos.y)
+
+			surface.SetDrawColor(0, 0, 175)
+			surface.DrawLine(pos.x, pos.y, rzpos.x, rzpos.y)
 
 			surface.SetDrawColor(255, 0, 0)
 			surface.DrawLine(pos.x, pos.y, xpos.x, xpos.y)

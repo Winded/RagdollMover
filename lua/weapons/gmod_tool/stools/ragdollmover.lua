@@ -2344,8 +2344,8 @@ local function CManipSlider(cpanel, text, mode, axis, min, max, dec, textentry)
 	end
 
 	function slider:OnValueChanged(value)
-		if ManipSliderUpdating or self.busy then return end
-		self.busy = true
+		if ManipSliderUpdating then return end
+		ManipSliderUpdating = true
 		net.Start("rgmAdjustBone")
 		net.WriteInt(mode, 3)
 		net.WriteInt(axis, 3)
@@ -2353,7 +2353,7 @@ local function CManipSlider(cpanel, text, mode, axis, min, max, dec, textentry)
 		net.SendToServer()
 
 		textentry:SetValue(round(textentry.Sliders[1]:GetValue(), 2) .. " " .. round(textentry.Sliders[2]:GetValue(), 2) .. " " .. round(textentry.Sliders[3]:GetValue(), 2))
-		self.busy = false
+		ManipSliderUpdating = false
 	end
 
 	cpanel:AddItem(slider)
@@ -2365,16 +2365,22 @@ local function CManipEntry(cpanel, mode)
 	entry:SetValue("0 0 0")
 	entry:SetUpdateOnType(true)
 	entry.OnValueChange = function(self, value)
-		if ManipSliderUpdating or self.busy then return end
-		self.busy = true
+		if ManipSliderUpdating then return end
+		ManipSliderUpdating = true
 
 		local values = string.Explode(" ", value)
 		for i = 1, 3 do
 			if values[i] and tonumber(values[i]) and IsValid(entry.Sliders[i]) then
 				entry.Sliders[i]:SetValue(tonumber(values[i]))
+
+				net.Start("rgmAdjustBone")
+				net.WriteInt(mode, 3)
+				net.WriteInt(i, 3)
+				net.WriteFloat(tonumber(values[i]))
+				net.SendToServer()
 			end
 		end
-		self.busy = false
+		ManipSliderUpdating = false
 	end
 
 	local textfocusold = entry.OnGetFocus

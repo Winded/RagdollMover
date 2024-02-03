@@ -337,7 +337,7 @@ function ENT:Think()
 
 	if not pl.rgm.Moving or not rotate then
 		local entoffset = VECTOR_ORIGIN
-		if ent.rgmPRoffset then
+		if not scale and ent.rgmPRoffset and pl.rgm.IsPhysBone then
 			entoffset = ent.rgmPRoffset
 		end
 
@@ -378,7 +378,11 @@ function ENT:Think()
 
 	if not pl.rgm.Moving then -- Prevent whole thing from rotating when we do localized rotation - needed for proper angle reading
 		if localstate or scale or (not pl.rgm.IsPhysBone and rotate) then -- Non phys bones don't go well with world coordinates.
-			self:SetAngles(ang or angle_zero)
+			local moveang = ang
+			if not scale and ent.rgmPRaoffset and pl.rgm.IsPhysBone then
+				_, moveang = LocalToWorld(vector_origin, ent.rgmPRaoffset, vector_origin, ang or angle_zero)
+			end
+			self:SetAngles(moveang)
 			if not pl.rgm.IsPhysBone then
 				local manipang = ent:GetManipulateBoneAngles(bone)
 				self.DiscP:SetLocalAngles(Angle(0, 90 + manipang.y, 0)) -- Pitch follows Yaw angles
