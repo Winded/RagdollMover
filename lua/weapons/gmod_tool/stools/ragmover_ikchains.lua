@@ -19,16 +19,14 @@ local ikchains_iktypes = {
 	"tool.ragmover_ikchains.ik10"
 }
 
-local RGM_NOTIFY = {
-	BAD_ORDER = {id = 0, iserror = true},
-	SAME_BONE = {id = 1, iserror = true},
-	SUCCESS = {id = 2, iserror = false},
-	CHAIN_CLEARED = {id = 3, iserror = false},
-	ENT_SELECTED = {id = 4, iserror = false},
-	SAVE_SUCCESS = {id = 5, iserror = false},
-	SAVE_FAIL = {id = 6, iserror = true},
-	LOAD_SUCCESS = {id = 7, iserror = false}
-}
+local BAD_ORDER = 0
+local SAME_BONE = 1
+local SUCCESS = 2
+local CHAIN_CLEARED = 3
+local ENT_SELECTED = 4
+local SAVE_SUCCESS = 5
+local SAVE_FAIL = 6
+local LOAD_SUCCESS = 7
 
 local function PrettifyMDLName(name)
 	local tablething = string.Explode("/", name)
@@ -39,14 +37,14 @@ end
 
 local function rgmSendNotif(message, pl)
 	net.Start("rgmikMessage")
-	net.WriteUInt(message,5)
+		net.WriteUInt(message, 5)
 	net.Send(pl)
 end
 
 local function rgmSendBone(ent, physbone, pl)
 	net.Start("rgmikSendBone")
-	net.WriteEntity(ent)
-	net.WriteUInt(ent:TranslatePhysBoneToBone(physbone),10)
+		net.WriteEntity(ent)
+		net.WriteUInt(ent:TranslatePhysBoneToBone(physbone), 10)
 	net.Send(pl)
 end
 
@@ -81,7 +79,7 @@ end
 
 local function rgmSendEnt(ent, pl)
 	net.Start("rgmikSendEnt")
-	net.WriteEntity(ent)
+		net.WriteEntity(ent)
 	net.Send(pl)
 end
 
@@ -133,26 +131,26 @@ net.Receive("rgmikRequestSave", function(len, pl)
 
 	net.Start("rgmikSave")
 
-	net.WriteBool(ispropragdoll)
+		net.WriteBool(ispropragdoll)
 
-	net.WriteEntity(ent)
-	net.WriteUInt(num,4)
+		net.WriteEntity(ent)
+		net.WriteUInt(num, 4)
 
-	if not ispropragdoll then
-		for i = 1, num do
-			net.WriteUInt(iks[i].type, 4)
-			net.WriteUInt(ent:TranslatePhysBoneToBone(iks[i].hip), 10)
-			net.WriteUInt(ent:TranslatePhysBoneToBone(iks[i].knee), 10)
-			net.WriteUInt(ent:TranslatePhysBoneToBone(iks[i].foot), 10)
+		if not ispropragdoll then
+			for i = 1, num do
+				net.WriteUInt(iks[i].type, 4)
+				net.WriteUInt(ent:TranslatePhysBoneToBone(iks[i].hip), 10)
+				net.WriteUInt(ent:TranslatePhysBoneToBone(iks[i].knee), 10)
+				net.WriteUInt(ent:TranslatePhysBoneToBone(iks[i].foot), 10)
+			end
+		else
+			for i = 1, num do
+				net.WriteUInt(iks[i].type, 4)
+				net.WriteUInt(iks[i].hip, 13)
+				net.WriteUInt(iks[i].knee, 13)
+				net.WriteUInt(iks[i].foot, 13)
+			end
 		end
-	else
-		for i = 1, num do
-			net.WriteUInt(iks[i].type, 4)
-			net.WriteUInt(iks[i].hip, 13)
-			net.WriteUInt(iks[i].knee, 13)
-			net.WriteUInt(iks[i].foot, 13)
-		end
-	end
 
 	net.Send(pl)
 end)
@@ -231,7 +229,7 @@ function TOOL:LeftClick(tr)
 	elseif stage == 1 then
 		if ent ~= self.SelectedHipEnt and (not ent.rgmPRenttoid or not ent.rgmPRenttoid[self.SelectedHipEnt]) then return false end
 		if (not self.IsPropRagdoll and self.SelectedHip == tr.PhysicsBone) or (self.IsPropRagdoll and self.SelectedHipEnt == ent) then
-			if SERVER then rgmSendNotif(RGM_NOTIFY.SAME_BONE.id, self:GetOwner()) end
+			if SERVER then rgmSendNotif(SAME_BONE, self:GetOwner()) end
 			return false
 		end
 
@@ -247,19 +245,19 @@ function TOOL:LeftClick(tr)
 	else
 		if ent ~= self.SelectedHipEnt and (not ent.rgmPRenttoid or not ent.rgmPRenttoid[self.SelectedHipEnt]) then return false end
 		if (not self.IsPropRagdoll and (self.SelectedHip == tr.PhysicsBone or self.SelectedKnee == tr.PhysicsBone)) or (self.IsPropRagdoll and (self.SelectedHipEnt == ent or self.SelectedKneeEnt == ent)) then
-			if SERVER then rgmSendNotif(RGM_NOTIFY.SAME_BONE.id, self:GetOwner()) end
+			if SERVER then rgmSendNotif(SAME_BONE, self:GetOwner()) end
 			return false
 		end
 
 		if not self.IsPropRagdoll and RecursionBoneFind(self.SelectedHipEnt, tr.PhysicsBone, self.SelectedKnee) and RecursionBoneFind(self.SelectedHipEnt, self.SelectedKnee, self.SelectedHip) then
 			if SERVER then 
-				rgmSendNotif(RGM_NOTIFY.SUCCESS.id, self:GetOwner())
+				rgmSendNotif(SUCCESS, self:GetOwner())
 				rgmCallReset(self:GetOwner())
 			end
 
 			if not ent.rgmIKChains then ent.rgmIKChains = {} end
-			local Type = self:GetClientNumber("type",1)
-			ent.rgmIKChains[Type] = {hip = self.SelectedHip,knee = self.SelectedKnee,foot = tr.PhysicsBone,type = Type}
+			local Type = self:GetClientNumber("type", 1)
+			ent.rgmIKChains[Type] = {hip = self.SelectedHip, knee = self.SelectedKnee, foot = tr.PhysicsBone, type = Type}
 
 			self:SetStage(0)
 			self.SelectedHipEnt = nil
@@ -269,11 +267,11 @@ function TOOL:LeftClick(tr)
 			return true
 		elseif self.IsPropRagdoll and RecursionPropFind(ent, self.SelectedKneeEnt) and RecursionPropFind(self.SelectedKneeEnt, self.SelectedHipEnt) then
 			if SERVER then
-				rgmSendNotif(RGM_NOTIFY.SUCCESS.id, self:GetOwner())
+				rgmSendNotif(SUCCESS, self:GetOwner())
 				rgmCallReset(self:GetOwner())
 			end
 
-			local Type = self:GetClientNumber("type",1)
+			local Type = self:GetClientNumber("type", 1)
 			local IKTable = {hip = ent.rgmPRenttoid[self.SelectedHipEnt], knee = ent.rgmPRenttoid[self.SelectedKneeEnt], foot = ent.rgmPRenttoid[ent], type = Type}
 			for id, ent in pairs(ent.rgmPRidtoent) do
 				if not ent.rgmIKChains then ent.rgmIKChains = {} end
@@ -288,7 +286,7 @@ function TOOL:LeftClick(tr)
 			return true
 		else
 			if SERVER then 
-				rgmSendNotif(RGM_NOTIFY.BAD_ORDER.id, self:GetOwner())
+				rgmSendNotif(BAD_ORDER, self:GetOwner())
 				rgmCallReset(self:GetOwner())
 			end
 
@@ -312,7 +310,7 @@ function TOOL:RightClick(tr)
 			rgmSendEnt(ent, self:GetOwner())
 			self.SelectedSaveEnt = ent
 
-			rgmSendNotif(RGM_NOTIFY.ENT_SELECTED.id, self:GetOwner())
+			rgmSendNotif(ENT_SELECTED, self:GetOwner())
 		end
 
 		return true
@@ -323,9 +321,9 @@ end
 
 function TOOL:Reload(tr)
 	if self:GetStage() == 0 then
-		local Type = self:GetClientNumber("type",1)
+		local Type = self:GetClientNumber("type", 1)
 		if tr.Entity.rgmIKChains and tr.Entity.rgmIKChains[Type] then
-			if SERVER then rgmSendNotif(RGM_NOTIFY.CHAIN_CLEARED.id, self:GetOwner()) end
+			if SERVER then rgmSendNotif(CHAIN_CLEARED, self:GetOwner()) end
 			tr.Entity.rgmIKChains[Type] = nil
 		end
 		return true
@@ -346,14 +344,14 @@ function TOOL:Think()
 	local tr = pl:GetEyeTrace()
 	if IsValid(tr.Entity) and tr.Entity:GetClass() == "prop_ragdoll" then
 		net.Start("rgmikAimedBone")
-		net.WriteUInt(tr.Entity:TranslatePhysBoneToBone(tr.PhysicsBone),10)
+			net.WriteUInt(tr.Entity:TranslatePhysBoneToBone(tr.PhysicsBone), 10)
 
-		if PrevEnt[pl] ~= tr.Entity then
-			net.WriteBool(true)
-			rgmSendPhysBones(tr.Entity)
-		else
-			net.WriteBool(false)
-		end
+			if PrevEnt[pl] ~= tr.Entity then
+				net.WriteBool(true)
+				rgmSendPhysBones(tr.Entity)
+			else
+				net.WriteBool(false)
+			end
 
 		net.Send(pl)
 		PrevEnt[pl] = tr.Entity
@@ -369,6 +367,17 @@ local IK_DIR = "rgmik"
 local SelectedEntName = "none"
 local SelectedEnt = nil
 local ChainSavePanel = nil
+
+local RGM_NOTIFY = {
+	[BAD_ORDER] = true,
+	[SAME_BONE] = true,
+	[SUCCESS] = false,
+	[CHAIN_CLEARED] = false,
+	[ENT_SELECTED] = false,
+	[SAVE_SUCCESS] = false,
+	[SAVE_FAIL] = true,
+	[LOAD_SUCCESS] = false
+}
 
 local function ChainSaver(cpanel)
 	local main = vgui.Create("DPanel")
@@ -402,23 +411,23 @@ local function ChainSaver(cpanel)
 		local iktable = util.JSONToTable(json)
 
 		net.Start("rgmikLoad")
-		net.WriteBool(iktable.ispropragdoll)
-		net.WriteUInt(#iktable, 4)
-		if not iktable.ispropragdoll then
-			for k, ik in ipairs(iktable) do
-				net.WriteUInt(ik.type, 4)
-				net.WriteUInt(SelectedEnt:LookupBone(ik.hip) or 1023, 10)
-				net.WriteUInt(SelectedEnt:LookupBone(ik.knee) or 1023, 10)
-				net.WriteUInt(SelectedEnt:LookupBone(ik.foot) or 1023, 10)
+			net.WriteBool(iktable.ispropragdoll)
+			net.WriteUInt(#iktable, 4)
+			if not iktable.ispropragdoll then
+				for k, ik in ipairs(iktable) do
+					net.WriteUInt(ik.type, 4)
+					net.WriteUInt(SelectedEnt:LookupBone(ik.hip) or 1023, 10)
+					net.WriteUInt(SelectedEnt:LookupBone(ik.knee) or 1023, 10)
+					net.WriteUInt(SelectedEnt:LookupBone(ik.foot) or 1023, 10)
+				end
+			else
+				for k, ik in ipairs(iktable) do
+					net.WriteUInt(ik.type, 4)
+					net.WriteUInt(ik.hip, 13)
+					net.WriteUInt(ik.knee, 13)
+					net.WriteUInt(ik.foot, 13)
+				end
 			end
-		else
-			for k, ik in ipairs(iktable) do
-				net.WriteUInt(ik.type, 4)
-				net.WriteUInt(ik.hip, 13)
-				net.WriteUInt(ik.knee, 13)
-				net.WriteUInt(ik.foot, 13)
-			end
-		end
 		net.SendToServer()
 	end
 
@@ -426,14 +435,14 @@ local function ChainSaver(cpanel)
 	main.label:SetDark(true)
 
 	main.PerformLayout = function()
-		main.selector:SetPos(0,0)
-		main.selector:SetSize(main:GetWide(),20)
+		main.selector:SetPos(0, 0)
+		main.selector:SetSize(main:GetWide(), 20)
 
-		main.save:SetPos(0,25)
-		main.save:SetSize(main:GetWide()/2 - 20,20)
+		main.save:SetPos(0, 25)
+		main.save:SetSize(main:GetWide() / 2 - 20, 20)
 
-		main.load:SetPos(main:GetWide()/2 + 20,25)
-		main.load:SetSize(main:GetWide()/2 - 20,20)
+		main.load:SetPos(main:GetWide() / 2 + 20, 25)
+		main.load:SetSize(main:GetWide() / 2 - 20, 20)
 	end
 
 	main.SetText = function(self, text)
@@ -467,6 +476,8 @@ local function LimbSelection(cpanel)
 			main.text:SetText(language.GetPhrase("tool.ragmover_ikchains.ikslot") .. " " .. language.GetPhrase(ikchains_iktypes[k]))
 		end
 
+		local mceil = math.ceil
+
 		buttons[k].PerformLayout = function(self)
 			local x, y, tall
 
@@ -481,7 +492,7 @@ local function LimbSelection(cpanel)
 			elseif k < 5 then
 				y = 0
 			else
-				y = 130 + (math.ceil((k - 4) / 2) - 1)*25
+				y = 130 + (mceil((k - 4) / 2) - 1)*25
 			end
 
 			if k > 4 then
@@ -490,7 +501,7 @@ local function LimbSelection(cpanel)
 				tall = 50
 			end
 
-			self:SetPos(x,y)
+			self:SetPos(x, y)
 			self:SetSize(main:GetWide() / 2 - 5, tall)
 		end
 	end
@@ -536,11 +547,11 @@ function TOOL:DrawHUD()
 				if pbone ~= 1023 then
 					local ppos = aimedent:GetBonePosition(pbone)
 					ppos = ppos:ToScreen()
-					surface.SetDrawColor( 255, 255, 255, 255 )
+					surface.SetDrawColor(255, 255, 255, 255)
 					surface.DrawLine(ppos.x, ppos.y, pos.x, pos.y)
 				end
 
-				surface.DrawCircle(pos.x, pos.y, 2.5, Color(0,200,0,255))
+				surface.DrawCircle(pos.x, pos.y, 2.5, Color(0, 200, 0, 255))
 			end
 		end
 
@@ -548,44 +559,34 @@ function TOOL:DrawHUD()
 		local hipbone, kneebone = pl.ragdollmoverik_hip and pl.ragdollmoverik_hip.bone or 0, pl.ragdollmoverik_knee and pl.ragdollmoverik_knee.bone or 0
 		local hipent, kneeent = pl.ragdollmoverik_hip and pl.ragdollmoverik_hip.ent or nil, pl.ragdollmoverik_knee and pl.ragdollmoverik_knee.ent or nil
 		if aimedbone ~= hipbone and aimedbone ~= kneebone or aimedent ~= hipent and aimedent ~= kneeent then
-			rgm.DrawBoneName(aimedent,aimedbone)
+			rgm.DrawBoneName(aimedent, aimedbone)
 		end
 
 	end
 
-	local iktype = self:GetClientNumber("type",1)
+	local iktype = self:GetClientNumber("type", 1)
 	iktype = ((iktype == 3) or (iktype == 4)) and true or false
 
 	if pl.ragdollmoverik_hip and IsValid(pl.ragdollmoverik_hip.ent) then
 		local hipname = iktype and "#tool.ragmover_ikchains.upperarm" or "#tool.ragmover_ikchains.hip"
-		rgm.DrawBoneName(pl.ragdollmoverik_hip.ent,pl.ragdollmoverik_hip.bone,hipname)
+		rgm.DrawBoneName(pl.ragdollmoverik_hip.ent, pl.ragdollmoverik_hip.bone, hipname)
 	end
 
 	if pl.ragdollmoverik_knee and IsValid(pl.ragdollmoverik_knee.ent) then
 		local kneename = iktype and "#tool.ragmover_ikchains.elbow" or "#tool.ragmover_ikchains.knee"
-		rgm.DrawBoneName(pl.ragdollmoverik_knee.ent,pl.ragdollmoverik_knee.bone,kneename)
+		rgm.DrawBoneName(pl.ragdollmoverik_knee.ent, pl.ragdollmoverik_knee.bone, kneename)
 	end
 
 end
 
 local function rgmDoNotification(message)
-	local MessageTable = {}
-
-	for key, data in pairs(RGM_NOTIFY) do
-		if not data.iserror then
-			MessageTable[data.id] = function()
-				notification.AddLegacy("#tool.ragmover_ikchains.message" .. data.id, NOTIFY_GENERIC, 5)
-				surface.PlaySound("buttons/button14.wav")
-			end
-		else
-			MessageTable[data.id] = function()
-				notification.AddLegacy("#tool.ragmover_ikchains.message" .. data.id, NOTIFY_ERROR, 5)
-				surface.PlaySound("buttons/button10.wav")
-			end
-		end
+	if RGM_NOTIFY[message] == true then
+		notification.AddLegacy("#tool.ragmover_ikchains.message" .. message, NOTIFY_ERROR, 5)
+		surface.PlaySound("buttons/button10.wav")
+	elseif RGM_NOTIFY[message] == false then
+		notification.AddLegacy("#tool.ragmover_ikchains.message" .. message, NOTIFY_GENERIC, 5)
+		surface.PlaySound("buttons/button14.wav")
 	end
-
-	MessageTable[message]()
 end
 
 net.Receive("rgmikMessage", function(len)
@@ -611,9 +612,9 @@ net.Receive("rgmikSendBone", function(len)
 
 	local stage = tool:GetStage()
 	if stage == 0 then
-		pl.ragdollmoverik_hip = { bone = bone, ent = ent }
+		pl.ragdollmoverik_hip = {bone = bone, ent = ent}
 	elseif stage == 1 then
-		pl.ragdollmoverik_knee = { bone = bone, ent = ent }
+		pl.ragdollmoverik_knee = {bone = bone, ent = ent}
 	end
 end)
 

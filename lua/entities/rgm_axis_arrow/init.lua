@@ -3,13 +3,13 @@ include("shared.lua")
 AddCSLuaFile("cl_init.lua")
 AddCSLuaFile("shared.lua")
 
-function ENT:ProcessMovement(offpos,offang,eyepos,eyeang,ent,bone,ppos,pnorm, movetype, garbage, StartGrab, NPhysPos)
-	local intersect = self:GetGrabPos(eyepos,eyeang,ppos)
+function ENT:ProcessMovement(offpos, _, eyepos, eyeang, ent, bone, ppos, _, movetype, _, _, nphyspos)
+	local intersect = self:GetGrabPos(eyepos, eyeang, ppos)
 	local localized = self:WorldToLocal(intersect)
 	local axis = self:GetParent()
 	local offset = axis.Owner.rgm.GizmoOffset
 	local entoffset = vector_origin
-	if axis.localizedoffset then
+	if axis.localoffset then
 		offset = LocalToWorld(offset, angle_zero, axis:GetPos(), axis.LocalAngles)
 		offset =  offset - axis:GetPos()
 	end
@@ -23,10 +23,10 @@ function ENT:ProcessMovement(offpos,offang,eyepos,eyeang,ent,bone,ppos,pnorm, mo
 
 	if movetype == 1 then
 		local obj = ent:GetPhysicsObjectNum(bone)
-		localized = Vector(localized.x,0,0)
+		localized = Vector(localized.x, 0, 0)
 		intersect = self:LocalToWorld(localized)
 		ang = obj:GetAngles()
-		pos = LocalToWorld(Vector(offpos.x,0,0),angle_zero,intersect - offset,selfangle)
+		pos = LocalToWorld(Vector(offpos.x, 0, 0), angle_zero, intersect - offset, selfangle)
 	elseif movetype == 2 then
 		local finalpos, boneang
 		local pl = self:GetParent().Owner
@@ -38,7 +38,7 @@ function ENT:ProcessMovement(offpos,offang,eyepos,eyeang,ent,bone,ppos,pnorm, mo
 				local _ , pang = ent:GetBonePosition(ent:GetBoneParent(bone))
 
 				local _, diff = WorldToLocal(vector_origin, boneang, vector_origin, pang)
-				_, boneang = LocalToWorld(vector_origin, diff, vector_origin, pl.rgm.GizmoParent)
+				_, boneang = LocalToWorld(vector_origin, diff, vector_origin, axis.GizmoParent)
 			end
 		else
 			if IsValid(ent) then
@@ -48,19 +48,19 @@ function ENT:ProcessMovement(offpos,offang,eyepos,eyeang,ent,bone,ppos,pnorm, mo
 			end
 		end
 
-		intersect = self:LocalToWorld(Vector(localized.x,0,0))
-		localized = LocalToWorld(Vector(offpos.x,0,0),angle_zero,intersect,self:GetAngles())
+		intersect = self:LocalToWorld(Vector(localized.x, 0, 0))
+		localized = LocalToWorld(Vector(offpos.x, 0, 0), angle_zero, intersect, self:GetAngles())
 		localized = WorldToLocal(localized, angle_zero, self:GetPos(), boneang)
 
-		finalpos = NPhysPos + localized
+		finalpos = nphyspos + localized
 		ang = ent:GetManipulateBoneAngles(bone)
 		pos = finalpos
 	elseif movetype == 0 then
-		localized = Vector(localized.x,0,0)
+		localized = Vector(localized.x, 0, 0)
 		intersect = self:LocalToWorld(localized)
 		ang = ent:GetLocalAngles()
-		pos = LocalToWorld(Vector(offpos.x,0,0),angle_zero,intersect - offset,selfangle)
+		pos = LocalToWorld(Vector(offpos.x, 0, 0), angle_zero, intersect - offset, selfangle)
 		pos = ent:GetParent():WorldToLocal(pos)
 	end
-	return pos,ang
+	return pos, ang
 end

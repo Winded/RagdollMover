@@ -7,5 +7,5 @@ ENT.DisableDuplicator = true
 ENT.DoNotDuplicate = true
 
 --To be overwritten
-function ENT:ProcessMovement(offpos,offang,eyepos,eyeang,norm)
+function ENT:ProcessMovement(offpos, offang, eyepos, eyeang, norm)
 end

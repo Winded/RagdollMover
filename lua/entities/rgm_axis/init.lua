@@ -6,14 +6,10 @@ AddCSLuaFile("shared.lua")
 ENT.DisableDuplicator = true
 ENT.DoNotDuplicate = true
 
-local TYPE_ARROW = 1
-local TYPE_ARROWSIDE = 2
-local TYPE_DISC = 3
-
-local VECTOR_ORIGIN = Vector(0,0,0)
-local VECTOR_FRONT = Vector(1,0,0)
-local ANGLE_DISC = Angle(0,90,0)
-local ANGLE_ARROW_OFFSET = Angle(0,90,90)
+local VECTOR_ORIGIN = Vector(0, 0, 0)
+local VECTOR_FRONT = Vector(1, 0, 0)
+local ANGLE_DISC = Angle(0, 90, 0)
+local ANGLE_ARROW_OFFSET = Angle(0, 90, 90)
 
 util.AddNetworkString("rgmAxisRequest")
 util.AddNetworkString("rgmAxis")
@@ -50,154 +46,142 @@ function ENT:Setup()
 	self.ArrowOmni = ents.Create("rgm_axis_side_omni")
 		self.ArrowOmni:SetParent(self)
 		self.ArrowOmni:Spawn()
-		self.ArrowOmni:SetColor(Color(255,165,0,255))
-		self.ArrowOmni:SetNWVector("color2",Vector(255,165,0))
-		self.ArrowOmni:SetLocalPos(Vector(0,0,0))
-		self.ArrowOmni:SetLocalAngles(Vector(1,0,0):Angle())
+		self.ArrowOmni:SetColor(Color(255, 165, 0, 255))
+		self.ArrowOmni:SetLocalPos(Vector(0, 0, 0))
+		self.ArrowOmni:SetLocalAngles(Vector(1, 0, 0):Angle())
 
 	--Arrows
 	self.ArrowX = ents.Create("rgm_axis_arrow")
 		self.ArrowX:SetParent(self)
 		self.ArrowX:Spawn()
-		self.ArrowX:SetColor(Color(255,0,0,255))
-		self.ArrowX:SetLocalPos(Vector(0,0,0))
-		self.ArrowX:SetLocalAngles(Vector(1,0,0):Angle())
+		self.ArrowX:SetColor(Color(255, 0, 0, 255))
+		self.ArrowX:SetLocalPos(Vector(0, 0, 0))
+		self.ArrowX:SetLocalAngles(Vector(1, 0, 0):Angle())
 		self.ArrowX.axistype = 1
 
 	self.ArrowY = ents.Create("rgm_axis_arrow")
 		self.ArrowY:SetParent(self)
 		self.ArrowY:Spawn()
-		self.ArrowY:SetColor(Color(0,255,0,255))
-		self.ArrowY:SetLocalPos(Vector(0,0,0))
-		self.ArrowY:SetLocalAngles(Vector(0,1,0):Angle())
+		self.ArrowY:SetColor(Color(0, 255, 0, 255))
+		self.ArrowY:SetLocalPos(Vector(0, 0, 0))
+		self.ArrowY:SetLocalAngles(Vector(0, 1, 0):Angle())
 		self.ArrowY.axistype = 2
 
 	self.ArrowZ = ents.Create("rgm_axis_arrow")
 		self.ArrowZ:SetParent(self)
 		self.ArrowZ:Spawn()
-		self.ArrowZ:SetColor(Color(0,0,255,255))
-		self.ArrowZ:SetLocalPos(Vector(0,0,0))
-		self.ArrowZ:SetLocalAngles(Vector(0,0,1):Angle())
+		self.ArrowZ:SetColor(Color(0, 0, 255, 255))
+		self.ArrowZ:SetLocalPos(Vector(0, 0, 0))
+		self.ArrowZ:SetLocalAngles(Vector(0, 0, 1):Angle())
 		self.ArrowZ.axistype = 3
 
 	--Arrow sides
 	self.ArrowXY = ents.Create("rgm_axis_side")
 		self.ArrowXY:SetParent(self)
 		self.ArrowXY:Spawn()
-		self.ArrowXY:SetColor(Color(0,255,0,255))
-		self.ArrowXY:SetNWVector("color2",Vector(255,0,0))
-		self.ArrowXY:SetNWInt("type",TYPE_ARROWSIDE)
-		self.ArrowXY:SetLocalPos(Vector(0,0,0))
-		self.ArrowXY:SetLocalAngles(Vector(0,0,-1):Angle())
+		self.ArrowXY:SetColor(Color(0, 255, 0, 255))
+		self.ArrowXY:SetNWVector("color2", Vector(255, 0, 0))
+		self.ArrowXY:SetLocalPos(Vector(0, 0, 0))
+		self.ArrowXY:SetLocalAngles(Vector(0, 0, -1):Angle())
 
 	self.ArrowXZ = ents.Create("rgm_axis_side")
 		self.ArrowXZ:SetParent(self)
 		self.ArrowXZ:Spawn()
-		self.ArrowXZ:SetColor(Color(255,0,0,255))
-		self.ArrowXZ:SetNWVector("color2",Vector(0,0,255))
-		self.ArrowXZ:SetNWInt("type",TYPE_ARROWSIDE)
-		self.ArrowXZ:SetLocalPos(Vector(0,0,0))
-		self.ArrowXZ:SetLocalAngles(Vector(0,-1,0):Angle())
+		self.ArrowXZ:SetColor(Color(255, 0, 0, 255))
+		self.ArrowXZ:SetNWVector("color2", Vector(0, 0, 255))
+		self.ArrowXZ:SetLocalPos(Vector(0, 0, 0))
+		self.ArrowXZ:SetLocalAngles(Vector(0, -1, 0):Angle())
 
 	self.ArrowYZ = ents.Create("rgm_axis_side")
 		self.ArrowYZ:SetParent(self)
 		self.ArrowYZ:Spawn()
-		self.ArrowYZ:SetColor(Color(0,255,0,255))
-		self.ArrowYZ:SetNWVector("color2",Vector(0,0,255))
-		self.ArrowYZ:SetNWInt("type",TYPE_ARROWSIDE)
-		self.ArrowYZ:SetLocalPos(Vector(0,0,0))
-		self.ArrowYZ:SetLocalAngles(Vector(1,0,0):Angle())
+		self.ArrowYZ:SetColor(Color(0, 255, 0, 255))
+		self.ArrowYZ:SetNWVector("color2", Vector(0, 0, 255))
+		self.ArrowYZ:SetLocalPos(Vector(0, 0, 0))
+		self.ArrowYZ:SetLocalAngles(Vector(1, 0, 0):Angle())
 
 	--Discs
 	self.DiscP = ents.Create("rgm_axis_disc")
 		self.DiscP:SetParent(self)
 		self.DiscP:Spawn()
-		self.DiscP:SetColor(Color(255,0,0,255))
-		self.DiscP:SetNWInt("type",TYPE_DISC)
-		self.DiscP:SetLocalPos(Vector(0,0,0))
-		self.DiscP:SetLocalAngles(Vector(0,1,0):Angle()) -- 0 90 0
+		self.DiscP:SetColor(Color(255, 0, 0, 255))
+		self.DiscP:SetLocalPos(Vector(0, 0, 0))
+		self.DiscP:SetLocalAngles(Vector(0, 1, 0):Angle()) -- 0 90 0
 		self.DiscP.axistype = 1 -- axistype is a variable to help with setting non physical bones - 1 for pitch, 2 yaw, 3 roll, 4 for the big one
 
 	self.DiscY = ents.Create("rgm_axis_disc")
 		self.DiscY:SetParent(self)
 		self.DiscY:Spawn()
-		self.DiscY:SetColor(Color(0,255,0,255))
-		self.DiscY:SetNWInt("type",TYPE_DISC)
-		self.DiscY:SetLocalPos(Vector(0,0,0))
-		self.DiscY:SetLocalAngles(Vector(0,0,1):Angle()) -- 270 0 0
+		self.DiscY:SetColor(Color(0, 255, 0, 255))
+		self.DiscY:SetLocalPos(Vector(0, 0, 0))
+		self.DiscY:SetLocalAngles(Vector(0, 0, 1):Angle()) -- 270 0 0
 		self.DiscY.axistype = 2
 
 	self.DiscR = ents.Create("rgm_axis_disc")
 		self.DiscR:SetParent(self)
 		self.DiscR:Spawn()
-		self.DiscR:SetColor(Color(0,0,255,255))
-		self.DiscR:SetNWInt("type",TYPE_DISC)
-		self.DiscR:SetLocalPos(Vector(0,0,0))
-		self.DiscR:SetLocalAngles(Vector(1,0,0):Angle()) -- 0 0 0
+		self.DiscR:SetColor(Color(0, 0, 255, 255))
+		self.DiscR:SetLocalPos(Vector(0, 0, 0))
+		self.DiscR:SetLocalAngles(Vector(1, 0, 0):Angle()) -- 0 0 0
 		self.DiscR.axistype = 3
 
 	self.DiscLarge = ents.Create("rgm_axis_disc_large")
 		self.DiscLarge:SetParent(self)
 		self.DiscLarge:Spawn()
-		self.DiscLarge:SetColor(Color(175,175,175,255))
-		self.DiscLarge:SetNWVector("color2",Vector(88,88,88))
-		self.DiscLarge:SetNWInt("type",TYPE_DISC)
-		self.DiscLarge:SetLocalPos(Vector(0,0,0))
-		self.DiscLarge:SetLocalAngles(Vector(1,0,0):Angle()) --This will be constantly changed
+		self.DiscLarge:SetColor(Color(175, 175, 175, 255))
+		self.DiscLarge:SetLocalPos(Vector(0, 0, 0))
+		self.DiscLarge:SetLocalAngles(Vector(1, 0, 0):Angle()) --This will be constantly changed
 		self.DiscLarge.axistype = 4
 
 	--Scale arrows
 	self.ScaleX = ents.Create("rgm_axis_scale_arrow")
 		self.ScaleX:SetParent(self)
 		self.ScaleX:Spawn()
-		self.ScaleX:SetColor(Color(255,0,0,255))
-		self.ScaleX:SetLocalPos(Vector(0,0,0))
-		self.ScaleX:SetLocalAngles(Vector(1,0,0):Angle())
+		self.ScaleX:SetColor(Color(255, 0, 0, 255))
+		self.ScaleX:SetLocalPos(Vector(0, 0, 0))
+		self.ScaleX:SetLocalAngles(Vector(1, 0, 0):Angle())
 		self.ScaleX.axistype = 1
 
 	self.ScaleY = ents.Create("rgm_axis_scale_arrow")
 		self.ScaleY:SetParent(self)
 		self.ScaleY:Spawn()
-		self.ScaleY:SetColor(Color(0,255,0,255))
-		self.ScaleY:SetLocalPos(Vector(0,0,0))
-		self.ScaleY:SetLocalAngles(Vector(0,1,0):Angle())
+		self.ScaleY:SetColor(Color(0, 255, 0, 255))
+		self.ScaleY:SetLocalPos(Vector(0, 0, 0))
+		self.ScaleY:SetLocalAngles(Vector(0, 1, 0):Angle())
 		self.ScaleY.axistype = 2
 
 	self.ScaleZ = ents.Create("rgm_axis_scale_arrow")
 		self.ScaleZ:SetParent(self)
 		self.ScaleZ:Spawn()
-		self.ScaleZ:SetColor(Color(0,0,255,255))
-		self.ScaleZ:SetLocalPos(Vector(0,0,0))
-		self.ScaleZ:SetLocalAngles(Vector(0,0,1):Angle())
+		self.ScaleZ:SetColor(Color(0, 0, 255, 255))
+		self.ScaleZ:SetLocalPos(Vector(0, 0, 0))
+		self.ScaleZ:SetLocalAngles(Vector(0, 0, 1):Angle())
 		self.ScaleZ.axistype = 3
 
 	--Arrow sides
 	self.ScaleXY = ents.Create("rgm_axis_scale_side")
 		self.ScaleXY:SetParent(self)
 		self.ScaleXY:Spawn()
-		self.ScaleXY:SetColor(Color(0,255,0,255))
-		self.ScaleXY:SetNWVector("color2",Vector(255,0,0))
-		self.ScaleXY:SetNWInt("type",TYPE_ARROWSIDE)
-		self.ScaleXY:SetLocalPos(Vector(0,0,0))
-		self.ScaleXY:SetLocalAngles(Vector(0,0,-1):Angle())
+		self.ScaleXY:SetColor(Color(0, 255, 0, 255))
+		self.ScaleXY:SetNWVector("color2", Vector(255, 0, 0))
+		self.ScaleXY:SetLocalPos(Vector(0, 0, 0))
+		self.ScaleXY:SetLocalAngles(Vector(0, 0, -1):Angle())
 
 	self.ScaleXZ = ents.Create("rgm_axis_scale_side")
 		self.ScaleXZ:SetParent(self)
 		self.ScaleXZ:Spawn()
-		self.ScaleXZ:SetColor(Color(255,0,0,255))
-		self.ScaleXZ:SetNWVector("color2",Vector(0,0,255))
-		self.ScaleXZ:SetNWInt("type",TYPE_ARROWSIDE)
-		self.ScaleXZ:SetLocalPos(Vector(0,0,0))
-		self.ScaleXZ:SetLocalAngles(Vector(0,-1,0):Angle())
+		self.ScaleXZ:SetColor(Color(255, 0, 0, 255))
+		self.ScaleXZ:SetNWVector("color2", Vector(0, 0, 255))
+		self.ScaleXZ:SetLocalPos(Vector(0, 0, 0))
+		self.ScaleXZ:SetLocalAngles(Vector(0, -1, 0):Angle())
 
 	self.ScaleYZ = ents.Create("rgm_axis_scale_side")
 		self.ScaleYZ:SetParent(self)
 		self.ScaleYZ:Spawn()
-		self.ScaleYZ:SetColor(Color(0,255,0,255))
-		self.ScaleYZ:SetNWVector("color2",Vector(0,0,255))
-		self.ScaleYZ:SetNWInt("type",TYPE_ARROWSIDE)
-		self.ScaleYZ:SetLocalPos(Vector(0,0,0))
-		self.ScaleYZ:SetLocalAngles(Vector(1,0,0):Angle())
+		self.ScaleYZ:SetColor(Color(0, 255, 0, 255))
+		self.ScaleYZ:SetNWVector("color2", Vector(0, 0, 255))
+		self.ScaleYZ:SetLocalPos(Vector(0, 0, 0))
+		self.ScaleYZ:SetLocalAngles(Vector(1, 0, 0):Angle())
 
 	self.Axises = {
 		self.ArrowOmni,
@@ -225,15 +209,13 @@ end
 
 net.Receive("rgmAxisRequest", function(len, pl)
 	timer.Simple(0.5, function()
+		local Axis = pl.rgm.Axis
 
-	local Axis = pl.rgm.Axis
-
-	if not Axis.Axises then
-		Axis:Setup()
-	end
-
-	SendAxisToPlayer(Axis, pl)
-
+		if not Axis.Axises then
+			Axis:Setup()
+		else
+			SendAxisToPlayer(Axis, pl)
+		end
 	end)
 end)
 
@@ -245,10 +227,23 @@ function ENT:Think()
 	local bone = pl.rgm.PhysBone
 	if not IsValid(ent) or not pl.rgm.Bone or not self.Axises then return end
 
+	if pl.rgm.GizmoParentID and pl.rgm.GizmoParentID ~= -1 and pl.rgm.GizmoParent then
+		local physobj = ent:GetPhysicsObjectNum(pl.rgm.GizmoParentID)
+		if physobj then
+			_, self.GizmoParent = LocalToWorld(vector_origin, pl.rgm.GizmoParent, physobj:GetPos(), physobj:GetAngles())
+		else
+			return
+		end
+	elseif pl.rgm.GizmoParent then
+		_, self.GizmoParent = LocalToWorld(vector_origin, pl.rgm.GizmoParent, ent:GetPos(), ent:GetAngles())
+	else
+		self.GizmoParent = angle_zero
+	end
+
 	local pos, ang
 	local rotate = pl.rgm.Rotate or false
 	local scale = pl.rgm.Scale or false
-	local offset, offsetlocal = pl.rgm.GizmoOffset, self.localizedoffset
+	local offset, offsetlocal = pl.rgm.GizmoOffset, self.localoffset
 
 	if IsValid(ent:GetParent()) and pl.rgm.Bone == 0 and not ent:IsEffectActive(EF_BONEMERGE) and not (ent:GetClass() == "prop_ragdoll") then
 		pos = ent:GetParent():LocalToWorld(ent:GetLocalPos())
@@ -260,14 +255,24 @@ function ENT:Think()
 
 	else
 		bone = pl.rgm.Bone
-		if not pl.rgm.GizmoPos then
+		if not self.GizmoPos then
 			local matrix = ent:GetBoneMatrix(bone)
 			pos = ent:GetBonePosition(bone)
 			if pos == ent:GetPos() then
 				pos = matrix:GetTranslation()
 			end
 		else
-			pos = pl.rgm.GizmoPos
+			if pl.rgm.GizmoParentID then
+				if pl.rgm.GizmoParentID ~= -1 then
+					local physobj = ent:GetPhysicsObjectNum(pl.rgm.GizmoParentID)
+					pos = LocalToWorld(self.GizmoPos, self.GizmoAng, physobj:GetPos(), physobj:GetAngles())
+				else
+					pos = LocalToWorld(self.GizmoPos, self.GizmoAng, ent:GetPos(), ent:GetAngles())
+				end
+			else
+				pos = self.GizmoPos
+			end
+			
 		end
 	end
 	if IsValid(ent:GetParent()) and pl.rgm.Bone == 0 and not ent:IsEffectActive(EF_BONEMERGE) and not (ent:GetClass() == "prop_ragdoll") and not scale then
@@ -289,7 +294,7 @@ function ENT:Think()
 						_ , ang = ent:GetBonePosition(bone)
 
 						local _, diff = WorldToLocal(vector_origin, ang, vector_origin, pang)
-						_, ang = LocalToWorld(vector_origin, diff, vector_origin, pl.rgm.GizmoParent)
+						_, ang = LocalToWorld(vector_origin, diff, vector_origin, self.GizmoParent)
 					else
 						local manang = ent:GetManipulateBoneAngles(bone)
 						manang:Normalize()
@@ -303,15 +308,24 @@ function ENT:Think()
 			else
 				_ , ang = ent:GetBonePosition(bone)
 			end
-		elseif scale and pl.rgm.GizmoAng then
-			ang = pl.rgm.GizmoAng
+		elseif scale and self.GizmoAng then
+			if pl.rgm.GizmoParentID then
+				if pl.rgm.GizmoParentID ~= -1 then
+					local physobj = ent:GetPhysicsObjectNum(pl.rgm.GizmoParentID)
+					_, ang = LocalToWorld(vector_origin, self.GizmoAng, physobj:GetPos(), physobj:GetAngles())
+				else
+					_, ang = LocalToWorld(vector_origin, self.GizmoAng, ent:GetPos(), ent:GetAngles())
+				end
+			else
+				ang = self.GizmoAng
+			end
 		else
 			if ent:GetBoneParent(bone) ~= -1 then
 				if not pl.rgm.GizmoParent then
 					local matrix = ent:GetBoneMatrix(ent:GetBoneParent(bone)) -- never would have guessed that when moving bones they use angles of their parent bone rather than their own angles. happened to get to know that after looking at vanilla bone manipulator!
 					ang = matrix:GetAngles()
 				else
-					ang = pl.rgm.GizmoParent
+					ang = self.GizmoParent
 				end
 			else
 				if IsValid(ent) then
@@ -323,7 +337,7 @@ function ENT:Think()
 
 	if not pl.rgm.Moving or not rotate then
 		local entoffset = VECTOR_ORIGIN
-		if ent.rgmPRoffset then
+		if not scale and ent.rgmPRoffset and pl.rgm.IsPhysBone then
 			entoffset = ent.rgmPRoffset
 		end
 
@@ -331,7 +345,22 @@ function ENT:Think()
 			if IsValid(ent:GetParent()) and pl.rgm.Bone == 0 and not ent:IsEffectActive(EF_BONEMERGE) and not (ent:GetClass() == "prop_ragdoll") then
 				self:SetPos(LocalToWorld(offset + entoffset, angle_zero, pos, ent:GetParent():LocalToWorldAngles(ent:GetLocalAngles())))
 			else
-				self:SetPos(LocalToWorld(offset + entoffset, angle_zero, pos, ang))
+				if pl.rgm.IsPhysBone then
+					self:SetPos(LocalToWorld(offset + entoffset, angle_zero, pos, ang))
+				else
+					local offsetang
+					if pl.rgm.GizmoParentID then
+						if pl.rgm.GizmoParentID ~= -1 then
+							local physobj = ent:GetPhysicsObjectNum(pl.rgm.GizmoParentID)
+							_, offsetang = LocalToWorld(vector_origin, self.GizmoAng, physobj:GetPos(), physobj:GetAngles())
+						else
+							_, offsetang = LocalToWorld(vector_origin, self.GizmoAng, ent:GetPos(), ent:GetAngles())
+						end
+					else
+						offsetang = self.GizmoAng
+					end
+					self:SetPos(LocalToWorld(offset + entoffset, angle_zero, pos, offsetang))
+				end
 			end
 		else
 			if ent.rgmPRoffset then
@@ -342,17 +371,22 @@ function ENT:Think()
 		end
 	end
 
-	local localstate = self.localizedpos
+	local localstate = self.localpos
 	if rotate then 
-		localstate = self.localizedang
+		localstate = self.localang
 	end
 
 	if not pl.rgm.Moving then -- Prevent whole thing from rotating when we do localized rotation - needed for proper angle reading
-		if localstate or scale or (not pl.rgm.IsPhysBone and rotate) then -- Non phys bones don't go well with world coordinates. Well, I didn't make them to behave with those
-			self:SetAngles(ang or angle_zero)
+		if localstate or scale or (not pl.rgm.IsPhysBone and rotate) then -- Non phys bones don't go well with world coordinates.
+			local moveang = ang
+			if not scale and ent.rgmPRaoffset and pl.rgm.IsPhysBone then
+				_, moveang = LocalToWorld(vector_origin, ent.rgmPRaoffset, vector_origin, ang or angle_zero)
+			end
+			self:SetAngles(moveang)
 			if not pl.rgm.IsPhysBone then
-				self.DiscP:SetLocalAngles(Angle(0, 90 + ent:GetManipulateBoneAngles(bone).y, 0)) -- Pitch follows Yaw angles
-				self.DiscR:SetLocalAngles(Angle(0 + ent:GetManipulateBoneAngles(bone).x, 0 + ent:GetManipulateBoneAngles(bone).y, 0)) -- Roll follows Pitch and Yaw angles
+				local manipang = ent:GetManipulateBoneAngles(bone)
+				self.DiscP:SetLocalAngles(Angle(0, 90 + manipang.y, 0)) -- Pitch follows Yaw angles
+				self.DiscR:SetLocalAngles(Angle(0 + manipang.x, 0 + manipang.y, 0)) -- Roll follows Pitch and Yaw angles
 			else
 				self.DiscP:SetLocalAngles(ANGLE_DISC)
 				self.DiscR:SetLocalAngles(angle_zero)
@@ -364,6 +398,7 @@ function ENT:Think()
 		end
 		self.LocalAngles = ang
 		self.BonePos = pos
+		self.NMBonePos = LocalToWorld(-ent:GetManipulateBonePosition(bone), angle_zero, pos, self.GizmoParent)
 	end
 
 	local pos, poseye = self:GetPos(), pl:EyePos()
@@ -375,7 +410,7 @@ function ENT:Think()
 
 	pos, poseye = self:WorldToLocal(pos), self:WorldToLocal(poseye)
 	local xangle, yangle = (Vector(pos.y, pos.z, 0) - Vector(poseye.y, poseye.z, 0)):Angle(), (Vector(pos.x, pos.z, 0) - Vector(poseye.x, poseye.z, 0)):Angle()
-	local XAng, YAng, ZAng = Angle(0, 0, xangle.y + 90) + VECTOR_FRONT:Angle(), ANGLE_ARROW_OFFSET - Angle(0,0,yangle.y), Angle(0, ang.y, 0) + vector_up:Angle()
+	local XAng, YAng, ZAng = Angle(0, 0, xangle.y + 90) + VECTOR_FRONT:Angle(), ANGLE_ARROW_OFFSET - Angle(0, 0, yangle.y), Angle(0, ang.y, 0) + vector_up:Angle()
 	self.ArrowX:SetLocalAngles(XAng)
 	self.ScaleX:SetLocalAngles(XAng)
 	self.ArrowY:SetLocalAngles(YAng)
@@ -389,6 +424,6 @@ function ENT:Think()
 		self.ArrowZ.GizmoAngle = self.ArrowZ:GetAngles()
 	end
 
-	self:NextThink(CurTime()+0.001)
+	self:NextThink(CurTime() + 0.001)
 	return true
 end
