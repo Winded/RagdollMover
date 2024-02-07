@@ -56,21 +56,22 @@ end
 local function rgmSendPhysBones(ent)
 	local num = ent:GetPhysicsObjectCount()
 
-	net.WriteUInt(num, 10)
+	net.WriteUInt(num, 6)
 
-	for i = 0, num do
+	for i = 0, num - 1 do
 		net.WriteUInt(ent:TranslatePhysBoneToBone(i), 10)
 
 		local parent = rgm.GetPhysBoneParent(ent, i)
-		parent = not parent and 1023 or ent:TranslatePhysBoneToBone(parent) -- 512 should be the absolute maximum bone amount, with those .dmx that sfm has
+		parent = parent and ent:TranslatePhysBoneToBone(parent) or 1023
 		net.WriteUInt(parent, 10)
 	end
 end
 
 local function rgmReceivePhysBones()
 	local bones = {}
+	local num = net.ReadUInt(6)
 
-	for i = 0, net.ReadUInt(10) do
+	for i = 0, num - 1 do
 		bones[net.ReadUInt(10)] = net.ReadUInt(10)
 	end
 
@@ -392,14 +393,14 @@ local function ChainSaver(cpanel)
 	end
 
 	main.save = vgui.Create("DButton", main)
-	main.save:SetText("Save")
+	main.save:SetText("#tool.ragmover_ikchains.save")
 	main.save.DoClick = function()
 		net.Start("rgmikRequestSave")
 		net.SendToServer()
 	end
 
 	main.load = vgui.Create("DButton", main)
-	main.load:SetText("Load")
+	main.load:SetText("#tool.ragmover_ikchains.load")
 	main.load.DoClick = function()
 		if not SelectedEnt then return end
 
@@ -446,7 +447,7 @@ local function ChainSaver(cpanel)
 	end
 
 	main.SetText = function(self, text)
-		self.label:SetText("Selected ragdoll: " .. text)
+		self.label:SetText(language.GetPhrase("#tool.ragmover_ikchains.selectedragdoll") .. " " .. text)
 		self.label:SizeToContents()
 	end
 
@@ -531,13 +532,16 @@ function TOOL.BuildCPanel(CPanel)
 
 end
 
+local PrevEnt = nil
+local COLOR_GREEN = Color(0, 200, 0, 255)
+
 function TOOL:DrawHUD()
 
 	local pl = LocalPlayer()
 
 	local aimedent = pl:GetEyeTrace().Entity
 
-	if IsValid(aimedent) and (aimedent:GetClass() == "prop_ragdoll") then
+	if aimedent == PrevEnt and IsValid(aimedent) and (aimedent:GetClass() == "prop_ragdoll") then
 
 		if pl.ragdollmoverik_aimedskeleton then
 			for bone, pbone in pairs(pl.ragdollmoverik_aimedskeleton) do
@@ -551,7 +555,7 @@ function TOOL:DrawHUD()
 					surface.DrawLine(ppos.x, ppos.y, pos.x, pos.y)
 				end
 
-				surface.DrawCircle(pos.x, pos.y, 2.5, Color(0, 200, 0, 255))
+				surface.DrawCircle(pos.x, pos.y, 2.5, COLOR_GREEN)
 			end
 		end
 
@@ -562,6 +566,8 @@ function TOOL:DrawHUD()
 			rgm.DrawBoneName(aimedent, aimedbone)
 		end
 
+	else
+		PrevEnt = aimedent
 	end
 
 	local iktype = self:GetClientNumber("type", 1)

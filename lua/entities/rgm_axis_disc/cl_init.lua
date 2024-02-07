@@ -24,11 +24,11 @@ function ENT:GetLinePositions(width)
 end
 
 local COLOR_YELLOW = Color(255, 255, 0, 255)
-local pl, parent
+local pl
 
 function ENT:DrawLines(yellow, scale, width)
 	if not pl then pl = LocalPlayer() end
-	if not parent then parent = self:GetParent() end
+	local parent = self:GetParent()
 	local toscreen = {}
 	local linetable = self:GetLinePositions(width)
 	local eyepos = pl:EyePos()
