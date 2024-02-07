@@ -393,14 +393,14 @@ local function ChainSaver(cpanel)
 	end
 
 	main.save = vgui.Create("DButton", main)
-	main.save:SetText("Save")
+	main.save:SetText("#tool.ragmover_ikchains.save")
 	main.save.DoClick = function()
 		net.Start("rgmikRequestSave")
 		net.SendToServer()
 	end
 
 	main.load = vgui.Create("DButton", main)
-	main.load:SetText("Load")
+	main.load:SetText("#tool.ragmover_ikchains.load")
 	main.load.DoClick = function()
 		if not SelectedEnt then return end
 
@@ -447,7 +447,7 @@ local function ChainSaver(cpanel)
 	end
 
 	main.SetText = function(self, text)
-		self.label:SetText("Selected ragdoll: " .. text)
+		self.label:SetText(language.GetPhrase("#tool.ragmover_ikchains.selectedragdoll") .. " " .. text)
 		self.label:SizeToContents()
 	end
 
