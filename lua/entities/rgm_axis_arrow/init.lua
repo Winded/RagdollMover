@@ -19,7 +19,7 @@ function ENT:ProcessMovement(offpos, _, eyepos, eyeang, ent, bone, ppos, _, move
 		offset = offset + entoffset
 	end
 	local pos, ang
-	local selfangle = self.GizmoAngle and self.GizmoAngle or self:GetAngles()
+	local _, selfangle = LocalToWorld(vector_origin, self.DefAngle, vector_origin, axis:GetAngles()) --self:GetAngles()
 
 	if movetype == 1 then
 		local obj = ent:GetPhysicsObjectNum(bone)

@@ -1336,6 +1336,7 @@ function TOOL:Deploy()
 		local axis = pl.rgm.Axis
 		if not IsValid(axis) then
 			axis = ents.Create("rgm_axis")
+			axis:SetPos(pl:EyePos())
 			axis:Spawn()
 			axis.Owner = pl
 			axis.localpos = self:GetClientNumber("localpos", 0) ~= 0
@@ -1402,8 +1403,8 @@ function TOOL:LeftClick(tr)
 
 	local axis = pl.rgm.Axis
 	if not IsValid(axis) then
-		pl:ChatPrint("Axis entity isn't found. Spawning new one, try selecting the entity again.")
 		axis = ents.Create("rgm_axis")
+		axis:SetPos(pl:EyePos())
 		axis:Spawn()
 		axis.Owner = pl
 		pl.rgm.Axis = axis
@@ -1493,7 +1494,7 @@ function TOOL:LeftClick(tr)
 
 		pl.rgm.Ignore = ignore
 
-		local dirnorm = (collision.hitpos-axis:GetPos())
+		local dirnorm = (collision.hitpos - axis:GetPos())
 		dirnorm:Normalize()
 		pl.rgm.DirNorm = dirnorm
 		pl.rgm.MoveAxis = apart
