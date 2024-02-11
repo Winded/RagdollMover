@@ -57,6 +57,7 @@ function ENT:Setup()
 		self.ArrowX:SetColor(Color(255, 0, 0, 255))
 		self.ArrowX:SetLocalPos(Vector(0, 0, 0))
 		self.ArrowX:SetLocalAngles(Vector(1, 0, 0):Angle())
+		self.ArrowX.DefAngle = Vector(1, 0, 0):Angle()
 		self.ArrowX.axistype = 1
 
 	self.ArrowY = ents.Create("rgm_axis_arrow")
@@ -65,6 +66,7 @@ function ENT:Setup()
 		self.ArrowY:SetColor(Color(0, 255, 0, 255))
 		self.ArrowY:SetLocalPos(Vector(0, 0, 0))
 		self.ArrowY:SetLocalAngles(Vector(0, 1, 0):Angle())
+		self.ArrowY.DefAngle = Vector(0, 1, 0):Angle()
 		self.ArrowY.axistype = 2
 
 	self.ArrowZ = ents.Create("rgm_axis_arrow")
@@ -73,6 +75,7 @@ function ENT:Setup()
 		self.ArrowZ:SetColor(Color(0, 0, 255, 255))
 		self.ArrowZ:SetLocalPos(Vector(0, 0, 0))
 		self.ArrowZ:SetLocalAngles(Vector(0, 0, 1):Angle())
+		self.ArrowZ.DefAngle = Vector(0, 0, 1):Angle()
 		self.ArrowZ.axistype = 3
 
 	--Arrow sides
@@ -408,20 +411,16 @@ function ENT:Think()
 	disc:SetLocalAngles(ang)
 	self.ArrowOmni:SetLocalAngles(ang)
 
-	pos, poseye = self:WorldToLocal(pos), self:WorldToLocal(poseye)
-	local xangle, yangle = (Vector(pos.y, pos.z, 0) - Vector(poseye.y, poseye.z, 0)):Angle(), (Vector(pos.x, pos.z, 0) - Vector(poseye.x, poseye.z, 0)):Angle()
-	local XAng, YAng, ZAng = Angle(0, 0, xangle.y + 90) + VECTOR_FRONT:Angle(), ANGLE_ARROW_OFFSET - Angle(0, 0, yangle.y), Angle(0, ang.y, 0) + vector_up:Angle()
-	self.ArrowX:SetLocalAngles(XAng)
-	self.ScaleX:SetLocalAngles(XAng)
-	self.ArrowY:SetLocalAngles(YAng)
-	self.ScaleY:SetLocalAngles(YAng)
-	self.ArrowZ:SetLocalAngles(ZAng)
-	self.ScaleZ:SetLocalAngles(ZAng)
-
 	if not pl.rgm.Moving then
-		self.ArrowX.GizmoAngle = self.ArrowX:GetAngles()
-		self.ArrowY.GizmoAngle = self.ArrowY:GetAngles()
-		self.ArrowZ.GizmoAngle = self.ArrowZ:GetAngles()
+		pos, poseye = self:WorldToLocal(pos), self:WorldToLocal(poseye)
+		local xangle, yangle = (Vector(pos.y, pos.z, 0) - Vector(poseye.y, poseye.z, 0)):Angle(), (Vector(pos.x, pos.z, 0) - Vector(poseye.x, poseye.z, 0)):Angle()
+		local XAng, YAng, ZAng = Angle(0, 0, xangle.y + 90) + VECTOR_FRONT:Angle(), ANGLE_ARROW_OFFSET - Angle(0, 0, yangle.y), Angle(0, ang.y, 0) + vector_up:Angle()
+		self.ArrowX:SetLocalAngles(XAng)
+		self.ScaleX:SetLocalAngles(XAng)
+		self.ArrowY:SetLocalAngles(YAng)
+		self.ScaleY:SetLocalAngles(YAng)
+		self.ArrowZ:SetLocalAngles(ZAng)
+		self.ScaleZ:SetLocalAngles(ZAng)
 	end
 
 	self:NextThink(CurTime() + 0.001)
