@@ -417,6 +417,8 @@ function GetOffsetTable(tool, ent, rotate, bonelocks, entlocks)
 		ent.rgmIKChains[k].thighlength = pos1:Distance(pos2)
 		ent.rgmIKChains[k].shinlength = pos2:Distance(pos3)
 
+		ent.rgmIKChains[k].nphyship = nil
+
 	end
 
 	for lockent, pb in pairs(entlocks) do -- getting offsets from physical entities that are locked to our bones
