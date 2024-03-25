@@ -2213,8 +2213,8 @@ local function rgmSendBonePos(pl, ent, boneid)
 			gizmoppos = matrix:GetTranslation()
 			gizmopang = matrix:GetAngles()
 		else
-			gizmoppos = vector_origin
-			gizmopang = angle_zero
+			gizmoppos = ent:GetPos()
+			gizmopang = ent:GetAngles()
 		end
 
 		gizmopos = pos

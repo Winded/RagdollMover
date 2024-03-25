@@ -310,6 +310,15 @@ function ENT:Think()
 				end
 			else
 				_ , ang = ent:GetBonePosition(bone)
+
+				if ent:GetClass() == "prop_physics" then
+					local manang = ent:GetManipulateBoneAngles(bone)
+					manang:Normalize()
+
+					_, ang = LocalToWorld(vector_origin, Angle(0, 0, -manang[3]), vector_origin, ang)
+					_, ang = LocalToWorld(vector_origin, Angle(-manang[1], 0, 0), vector_origin, ang)
+					_, ang = LocalToWorld(vector_origin, Angle(0, -manang[2], 0), vector_origin, ang)
+				end
 			end
 		elseif scale and self.GizmoAng then
 			if pl.rgm.GizmoParentID then
