@@ -218,7 +218,7 @@ function GetPhysBoneParent(ent, bone)
 			return parent
 		end
 		i = i + 1
-		if i > 512 then
+		if i > 256 then
 			cont = true
 		end
 	end

@@ -248,7 +248,7 @@ function ENT:Think()
 	local scale = pl.rgm.Scale or false
 	local offset, offsetlocal = pl.rgm.GizmoOffset, self.localoffset
 
-	if IsValid(ent:GetParent()) and pl.rgm.Bone == 0 and not ent:IsEffectActive(EF_BONEMERGE) and not (ent:GetClass() == "prop_ragdoll") then
+	if IsValid(ent:GetParent()) and pl.rgm.Bone == 0 and not ent:IsEffectActive(EF_BONEMERGE) and not ent:IsEffectActive(EF_FOLLOWBONE) and not (ent:GetClass() == "prop_ragdoll") then
 		pos = ent:GetParent():LocalToWorld(ent:GetLocalPos())
 	elseif pl.rgm.IsPhysBone then
 
@@ -278,7 +278,7 @@ function ENT:Think()
 			
 		end
 	end
-	if IsValid(ent:GetParent()) and pl.rgm.Bone == 0 and not ent:IsEffectActive(EF_BONEMERGE) and not (ent:GetClass() == "prop_ragdoll") and not scale then
+	if IsValid(ent:GetParent()) and pl.rgm.Bone == 0 and not ent:IsEffectActive(EF_BONEMERGE) and not ent:IsEffectActive(EF_FOLLOWBONE) and not (ent:GetClass() == "prop_ragdoll") and not scale then
 		ang = ent:GetParent():LocalToWorldAngles(ent:GetLocalAngles())
 	elseif pl.rgm.IsPhysBone and not scale then
 
@@ -354,7 +354,7 @@ function ENT:Think()
 		end
 
 		if offsetlocal then 
-			if IsValid(ent:GetParent()) and pl.rgm.Bone == 0 and not ent:IsEffectActive(EF_BONEMERGE) and not (ent:GetClass() == "prop_ragdoll") then
+			if IsValid(ent:GetParent()) and pl.rgm.Bone == 0 and not ent:IsEffectActive(EF_BONEMERGE) and not ent:IsEffectActive(EF_FOLLOWBONE) and not (ent:GetClass() == "prop_ragdoll") then
 				self:SetPos(LocalToWorld(offset + entoffset, angle_zero, pos, ent:GetParent():LocalToWorldAngles(ent:GetLocalAngles())))
 			else
 				if pl.rgm.IsPhysBone then

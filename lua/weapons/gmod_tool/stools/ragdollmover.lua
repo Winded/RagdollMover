@@ -238,6 +238,7 @@ util.AddNetworkString("rgmOperationSwitch")
 util.AddNetworkString("rgmSetGizmoToBone")
 util.AddNetworkString("rgmUpdateGizmo")
 
+util.AddNetworkString("rgmResetAllBones")
 util.AddNetworkString("rgmResetAll")
 util.AddNetworkString("rgmResetPos")
 util.AddNetworkString("rgmResetAng")
@@ -847,6 +848,24 @@ local function RecursiveBoneFunc(bone, ent, func, param)
 	end
 end
 
+net.Receive("rgmResetAllBones", function(len, pl)
+	local ent = net.ReadEntity()
+
+	for i = 0, ent:GetBoneCount() - 1 do
+		ent:ManipulateBonePosition(i, vector_origin)
+		ent:ManipulateBoneAngles(i, angle_zero)
+		ent:ManipulateBoneScale(i, VECTOR_SCALEDEF)
+	end
+
+	net.Start("rgmUpdateSliders")
+	net.Send(pl)
+
+	timer.Simple(0.1, function() -- ask client to get new bone position info in case if the parent bone was moved. put into timer as it takes a bit of time for position to update on client?
+		net.Start("rgmRequestBonePos")
+		net.Send(pl)
+	end)
+end)
+
 net.Receive("rgmResetAll", function(len, pl)
 	local ent = net.ReadEntity()
 	local bone = net.ReadUInt(10)
@@ -975,12 +994,26 @@ net.Receive("rgmPrepareOffsets", function(len, pl)
 	pl.rgm.NPhysBoneAng = ent:GetManipulateBoneAngles(bone)
 	pl.rgm.NPhysBoneScale = ent:GetManipulateBoneScale(bone)
 
+	if pl.rgm.physmove ~= 0 then
+		
+	end
+
 	if pl.rgm.IsPhysBone then
+		if axis.smovechildren then
+			if _G["physundo"] and _G["physundo"].Create then
+				_G["physundo"].Create(ent, pl)
+			end
+		end
+
 		local obj = ent:GetPhysicsObjectNum(pl.rgm.PhysBone)
 		if obj then
 			pl.rgmOffsetTable = rgm.GetOffsetTable(tool, ent, pl.rgm.Rotate, pl.rgmBoneLocks, pl.rgmEntLocks)
 		end
-	elseif pl.rgm.NextPhysBone and pl.rgm.physmove ~= 0 then
+	elseif pl.rgm.NextPhysBone then
+		if _G["physundo"] and _G["physundo"].Create then
+			_G["physundo"].Create(ent, pl)
+		end
+
 		local obj = ent:GetPhysicsObjectNum(pl.rgm.NextPhysBone)
 		if obj then
 			pl.rgmOffsetTable = rgm.GetNPOffsetTable(tool, ent, pl.rgm.Rotate, {p = pl.rgm.NextPhysBone, pos = axis.GizmoPos, ang = axis.GizmoAng}, pl.rgmPhysMove, pl.rgmBoneLocks, pl.rgmEntLocks)
@@ -1754,7 +1787,7 @@ if SERVER then
 		if physbonecount == nil then return end
 
 		if not scale then
-			if IsValid(ent:GetParent()) and bone == 0 and not ent:IsEffectActive(EF_BONEMERGE) and not (ent:GetClass() == "prop_ragdoll") then -- is parented
+			if IsValid(ent:GetParent()) and bone == 0 and not ent:IsEffectActive(EF_BONEMERGE) and not ent:IsEffectActive(EF_FOLLOWBONE) and not (ent:GetClass() == "prop_ragdoll") then -- is parented
 				local pos, ang = apart:ProcessMovement(pl.rgmOffsetPos, pl.rgmOffsetAng, eyepos, eyeang, ent, bone, pl.rgmISPos, pl.rgmISDir, 0, snapamount, pl.rgm.StartAngle, nil, nil, nil, tracepos)
 				ent:SetLocalPos(pos)
 				ent:SetLocalAngles(ang)
@@ -2505,6 +2538,22 @@ local AdditionalIKs = {
 	"ragdollmover_ik_chain_6"
 }
 
+local function RGMSelectAllIK()
+	local ik1, ik2, ik3, ik4 = GetConVar("ragdollmover_ik_leg_L"):GetBool(), GetConVar("ragdollmover_ik_leg_R"):GetBool(), GetConVar("ragdollmover_ik_hand_L"):GetBool(), GetConVar("ragdollmover_ik_hand_R"):GetBool()
+
+	if ik1 && ik2 && ik3 && ik4 then
+		RunConsoleCommand("ragdollmover_ik_hand_L", 0)
+		RunConsoleCommand("ragdollmover_ik_hand_R", 0)
+		RunConsoleCommand("ragdollmover_ik_leg_L", 0)
+		RunConsoleCommand("ragdollmover_ik_leg_R", 0)
+	else
+		RunConsoleCommand("ragdollmover_ik_hand_L", 1)
+		RunConsoleCommand("ragdollmover_ik_hand_R", 1)
+		RunConsoleCommand("ragdollmover_ik_leg_L", 1)
+		RunConsoleCommand("ragdollmover_ik_leg_R", 1)
+	end
+end
+
 local function CBAdditionalIKs(cpanel, text)
 	local butt = vgui.Create("DButton", cpanel)
 	butt:SetText(text)
@@ -2543,29 +2592,11 @@ local function RGMGizmoMode()
 	net.SendToServer()
 end
 
-local function RGMSelectAllIK()
-	local ik1, ik2, ik3, ik4 = GetConVar("ragdollmover_ik_leg_L"):GetBool(), GetConVar("ragdollmover_ik_leg_R"):GetBool(), GetConVar("ragdollmover_ik_hand_L"):GetBool(), GetConVar("ragdollmover_ik_hand_R"):GetBool()
-
-	if ik1 && ik2 && ik3 && ik4 then
-		RunConsoleCommand("ragdollmover_ik_hand_L", 0)
-		RunConsoleCommand("ragdollmover_ik_hand_R", 0)
-		RunConsoleCommand("ragdollmover_ik_leg_L", 0)
-		RunConsoleCommand("ragdollmover_ik_leg_R", 0)
-	else
-		RunConsoleCommand("ragdollmover_ik_hand_L", 1)
-		RunConsoleCommand("ragdollmover_ik_hand_R", 1)
-		RunConsoleCommand("ragdollmover_ik_leg_L", 1)
-		RunConsoleCommand("ragdollmover_ik_leg_R", 1)
-	end
-end
-
 local function RGMResetAllBones()
 	if not pl.rgm or not pl.rgm.Entity then return end
 
-	net.Start("rgmResetAll")
+	net.Start("rgmResetAllBones")
 		net.WriteEntity(pl.rgm.Entity)
-		net.WriteUInt(0, 10)
-		net.WriteBool(true)
 	net.SendToServer()
 end
 
@@ -2723,6 +2754,7 @@ local BoneTypeSort = {
 
 
 local BonePanel, EntPanel, ConEntPanel
+local EnableIKButt
 local Pos1, Pos2, Pos3, Rot1, Rot2, Rot3, Scale1, Scale2, Scale3, Entry1, Entry2, Entry3
 local Gizmo1, Gizmo2, Gizmo3
 local nodes, entnodes, conentnodes
@@ -2731,6 +2763,46 @@ local Col4
 local LockMode, LockTo = false, { id = nil, ent = nil }
 local IsPropRagdoll, TreeEntities = false, {}
 local ScaleLocks = {}
+
+cvars.AddChangeCallback("ragdollmover_ik_hand_L", function(convar, old, new)
+	if not IsValid(EnableIKButt) then return end
+
+	if tobool(new) and GetConVar("ragdollmover_ik_hand_R"):GetBool() and GetConVar("ragdollmover_ik_leg_L"):GetBool() and GetConVar("ragdollmover_ik_leg_R"):GetBool() then
+		EnableIKButt:SetText("#tool.ragdollmover.ikalloff")
+	else
+		EnableIKButt:SetText("#tool.ragdollmover.ikallon")
+	end
+end)
+
+cvars.AddChangeCallback("ragdollmover_ik_hand_R", function(convar, old, new)
+	if not IsValid(EnableIKButt) then return end
+
+	if tobool(new) and GetConVar("ragdollmover_ik_hand_L"):GetBool() and GetConVar("ragdollmover_ik_leg_L"):GetBool() and GetConVar("ragdollmover_ik_leg_R"):GetBool() then
+		EnableIKButt:SetText("#tool.ragdollmover.ikalloff")
+	else
+		EnableIKButt:SetText("#tool.ragdollmover.ikallon")
+	end
+end)
+
+cvars.AddChangeCallback("ragdollmover_ik_leg_L", function(convar, old, new)
+	if not IsValid(EnableIKButt) then return end
+
+	if tobool(new) and GetConVar("ragdollmover_ik_hand_R"):GetBool() and GetConVar("ragdollmover_ik_hand_L"):GetBool() and GetConVar("ragdollmover_ik_leg_R"):GetBool() then
+		EnableIKButt:SetText("#tool.ragdollmover.ikalloff")
+	else
+		EnableIKButt:SetText("#tool.ragdollmover.ikallon")
+	end
+end)
+
+cvars.AddChangeCallback("ragdollmover_ik_leg_R", function(convar, old, new)
+	if not IsValid(EnableIKButt) then return end
+
+	if tobool(new) and GetConVar("ragdollmover_ik_hand_R"):GetBool() and GetConVar("ragdollmover_ik_leg_L"):GetBool() and GetConVar("ragdollmover_ik_hand_L"):GetBool() then
+		EnableIKButt:SetText("#tool.ragdollmover.ikalloff")
+	else
+		EnableIKButt:SetText("#tool.ragdollmover.ikallon")
+	end
+end)
 
 local function SetBoneNodes(bonepanel, sortedbones)
 	nodes = {}
@@ -2826,7 +2898,7 @@ local function SetBoneNodes(bonepanel, sortedbones)
 					net.Start("rgmResetPos")
 						net.WriteEntity(ent)
 						net.WriteBool(false)
-						net.WriteUInt(v.id, 10) -- with SFM studiomdl, it seems like upper limit for bones is 512 (counting 0)
+						net.WriteUInt(v.id, 10) -- with SFM studiomdl, it seems like upper limit for bones is 256. Used 10 bits in case if there was 512 https://developer.valvesoftware.com/wiki/Skeleton
 					net.SendToServer()
 				end)
 				option:SetIcon("icon16/connect.png")
@@ -3428,7 +3500,10 @@ function TOOL.BuildCPanel(CPanel)
 		CCheckBox(Col2, "#tool.ragdollmover.ik4", "ragdollmover_ik_hand_R")
 		CCheckBox(Col2, "#tool.ragdollmover.ik1", "ragdollmover_ik_leg_L")
 		CCheckBox(Col2, "#tool.ragdollmover.ik2", "ragdollmover_ik_leg_R")
-		CButton(Col2, "#tool.ragdollmover.ikall", RGMSelectAllIK)
+		EnableIKButt = CButton(Col2, "#tool.ragdollmover.ikallon", RGMSelectAllIK)
+		if GetConVar("ragdollmover_ik_leg_L"):GetBool() and GetConVar("ragdollmover_ik_leg_R"):GetBool() and GetConVar("ragdollmover_ik_hand_L"):GetBool() and GetConVar("ragdollmover_ik_hand_R"):GetBool() then
+			EnableIKButt:SetText("#tool.ragdollmover.ikalloff")
+		end
 		CBAdditionalIKs(Col2, "#tool.ragdollmover.additional")
 
 	local Col3 = CCol(CPanel, "#tool.ragdollmover.miscpanel")
