@@ -994,10 +994,6 @@ net.Receive("rgmPrepareOffsets", function(len, pl)
 	pl.rgm.NPhysBoneAng = ent:GetManipulateBoneAngles(bone)
 	pl.rgm.NPhysBoneScale = ent:GetManipulateBoneScale(bone)
 
-	if pl.rgm.physmove ~= 0 then
-		
-	end
-
 	if pl.rgm.IsPhysBone then
 		if axis.smovechildren then
 			if _G["physundo"] and _G["physundo"].Create then
