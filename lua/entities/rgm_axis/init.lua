@@ -338,7 +338,12 @@ function ENT:Think()
 					end
 				end
 			else
-				ang = self.GizmoAng
+				if pl.rgm.GizmoParentID ~= -1 then
+					local physobj = ent:GetPhysicsObjectNum(pl.rgm.GizmoParentID)
+					_, ang = LocalToWorld(vector_origin, self.GizmoAng, physobj:GetPos(), physobj:GetAngles())
+				else
+					_, ang = LocalToWorld(vector_origin, self.GizmoAng, ent:GetPos(), ent:GetAngles())
+				end
 
 				local manang = ent:GetManipulateBoneAngles(bone)*1
 				manang:Normalize()
@@ -385,7 +390,12 @@ function ENT:Think()
 				end
 			else
 				if IsValid(ent) then
-					ang = self.GizmoAng
+					if pl.rgm.GizmoParentID ~= -1 then
+						local physobj = ent:GetPhysicsObjectNum(pl.rgm.GizmoParentID)
+						_, ang = LocalToWorld(vector_origin, self.GizmoAng, physobj:GetPos(), physobj:GetAngles())
+					else
+						_, ang = LocalToWorld(vector_origin, self.GizmoAng, ent:GetPos(), ent:GetAngles())
+					end
 				end
 			end
 		end

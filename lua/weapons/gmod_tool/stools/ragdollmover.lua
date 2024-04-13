@@ -835,7 +835,7 @@ net.Receive("rgmSendBonePos", function(len, pl)
 	axis.GizmoPos = newpos
 
 	pl.rgm.GizmoPos = newpos - nonpos
-	if not (axis.EntAdvMerged) then
+	if not (axis.EntAdvMerged) and ent:GetClass() then
 		local manang = entog:GetManipulateBoneAngles(boneog)
 		manang:Normalize()
 
@@ -2380,7 +2380,7 @@ local function rgmSendBonePos(pl, ent, boneid)
 					gizmoppos = matrix:GetTranslation()
 					gizmopang = matrix:GetAngles()
 				else
-					gizmoppos = ent:GetPos()
+					gizmoppos = parent:GetPos()
 					gizmopang = ent:GetAngles()
 				end
 			end

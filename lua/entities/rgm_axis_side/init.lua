@@ -60,10 +60,16 @@ function ENT:ProcessMovement(offpos, _, eyepos, eyeang, ent, bone, ppos, pnorm, 
 				_, boneang = LocalToWorld(vector_origin, diff, vector_origin, axis.GizmoParent)
 			end
 		else
-			if IsValid(ent) then
-				boneang = ent:GetAngles()
+			if ent:GetClass() == "ent_advbonemerge" and parent:GetClass() == "prop_ragdoll" then
+				boneang = angle_zero -- bone has no parent and isn't physical
 			else
-				boneang = angle_zero
+				local pl = self:GetParent().Owner
+				if pl.rgm.GizmoParentID ~= -1 then
+					local physobj = ent:GetPhysicsObjectNum(pl.rgm.GizmoParentID)
+					boneang = physobj:GetAngles()
+				else
+					boneang = ent:GetAngles()
+				end
 			end
 		end
 

@@ -29,9 +29,9 @@ function ENT:ProcessMovement(_, offang, eyepos, eyeang, ent, bone, ppos, pnorm, 
 	local pl = axis.Owner
 
 	local axistable = {
-		(self:GetParent():LocalToWorld(VECTOR_SIDE) - self:GetPos()):Angle(), --axis:LocalToWorldAngles(axis.DiscP:GetLocalAngles()),
-		(self:GetParent():LocalToWorld(vector_up) - self:GetPos()):Angle(), --axis:LocalToWorldAngles(axis.DiscY:GetLocalAngles()),
-		(self:GetParent():LocalToWorld(VECTOR_FRONT) - self:GetPos()):Angle(), --axis:LocalToWorldAngles(axis.DiscR:GetLocalAngles()),
+		(self:GetParent():LocalToWorld(VECTOR_SIDE) - self:GetPos()):Angle(),
+		(self:GetParent():LocalToWorld(vector_up) - self:GetPos()):Angle(),
+		(self:GetParent():LocalToWorld(VECTOR_FRONT) - self:GetPos()):Angle(),
 		(self:GetPos() - pl:EyePos()):Angle()
 	}
 	axistable[1]:Normalize()
