@@ -10,7 +10,20 @@ function ENT:ProcessMovement(offpos, offang, eyepos, eyeang, ent, bone, ppos, pn
 	local axis = self:GetParent()
 
 	local localized, finalpos, boneang
-	if ent:GetBoneCount() ~= 0 then
+	if axis.EntAdvMerged then
+		local parent = ent:GetParent()
+		if parent.AttachedEntity then parent = parent.AttachedEntity end
+		local funang
+		if pl.rgm.GizmoParentID ~= -1 then
+			local physobj = parent:GetPhysicsObjectNum(pl.rgm.GizmoParentID)
+			_, boneang = LocalToWorld(vector_origin, axis.GizmoAng, physobj:GetPos(), physobj:GetAngles())
+		else
+			_, boneang = LocalToWorld(vector_origin, axis.GizmoAng, parent:GetPos(), parent:GetAngles())
+		end
+		if axis.EntAdvMerged then
+			_, boneang = LocalToWorld(vector_origin, ent:GetManipulateBoneAngles(bone), vector_origin, boneang)
+		end
+	elseif ent:GetBoneCount() ~= 0 then
 		if axis.GizmoAng then
 			if pl.rgm.GizmoParentID ~= -1 then
 				local physobj = ent:GetPhysicsObjectNum(pl.rgm.GizmoParentID)
