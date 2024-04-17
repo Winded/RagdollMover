@@ -54,7 +54,7 @@ local BONE_UNFROZEN = 8
 
 local VECTOR_SCALEDEF = Vector(1, 1, 1)
 
-local function RGMGetBone(pl, ent, bone)
+local function rgmGetBone(pl, ent, bone)
 	--------------------------------------------------------- yeah this part is from locrotscale
 	local phys, physobj
 	pl.rgm.IsPhysBone = false
@@ -155,9 +155,14 @@ local function rgmGetConstrainedEntities(parent)
 		end
 	end
 
+	if parent:GetParent() then
+		conents[parent:GetParent()] = nil
+	end
+
 	local count = 1
 
 	for _, ent in pairs(conents) do
+
 		if not IsValid(ent) or ent:IsWorld() or ent:IsConstraint() or not util.IsValidModel(ent:GetModel()) or IsValid(ent:GetParent()) then continue end
 		if ent:GetPhysicsObjectCount() > 0 then
 			children[count] = ent
@@ -170,32 +175,52 @@ end
 
 local function rgmCalcGizmoPos(pl)
 	if not pl.rgm or not pl.rgm.GizmoAng then return end
-	local axis, ent = pl.rgm.Axis, pl.rgm.Entity
+	local axis, entog = pl.rgm.Axis, pl.rgm.Entity
+	local ent = entog
+
 	local bone = pl.rgm.Bone
+
+	if axis.EntAdvMerged then
+		ent = ent:GetParent()
+		if ent.AttachedEntity then ent = ent.AttachedEntity end
+	end
 
 	axis.GizmoAng = pl.rgm.GizmoAng
 
-	local manang = ent:GetManipulateBoneAngles(bone)
-	manang:Normalize()
+	local ppos, pang = pl.rgm.GizmoPParent, pl.rgm.GizmoParent
 
-	_, axis.GizmoAng = LocalToWorld(vector_origin, Angle(0, manang[2], 0), vector_origin, axis.GizmoAng)
-	_, axis.GizmoAng = LocalToWorld(vector_origin, Angle(manang[1], 0, 0), vector_origin, axis.GizmoAng)
-	_, axis.GizmoAng = LocalToWorld(vector_origin, Angle(0, 0, manang[3]), vector_origin, axis.GizmoAng)
+	if not (axis.EntAdvMerged) then
+		local manang = entog:GetManipulateBoneAngles(bone)
+		manang:Normalize()
+
+		_, axis.GizmoAng = LocalToWorld(vector_origin, Angle(0, manang[2], 0), vector_origin, axis.GizmoAng)
+		_, axis.GizmoAng = LocalToWorld(vector_origin, Angle(manang[1], 0, 0), vector_origin, axis.GizmoAng)
+		_, axis.GizmoAng = LocalToWorld(vector_origin, Angle(0, 0, manang[3]), vector_origin, axis.GizmoAng)
+	end
 
 	local nonpos
 	if pl.rgm.GizmoParentID ~= -1 then
 		local physobj = ent:GetPhysicsObjectNum(pl.rgm.GizmoParentID)
 		if not physobj then return end
-		local ppos, pang = LocalToWorld(pl.rgm.GizmoPParent, pl.rgm.GizmoParent, physobj:GetPos(), physobj:GetAngles())
-		nonpos = LocalToWorld(ent:GetManipulateBonePosition(bone), angle_zero, ppos, pang)
+		ppos, pang = LocalToWorld(ppos, pang, physobj:GetPos(), physobj:GetAngles())
+		nonpos = LocalToWorld(entog:GetManipulateBonePosition(bone), angle_zero, ppos, pang)
 		nonpos = WorldToLocal(nonpos, pang, physobj:GetPos(), physobj:GetAngles())
 	else
-		local ppos, pang = LocalToWorld(pl.rgm.GizmoPParent, pl.rgm.GizmoParent, ent:GetPos(), ent:GetAngles())
-		nonpos = LocalToWorld(ent:GetManipulateBonePosition(bone), angle_zero, ppos, pang)
+		ppos, pang = LocalToWorld(ppos, pang, ent:GetPos(), ent:GetAngles())
+		nonpos = LocalToWorld(entog:GetManipulateBonePosition(bone), angle_zero, ppos, pang)
 		nonpos = WorldToLocal(nonpos, pang, ent:GetPos(), ent:GetAngles())
 	end
 
 	axis.GizmoPos = pl.rgm.GizmoPos + nonpos
+end
+
+local function rgmAdjustScaleTable(parent, childbones, ppos, pang)
+	if not childbones[parent] then return end
+	for bone, tab in pairs(childbones[parent]) do
+		local wpos, wang = LocalToWorld(tab.pos, tab.ang, ppos, pang)
+		tab.wpos = wpos
+		rgmAdjustScaleTable(bone, childbones, wpos, wang)
+	end
 end
 
 if SERVER then
@@ -238,6 +263,7 @@ util.AddNetworkString("rgmOperationSwitch")
 util.AddNetworkString("rgmSetGizmoToBone")
 util.AddNetworkString("rgmUpdateGizmo")
 
+util.AddNetworkString("rgmResetAllBones")
 util.AddNetworkString("rgmResetAll")
 util.AddNetworkString("rgmResetPos")
 util.AddNetworkString("rgmResetAng")
@@ -351,9 +377,21 @@ net.Receive("rgmAskForParented", function(len, pl)
 		parented[ent] = {}
 		pcount = pcount + 1
 
-		for i = 0, ent:GetBoneCount() - 1 do
-			if ent:GetParent():LookupBone(ent:GetBoneName(i)) then
-				table.insert(parented[ent], i)
+		if ent:GetClass() ~= "ent_advbonemerge" then
+			for i = 0, ent:GetBoneCount() - 1 do
+				if ent:GetParent():LookupBone(ent:GetBoneName(i)) then
+					table.insert(parented[ent], i)
+				end
+			end
+		else
+			local advbones = ent.AdvBone_BoneInfo
+
+			if advbones and next(advbones) then
+				for i = 0, ent:GetBoneCount() - 1 do
+					if advbones[i].parent ~= "" then
+						table.insert(parented[ent], i)
+					end
+				end
 			end
 		end
 	end
@@ -378,7 +416,8 @@ net.Receive("rgmSelectBone", function(len, pl)
 
 	pl.rgm.BoneToResetTo = (ent:GetClass() == "prop_ragdoll") and ent:TranslatePhysBoneToBone(0) or 0
 	pl.rgm.Entity = ent
-	RGMGetBone(pl, ent, bone)
+	pl.rgm.Axis.EntAdvMerged = false
+	rgmGetBone(pl, ent, bone)
 	pl:rgmSync()
 
 	net.Start("rgmSelectBoneResponse")
@@ -639,6 +678,7 @@ net.Receive("rgmSelectEntity", function(len, pl)
 	if not IsValid(ent) then return end
 
 	pl.rgm.Entity = ent
+	pl.rgm.Axis.EntAdvMerged = false
 	pl.rgm.BoneToResetTo = (ent:GetClass() == "prop_ragdoll") and ent:TranslatePhysBoneToBone(0) or 0
 	pl.rgmPosLocks = {}
 	pl.rgmAngLocks = {}
@@ -668,7 +708,7 @@ net.Receive("rgmSelectEntity", function(len, pl)
 		ent.rgmbonecached = true
 	end
 
-	RGMGetBone(pl, ent, 0)
+	rgmGetBone(pl, ent, 0)
 	pl:rgmSync()
 
 	local physchildren = rgmGetConstrainedEntities(ent)
@@ -737,15 +777,34 @@ net.Receive("rgmSendBonePos", function(len, pl)
 	local childbones = {}
 
 	for i = 1, net.ReadUInt(10) do
-		local id, parent, pos = net.ReadUInt(10), net.ReadUInt(10), net.ReadVector(), net.ReadAngle()
+		local id, parent, pos, ang = net.ReadUInt(10), net.ReadUInt(10), net.ReadVector(), net.ReadAngle()
 		if not childbones[parent] then
 			childbones[parent] = {}
 		end
-		childbones[parent][id] = pos
+		childbones[parent][id] = {}
+		childbones[parent][id].pos = pos
+		childbones[parent][id].ang = ang
 	end
+
 	if not pl.rgm then return end
-	local ent = pl.rgm.Entity
+	local entog = pl.rgm.Entity
+	local ent = entog
 	local axis = pl.rgm.Axis
+
+	local boneog = pl.rgm.Bone
+	local bone = boneog
+
+	axis.EntAdvMerged = false
+
+	local advbones = nil
+	if ent:GetClass() == "ent_advbonemerge" then
+		advbones = ent.AdvBone_BoneInfo
+		if advbones and advbones[boneog] and advbones[boneog].parent and advbones[boneog].parent ~= "" then
+			axis.EntAdvMerged = true
+			ent = ent:GetParent()
+			if ent.AttachedEntity then ent = ent.AttachedEntity end
+		end
+	end
 
 	local physbones = {}
 
@@ -763,15 +822,17 @@ net.Receive("rgmSendBonePos", function(len, pl)
 			return FindPhysParentRecursive(ent, parent, physbones)
 		end
 	end
-	
-	local bone = pl.rgm.Bone
+
+	if axis.EntAdvMerged then
+		bone = ent:LookupBone(advbones[boneog].parent)
+	end
 	local parent = FindPhysParentRecursive(ent, bone, physbones)
 	local physobj
 	if parent ~= -1 then physobj = ent:GetPhysicsObjectNum(parent) end
 	pl.rgm.GizmoParentID = parent
 
 	local newpos, newang, nonpos
-	nonpos = LocalToWorld(ent:GetManipulateBonePosition(bone), angle_zero, ppos, pang)
+	nonpos = LocalToWorld(entog:GetManipulateBonePosition(boneog), angle_zero, ppos, pang)
 	if parent ~= -1 then
 		newpos, newang = WorldToLocal(pos, ang, physobj:GetPos(), physobj:GetAngles())
 		pl.rgm.GizmoPParent, pl.rgm.GizmoParent = WorldToLocal(ppos, pang, physobj:GetPos(), physobj:GetAngles())
@@ -786,12 +847,27 @@ net.Receive("rgmSendBonePos", function(len, pl)
 	axis.GizmoPos = newpos
 
 	pl.rgm.GizmoPos = newpos - nonpos
-	local manang = ent:GetManipulateBoneAngles(bone)
-	manang:Normalize()
+	if not (axis.EntAdvMerged) and ent:GetClass() then
+		local manang = entog:GetManipulateBoneAngles(boneog)
+		manang:Normalize()
 
-	_, pl.rgm.GizmoAng = LocalToWorld(vector_origin, Angle(0, 0, -manang[3]), vector_origin, newang)
-	_, pl.rgm.GizmoAng = LocalToWorld(vector_origin, Angle(-manang[1], 0, 0), vector_origin, pl.rgm.GizmoAng)
-	_, pl.rgm.GizmoAng = LocalToWorld(vector_origin, Angle(0, -manang[2], 0), vector_origin, pl.rgm.GizmoAng)
+		_, pl.rgm.GizmoAng = LocalToWorld(vector_origin, Angle(0, 0, -manang[3]), vector_origin, newang)
+		_, pl.rgm.GizmoAng = LocalToWorld(vector_origin, Angle(-manang[1], 0, 0), vector_origin, pl.rgm.GizmoAng)
+		_, pl.rgm.GizmoAng = LocalToWorld(vector_origin, Angle(0, -manang[2], 0), vector_origin, pl.rgm.GizmoAng)
+	else
+		pl.rgm.GizmoAng = axis.GizmoAng
+	end
+
+	local function CalcSkeleton(parent, physbones, childbones, ent, ppos, pang)
+		if not childbones[parent] then return end
+		for bone, tab in pairs(childbones[parent]) do
+			local wpos, wang = tab.pos, tab.ang
+			tab.pos, tab.ang = WorldToLocal(tab.pos, tab.ang, ppos, pang)
+			CalcSkeleton(bone, physbones, childbones, ent, wpos, wang)
+		end
+	end
+
+	CalcSkeleton(boneog, physbones, childbones, ent, pos, ang)
 
 	pl.rgmBoneChildren = {}
 	if next(childbones) then
@@ -839,13 +915,36 @@ net.Receive("rgmSetGizmoToBone", function(len, pl)
 	net.Send(pl)
 end)
 
-local function RecursiveBoneFunc(bone, ent, func, param)
-	func(bone, param)
+local function RecursiveBoneFunc(bone, ent, func)
+	func(bone)
 
 	for _, id in ipairs(ent:GetChildBones(bone)) do
-		RecursiveBoneFunc(id, ent, func, param)
+		RecursiveBoneFunc(id, ent, func)
 	end
 end
+
+net.Receive("rgmResetAllBones", function(len, pl)
+	local ent = net.ReadEntity()
+
+	for i = 0, ent:GetBoneCount() - 1 do
+		local pos, ang, scale = ent:GetManipulateBonePosition(i), ent:GetManipulateBoneAngles(i), ent:GetManipulateBoneScale(i) -- Grabbing existing vectors as to not create new ones, in case ManipulateBone functions were overriden by something like Advanced Bonemerge
+		pos:Set(vector_origin)
+		ang:Set(angle_zero)
+		scale:Set(VECTOR_SCALEDEF)
+
+		ent:ManipulateBonePosition(i, pos)
+		ent:ManipulateBoneAngles(i, ang)
+		ent:ManipulateBoneScale(i, scale)
+	end
+
+	net.Start("rgmUpdateSliders")
+	net.Send(pl)
+
+	timer.Simple(0.1, function() -- ask client to get new bone position info in case if the parent bone was moved. put into timer as it takes a bit of time for position to update on client?
+		net.Start("rgmRequestBonePos")
+		net.Send(pl)
+	end)
+end)
 
 net.Receive("rgmResetAll", function(len, pl)
 	local ent = net.ReadEntity()
@@ -856,14 +955,24 @@ net.Receive("rgmResetAll", function(len, pl)
 
 	if children then
 		RecursiveBoneFunc(bone, ent, function(bon)
-			ent:ManipulateBonePosition(bon, vector_origin)
-			ent:ManipulateBoneAngles(bon, angle_zero)
-			ent:ManipulateBoneScale(bon, VECTOR_SCALEDEF)
+			local pos, ang, scale = ent:GetManipulateBonePosition(bon), ent:GetManipulateBoneAngles(bon), ent:GetManipulateBoneScale(bon)
+			pos:Set(vector_origin)
+			ang:Set(angle_zero)
+			scale:Set(VECTOR_SCALEDEF)
+
+			ent:ManipulateBonePosition(bon, pos)
+			ent:ManipulateBoneAngles(bon, ang)
+			ent:ManipulateBoneScale(bon, scale)
 		end)
 	else
-		ent:ManipulateBonePosition(bone, vector_origin)
-		ent:ManipulateBoneAngles(bone, angle_zero)
-		ent:ManipulateBoneScale(bone, VECTOR_SCALEDEF)
+		local pos, ang, scale = ent:GetManipulateBonePosition(bone), ent:GetManipulateBoneAngles(bone), ent:GetManipulateBoneScale(bone)
+		pos:Set(vector_origin)
+		ang:Set(angle_zero)
+		scale:Set(VECTOR_SCALEDEF)
+
+		ent:ManipulateBonePosition(bone, pos)
+		ent:ManipulateBoneAngles(bone, ang)
+		ent:ManipulateBoneScale(bone, scale)
 	end
 
 	net.Start("rgmUpdateSliders")
@@ -883,9 +992,17 @@ net.Receive("rgmResetPos", function(len, pl)
 	if not IsValid(ent) then return end
 
 	if children then
-		RecursiveBoneFunc(bone, ent, function(bone, param) ent:ManipulateBonePosition(bone, param) end, vector_origin)
+		RecursiveBoneFunc(bone, ent, function(bon) 
+			local pos = ent:GetManipulateBonePosition(bon)
+			pos:Set(vector_origin)
+
+			ent:ManipulateBonePosition(bon, pos)
+		end)
 	else
-		ent:ManipulateBonePosition(bone, vector_origin)
+		local pos = ent:GetManipulateBonePosition(bone)
+		pos:Set(vector_origin)
+
+		ent:ManipulateBonePosition(bone, pos)
 	end
 
 	net.Start("rgmUpdateSliders")
@@ -903,9 +1020,17 @@ net.Receive("rgmResetAng", function(len, pl)
 	local bone = net.ReadUInt(10)
 
 	if children then
-		RecursiveBoneFunc(bone, ent, function(bone, param) ent:ManipulateBoneAngles(bone, param) end, angle_zero)
+		RecursiveBoneFunc(bone, ent, function(bon) 
+			local ang = ent:GetManipulateBoneAngles(bon)
+			ang:Set(angle_zero)
+
+			ent:ManipulateBoneAngles(bon, ang)
+		end)
 	else
-		ent:ManipulateBoneAngles(bone, angle_zero)
+		local ang = ent:GetManipulateBoneAngles(bone)
+		ang:Set(angle_zero)
+
+		ent:ManipulateBoneAngles(bone, ang)
 	end
 
 	net.Start("rgmUpdateSliders")
@@ -923,9 +1048,17 @@ net.Receive("rgmResetScale", function(len, pl)
 	local bone = net.ReadUInt(10)
 
 	if children then
-		RecursiveBoneFunc(bone, ent, function(bone, param) ent:ManipulateBoneScale(bone, param) end, VECTOR_SCALEDEF)
+		RecursiveBoneFunc(bone, ent, function(bon)
+			local scale = ent:GetManipulateBoneScale(bon)
+			scale:Set(VECTOR_SCALEDEF)
+
+			ent:ManipulateBoneScale(bon, scale)
+		end)
 	else
-		ent:ManipulateBoneScale(bone, VECTOR_SCALEDEF)
+		local scale = ent:GetManipulateBoneScale(bone)
+		scale:Set(VECTOR_SCALEDEF)
+
+		ent:ManipulateBoneScale(bone, scale)
 	end
 
 	net.Start("rgmUpdateSliders")
@@ -945,9 +1078,17 @@ net.Receive("rgmScaleZero", function(len, pl)
 	local bone = net.ReadUInt(10)
 
 	if children then
-		RecursiveBoneFunc(bone, ent, function(bone, param) ent:ManipulateBoneScale(bone, param) end, VECTOR_NEARZERO)
+		RecursiveBoneFunc(bone, ent, function(bon)
+			local scale = ent:GetManipulateBoneScale(bon)
+			scale:Set(VECTOR_NEARZERO)
+
+			ent:ManipulateBoneScale(bon, scale)
+		end)
 	else
-		ent:ManipulateBoneScale(bone, VECTOR_NEARZERO)
+		local scale = ent:GetManipulateBoneScale(bone)
+		scale:Set(VECTOR_NEARZERO)
+
+		ent:ManipulateBoneScale(bone, scale)
 	end
 
 	net.Start("rgmUpdateSliders")
@@ -976,11 +1117,21 @@ net.Receive("rgmPrepareOffsets", function(len, pl)
 	pl.rgm.NPhysBoneScale = ent:GetManipulateBoneScale(bone)
 
 	if pl.rgm.IsPhysBone then
+		if axis.smovechildren then
+			if _G["physundo"] and _G["physundo"].Create then
+				_G["physundo"].Create(ent, pl)
+			end
+		end
+
 		local obj = ent:GetPhysicsObjectNum(pl.rgm.PhysBone)
 		if obj then
 			pl.rgmOffsetTable = rgm.GetOffsetTable(tool, ent, pl.rgm.Rotate, pl.rgmBoneLocks, pl.rgmEntLocks)
 		end
-	elseif pl.rgm.NextPhysBone and pl.rgm.physmove ~= 0 then
+	elseif pl.rgm.NextPhysBone then
+		if _G["physundo"] and _G["physundo"].Create then
+			_G["physundo"].Create(ent, pl)
+		end
+
 		local obj = ent:GetPhysicsObjectNum(pl.rgm.NextPhysBone)
 		if obj then
 			pl.rgmOffsetTable = rgm.GetNPOffsetTable(tool, ent, pl.rgm.Rotate, {p = pl.rgm.NextPhysBone, pos = axis.GizmoPos, ang = axis.GizmoAng}, pl.rgmPhysMove, pl.rgmBoneLocks, pl.rgmEntLocks)
@@ -1149,7 +1300,7 @@ net.Receive("rgmAdjustBone", function(len, pl)
 		local change = ent:GetManipulateBoneScale(bone)
 		change[axis] = value
 
-		if rgmaxis.scalechildren then
+		if rgmaxis.scalechildren and not (ent:GetClass() == "ent_advbonemerge") then
 			local scalediff = change - prevscale
 			local diff
 			local noscale = pl.rgmScaleLocks
@@ -1158,23 +1309,30 @@ net.Receive("rgmAdjustBone", function(len, pl)
 			if rgmaxis.smovechildren and childbones and childbones[bone] then
 				diff = Vector(change.x / prevscale.x, change.y / prevscale.y, change.z / prevscale.z)
 
-				RecursiveBoneScale = function(ent, bone, scale)
-					if noscale[ent][bone] then return end
+				RecursiveBoneScale = function(ent, bone, scale, diff, ppos, pang)
+					if noscale[ent][bone] and not (pl.rgm.Bone == bone) then 
+						scale = vector_origin
+						diff = VECTOR_SCALEDEF
+					end
 
 					local oldscale = ent:GetManipulateBoneScale(bone)
 					ent:ManipulateBoneScale(bone, oldscale + scale)
 
 					if childbones[bone] then
-						for cbone, pos in pairs(childbones[bone]) do
+						for cbone, tab in pairs(childbones[bone]) do
+							local pos = tab.pos
 							local bonepos = ent:GetManipulateBonePosition(cbone)
 							local newpos = Vector(pos.x * diff.x, pos.y * diff.y, pos.z * diff.z)
+							local wpos, wang = nil, nil
 							ent:ManipulateBonePosition(cbone, bonepos + (newpos - pos))
-							childbones[bone][cbone] = newpos
-						end
-					end
+							if ent:GetClass() == "prop_ragdoll" then
+								wpos, wang = LocalToWorld(newpos, tab.ang, ppos, pang)
+								tab.wpos = wpos
+							end
+							tab.pos = newpos
 
-					for _, cbone in ipairs(ent:GetChildBones(bone)) do
-						RecursiveBoneScale(ent, cbone, scale)
+							RecursiveBoneScale(ent, cbone, scale, diff, wpos, wang)
+						end
 					end
 				end
 			else
@@ -1190,15 +1348,37 @@ net.Receive("rgmAdjustBone", function(len, pl)
 				end
 			end
 
-			RecursiveBoneScale(ent, bone, scalediff)
+			if ent:GetClass() == "prop_ragdoll" then
+				local obj = ent:GetPhysicsObjectNum(pl.rgm.GizmoParentID)
+				local ppos, pang = obj:GetPos(), obj:GetAngles()
+				ppos, pang = LocalToWorld(rgmaxis.GizmoPos, rgmaxis.GizmoAng, ppos, pang)
+				RecursiveBoneScale(ent, bone, scalediff, diff, ppos, pang)
+			else
+				RecursiveBoneScale(ent, bone, scalediff, diff)
+			end
 		else
-			if rgmaxis.smovechildren and childbones and childbones[bone] then
+			if rgmaxis.smovechildren and childbones and childbones[bone] and not (ent:GetClass() == "ent_advbonemerge") then
 				local diff = Vector(change.x / prevscale.x, change.y / prevscale.y, change.z / prevscale.z)
-				for cbone, pos in pairs(childbones[bone]) do
+				local obj
+				local ppos, pang
+
+				if ent:GetClass() == "prop_ragdoll" then
+					obj = ent:GetPhysicsObjectNum(pl.rgm.GizmoParentID)
+					ppos, pang = LocalToWorld(axis.GizmoPos, axis.GizmoAng, obj:GetPos(), obj:GetAngles())
+				end
+
+				for cbone, tab in pairs(childbones[bone]) do
+					local pos = tab.pos
 					local bonepos = ent:GetManipulateBonePosition(cbone)
 					local newpos = Vector(pos.x * diff.x, pos.y * diff.y, pos.z * diff.z)
+					local wpos, wang
 					ent:ManipulateBonePosition(cbone, bonepos + (newpos - pos))
-					childbones[bone][cbone] = newpos
+					if ent:GetClass() == "prop_ragdoll" then
+						wpos, wang = LocalToWorld(newpos, tab.ang, ppos, pang)
+						tab.wpos = wpos
+						rgmAdjustScaleTable(cbone, childbones, wpos, wang)
+					end
+					tab.pos = newpos
 				end
 			end
 
@@ -1217,7 +1397,7 @@ net.Receive("rgmAdjustBone", function(len, pl)
 			local npos, nang = LocalToWorld(rgmaxis.GizmoPos, rgmaxis.GizmoAng, p, a)
 			local diff = Vector(change.x / prevscale.x, change.y / prevscale.y, change.z / prevscale.z)
 			local sbone = pl.rgm.IsPhysBone and {b = pbone, p = p, a = a} or {}
-			local postable = rgm.SetScaleOffsets(self, ent, pl.rgmOffsetTable, sbone, diff, pl.rgmPosLocks, pl.rgmScaleLocks, rgmaxis.scalechildren, {b = pl.rgm.Bone, pos = npos, ang = nang})
+			local postable = rgm.SetScaleOffsets(self, ent, pl.rgmOffsetTable, sbone, diff, pl.rgmPosLocks, pl.rgmScaleLocks, rgmaxis.scalechildren, {b = pl.rgm.Bone, pos = npos, ang = nang}, childbones)
 
 			for i = 0, ent:GetPhysicsObjectCount() - 1 do
 				if postable[i] and not postable[i].dontset then
@@ -1306,6 +1486,7 @@ hook.Add("EntityRemoved", "RGMDeselectEntity", function(ent)
 	for id, pl in ipairs(player.GetAll()) do
 		if pl.rgm and pl.rgm.Entity == ent  then
 			pl.rgm.Entity = nil
+			pl.rgm.Axis.EntAdvMerged = false
 			net.Start("rgmDeselectEntity")
 			net.Send(pl)
 		end
@@ -1318,7 +1499,7 @@ concommand.Add("ragdollmover_resetroot", function(pl)
 	if not pl.rgm or not IsValid(pl.rgm.Entity) then return end
 	local bone = pl.rgm.Bone
 
-	RGMGetBone(pl, pl.rgm.Entity, pl.rgm.BoneToResetTo)
+	rgmGetBone(pl, pl.rgm.Entity, pl.rgm.BoneToResetTo)
 	pl.rgm.BoneToResetTo = bone
 
 	pl:rgmSync()
@@ -1370,17 +1551,31 @@ function TOOL:LeftClick(tr)
 
 			if not IsValid(axis) or not IsValid(ent) then self:SetOperation(0) return true end
 			local offset = tr.HitPos
+			local ogpos, ogang
 
-			if ent:GetClass() == "prop_ragdoll" and pl.rgm.IsPhysBone then
+			if not pl.rgm.IsPhysBone then
+				if axis.EntAdvMerged then
+					ent = ent:GetParent()
+					if ent.AttachedEntity then ent = ent.AttachedEntity end
+				end
+				if pl.rgm.GizmoParentID ~= -1 then
+					local physobj = ent:GetPhysicsObjectNum(pl.rgm.GizmoParentID)
+					ogpos, ogang = LocalToWorld(axis.GizmoPos, axis.GizmoAng, physobj:GetPos(), physobj:GetAngles())
+				else
+					ogpos, ogang = LocalToWorld(axis.GizmoPos, axis.GizmoAng, ent:GetPos(), ent:GetAngles())
+				end
+			elseif ent:GetClass() == "prop_ragdoll" then
 				ent = ent:GetPhysicsObjectNum(pl.rgm.PhysBone)
+				ogpos, ogang = ent:GetPos(), ent:GetAngles()
 			elseif ent:GetClass() == "prop_physics" then
 				ent = ent:GetPhysicsObjectNum(0)
+				ogpos, ogang = ent:GetPos(), ent:GetAngles()
 			end
 
 			if axis.localoffset then
-				offset = WorldToLocal(offset, angle_zero, ent:GetPos(), ent:GetAngles())
+				offset = WorldToLocal(offset, angle_zero, ogpos, ogang)
 			else
-				offset = WorldToLocal(offset, angle_zero, ent:GetPos(), angle_zero)
+				offset = WorldToLocal(offset, angle_zero, ogpos, angle_zero)
 			end
 
 			pl.rgm.GizmoOffset = offset
@@ -1514,6 +1709,7 @@ function TOOL:LeftClick(tr)
 		end
 
 		pl.rgm.Entity = entity
+		axis.EntAdvMerged = false
 
 		if not entity.rgmbonecached then -- also taken from locrotscale. some hacky way to cache the bones?
 			pl.rgmSwep = self.SWEP
@@ -1523,7 +1719,7 @@ function TOOL:LeftClick(tr)
 			entity.rgmbonecached = true
 		end
 
-		RGMGetBone(pl, entity, entity:TranslatePhysBoneToBone(tr.PhysicsBone))
+		rgmGetBone(pl, entity, entity:TranslatePhysBoneToBone(tr.PhysicsBone))
 		pl.rgm.BoneToResetTo = (entity:GetClass() == "prop_ragdoll") and entity:TranslatePhysBoneToBone(0) or 0 -- used for quickswitching to root bone and back
 
 		if ent ~= entity and (not entity.rgmPRenttoid or not entity.rgmPRenttoid[ent]) then
@@ -1629,16 +1825,31 @@ function TOOL:RightClick(tr)
 				offset = tr.HitPos
 			end
 
-			if rgment:GetClass() == "prop_ragdoll" and pl.rgm.IsPhysBone then
+			local ogpos, ogang
+
+			if not pl.rgm.IsPhysBone then
+				if axis.EntAdvMerged then
+					rgment = rgment:GetParent()
+					if rgment.AttachedEntity then rgment = rgment.AttachedEntity end
+				end
+				if pl.rgm.GizmoParentID ~= -1 then
+					local physobj = rgment:GetPhysicsObjectNum(pl.rgm.GizmoParentID)
+					ogpos, ogang = LocalToWorld(axis.GizmoPos, axis.GizmoAng, physobj:GetPos(), physobj:GetAngles())
+				else
+					ogpos, ogang = LocalToWorld(axis.GizmoPos, axis.GizmoAng, rgment:GetPos(), rgment:GetAngles())
+				end
+			elseif rgment:GetClass() == "prop_ragdoll" then
 				rgment = rgment:GetPhysicsObjectNum(pl.rgm.PhysBone)
+				ogpos, ogang = rgment:GetPos(), rgment:GetAngles()
 			elseif rgment:GetClass() == "prop_physics" then
 				rgment = rgment:GetPhysicsObjectNum(0)
+				ogpos, ogang = rgment:GetPos(), rgment:GetAngles()
 			end
 
 			if axis.localoffset then
-				offset = WorldToLocal(offset, angle_zero, rgment:GetPos(), rgment:GetAngles())
+				offset = WorldToLocal(offset, angle_zero, ogpos, ogang)
 			else
-				offset = WorldToLocal(offset, angle_zero, rgment:GetPos(), angle_zero)
+				offset = WorldToLocal(offset, angle_zero, ogpos, angle_zero)
 			end
 
 			pl.rgm.GizmoOffset = offset
@@ -1754,7 +1965,7 @@ if SERVER then
 		if physbonecount == nil then return end
 
 		if not scale then
-			if IsValid(ent:GetParent()) and bone == 0 and not ent:IsEffectActive(EF_BONEMERGE) and not (ent:GetClass() == "prop_ragdoll") then -- is parented
+			if IsValid(ent:GetParent()) and bone == 0 and not ent:IsEffectActive(EF_BONEMERGE) and not ent:IsEffectActive(EF_FOLLOWBONE) and not (ent:GetClass() == "prop_ragdoll") then -- is parented
 				local pos, ang = apart:ProcessMovement(pl.rgmOffsetPos, pl.rgmOffsetAng, eyepos, eyeang, ent, bone, pl.rgmISPos, pl.rgmISDir, 0, snapamount, pl.rgm.StartAngle, nil, nil, nil, tracepos)
 				ent:SetLocalPos(pos)
 				ent:SetLocalAngles(ang)
@@ -1895,7 +2106,7 @@ if SERVER then
 			local sc, ang = apart:ProcessMovement(pl.rgmOffsetPos, pl.rgmOffsetAng, eyepos, eyeang, ent, bone, pl.rgmISPos, pl.rgmISDir, 2, snapamount, pl.rgm.StartAngle, pl.rgm.NPhysBonePos, pl.rgm.NPhysBoneAng, pl.rgm.NPhysBoneScale)
 			local childbones = pl.rgmBoneChildren
 
-			if axis.scalechildren then
+			if axis.scalechildren and not (ent:GetClass() == "ent_advbonemerge") then
 				local scalediff = sc - prevscale
 				local diff
 				local noscale = pl.rgmScaleLocks
@@ -1904,23 +2115,30 @@ if SERVER then
 				if axis.smovechildren and childbones and childbones[bone] then
 					diff = Vector(sc.x / prevscale.x, sc.y / prevscale.y, sc.z / prevscale.z)
 
-					RecursiveBoneScale = function(ent, bone, scale)
-						if noscale[ent][bone] then return end
+					RecursiveBoneScale = function(ent, bone, scale, diff, ppos, pang)
+						if noscale[ent][bone] and not (pl.rgm.Bone == bone) then 
+							scale = vector_origin
+							diff = VECTOR_SCALEDEF
+						end
 
 						local oldscale = ent:GetManipulateBoneScale(bone)
 						ent:ManipulateBoneScale(bone, oldscale + scale)
 
 						if childbones[bone] then
-							for cbone, pos in pairs(childbones[bone]) do
+							for cbone, tab in pairs(childbones[bone]) do
+								local pos = tab.pos
 								local bonepos = ent:GetManipulateBonePosition(cbone)
 								local newpos = Vector(pos.x * diff.x, pos.y * diff.y, pos.z * diff.z)
+								local wpos, wang = nil, nil
 								ent:ManipulateBonePosition(cbone, bonepos + (newpos - pos))
-								childbones[bone][cbone] = newpos
-							end
-						end
+								if ent:GetClass() == "prop_ragdoll" then
+									wpos, wang = LocalToWorld(newpos, tab.ang, ppos, pang)
+									tab.wpos = wpos
+								end
+								tab.pos = newpos
 
-						for _, cbone in ipairs(ent:GetChildBones(bone)) do
-							RecursiveBoneScale(ent, cbone, scale)
+								RecursiveBoneScale(ent, cbone, scale, diff, wpos, wang)
+							end
 						end
 					end
 				else
@@ -1936,15 +2154,38 @@ if SERVER then
 					end
 				end
 
-				RecursiveBoneScale(ent, bone, scalediff)
+				if ent:GetClass() == "prop_ragdoll" then
+					local obj = ent:GetPhysicsObjectNum(pl.rgm.GizmoParentID)
+					local ppos, pang = obj:GetPos(), obj:GetAngles()
+					ppos, pang = LocalToWorld(axis.GizmoPos, axis.GizmoAng, ppos, pang)
+					RecursiveBoneScale(ent, bone, scalediff, diff, ppos, pang)
+				else
+					RecursiveBoneScale(ent, bone, scalediff, diff)
+				end
+
 			else
-				if axis.smovechildren and childbones and childbones[bone] then
+				if axis.smovechildren and childbones and childbones[bone] and not (ent:GetClass() == "ent_advbonemerge") then
 					local diff = Vector(sc.x / prevscale.x, sc.y / prevscale.y, sc.z / prevscale.z)
-					for cbone, pos in pairs(childbones[bone]) do
+					local obj
+					local ppos, pang
+
+					if ent:GetClass() == "prop_ragdoll" then
+						obj = ent:GetPhysicsObjectNum(pl.rgm.GizmoParentID)
+						ppos, pang = LocalToWorld(axis.GizmoPos, axis.GizmoAng, obj:GetPos(), obj:GetAngles())
+					end
+
+					for cbone, tab in pairs(childbones[bone]) do
+						local pos = tab.pos
 						local bonepos = ent:GetManipulateBonePosition(cbone)
 						local newpos = Vector(pos.x * diff.x, pos.y * diff.y, pos.z * diff.z)
+						local wpos, wang
 						ent:ManipulateBonePosition(cbone, bonepos + (newpos - pos))
-						childbones[bone][cbone] = newpos
+						if ent:GetClass() == "prop_ragdoll" then
+							wpos, wang = LocalToWorld(newpos, tab.ang, ppos, pang)
+							tab.wpos = wpos
+							rgmAdjustScaleTable(cbone, childbones, wpos, wang)
+						end
+						tab.pos = newpos
 					end
 				end
 
@@ -1963,7 +2204,7 @@ if SERVER then
 				local npos, nang = LocalToWorld(axis.GizmoPos, axis.GizmoAng, p, a)
 				local diff = Vector(sc.x / prevscale.x, sc.y / prevscale.y, sc.z / prevscale.z)
 				local sbone = pl.rgm.IsPhysBone and {b = pbone, p = p, a = a} or {}
-				local postable = rgm.SetScaleOffsets(self, ent, pl.rgmOffsetTable, sbone, diff, pl.rgmPosLocks, pl.rgmScaleLocks, axis.scalechildren, {b = pl.rgm.Bone, pos = npos, ang = nang})
+				local postable = rgm.SetScaleOffsets(self, ent, pl.rgmOffsetTable, sbone, diff, pl.rgmPosLocks, pl.rgmScaleLocks, axis.scalechildren, {b = pl.rgm.Bone, pos = npos, ang = nang}, childbones)
 
 				for i = 0, ent:GetPhysicsObjectCount() - 1 do
 					if postable[i] and not postable[i].dontset then
@@ -2205,7 +2446,27 @@ local function rgmSendBonePos(pl, ent, boneid)
 		pos = matrix:GetTranslation()
 		ang = matrix:GetAngles()
 
-		if ent:GetBoneParent(boneid) ~= -1 then
+		if ent:GetClass() == "ent_advbonemerge" and ent.AdvBone_BoneInfo then -- an exception for advanced bonemerged stuff
+			local advbones = ent.AdvBone_BoneInfo
+			local parent = ent:GetParent()
+			if parent.AttachedEntity then parent = parent.AttachedEntity end
+			if IsValid(parent) and advbones[boneid].parent and advbones[boneid].parent ~= "" then
+				gizmoppos = pos
+				gizmopang = ang
+			else
+				if ent:GetBoneParent(boneid) ~= -1 then
+					local matrix = ent:GetBoneMatrix(ent:GetBoneParent(boneid))
+					local scale = ent:GetManipulateBoneScale(boneid)
+					scale = Vector(1 / scale.x, 1 / scale.y, 1 / scale.z)
+					matrix:Scale(scale)
+					gizmoppos = matrix:GetTranslation()
+					gizmopang = matrix:GetAngles()
+				else
+					gizmoppos = parent:GetPos()
+					gizmopang = ent:GetAngles()
+				end
+			end
+		elseif ent:GetBoneParent(boneid) ~= -1 then
 			local matrix = ent:GetBoneMatrix(ent:GetBoneParent(boneid))
 			local scale = ent:GetManipulateBoneScale(boneid)
 			scale = Vector(1 / scale.x, 1 / scale.y, 1 / scale.z)
@@ -2213,8 +2474,8 @@ local function rgmSendBonePos(pl, ent, boneid)
 			gizmoppos = matrix:GetTranslation()
 			gizmopang = matrix:GetAngles()
 		else
-			gizmoppos = vector_origin
-			gizmopang = angle_zero
+			gizmoppos = ent:GetPos()
+			gizmopang = ent:GetAngles()
 		end
 
 		gizmopos = pos
@@ -2233,12 +2494,10 @@ local function rgmSendBonePos(pl, ent, boneid)
 			tab[count] = {}
 			tab[count].id = bone
 			tab[count].parent = b
-			local pmatrix = ent:GetBoneMatrix(b)
-			local pos, ang = pmatrix:GetTranslation(), pmatrix:GetAngles()
 			local matrix = ent:GetBoneMatrix(bone)
 			local bonepos = matrix:GetTranslation()
-			tab[count].pos = WorldToLocal(bonepos, angle_zero, pos, ang)
-			tab[count].ang = ang
+			local boneang = matrix:GetAngles()
+			tab[count].pos, tab[count].ang = bonepos, boneang
 			count = count + 1
 			RecursiveGrabChildBones(bone, tab, ent)
 		end
@@ -2505,6 +2764,22 @@ local AdditionalIKs = {
 	"ragdollmover_ik_chain_6"
 }
 
+local function RGMSelectAllIK()
+	local ik1, ik2, ik3, ik4 = GetConVar("ragdollmover_ik_leg_L"):GetBool(), GetConVar("ragdollmover_ik_leg_R"):GetBool(), GetConVar("ragdollmover_ik_hand_L"):GetBool(), GetConVar("ragdollmover_ik_hand_R"):GetBool()
+
+	if ik1 && ik2 && ik3 && ik4 then
+		RunConsoleCommand("ragdollmover_ik_hand_L", 0)
+		RunConsoleCommand("ragdollmover_ik_hand_R", 0)
+		RunConsoleCommand("ragdollmover_ik_leg_L", 0)
+		RunConsoleCommand("ragdollmover_ik_leg_R", 0)
+	else
+		RunConsoleCommand("ragdollmover_ik_hand_L", 1)
+		RunConsoleCommand("ragdollmover_ik_hand_R", 1)
+		RunConsoleCommand("ragdollmover_ik_leg_L", 1)
+		RunConsoleCommand("ragdollmover_ik_leg_R", 1)
+	end
+end
+
 local function CBAdditionalIKs(cpanel, text)
 	local butt = vgui.Create("DButton", cpanel)
 	butt:SetText(text)
@@ -2543,29 +2818,11 @@ local function RGMGizmoMode()
 	net.SendToServer()
 end
 
-local function RGMSelectAllIK()
-	local ik1, ik2, ik3, ik4 = GetConVar("ragdollmover_ik_leg_L"):GetBool(), GetConVar("ragdollmover_ik_leg_R"):GetBool(), GetConVar("ragdollmover_ik_hand_L"):GetBool(), GetConVar("ragdollmover_ik_hand_R"):GetBool()
-
-	if ik1 && ik2 && ik3 && ik4 then
-		RunConsoleCommand("ragdollmover_ik_hand_L", 0)
-		RunConsoleCommand("ragdollmover_ik_hand_R", 0)
-		RunConsoleCommand("ragdollmover_ik_leg_L", 0)
-		RunConsoleCommand("ragdollmover_ik_leg_R", 0)
-	else
-		RunConsoleCommand("ragdollmover_ik_hand_L", 1)
-		RunConsoleCommand("ragdollmover_ik_hand_R", 1)
-		RunConsoleCommand("ragdollmover_ik_leg_L", 1)
-		RunConsoleCommand("ragdollmover_ik_leg_R", 1)
-	end
-end
-
 local function RGMResetAllBones()
 	if not pl.rgm or not pl.rgm.Entity then return end
 
-	net.Start("rgmResetAll")
+	net.Start("rgmResetAllBones")
 		net.WriteEntity(pl.rgm.Entity)
-		net.WriteUInt(0, 10)
-		net.WriteBool(true)
 	net.SendToServer()
 end
 
@@ -2723,6 +2980,7 @@ local BoneTypeSort = {
 
 
 local BonePanel, EntPanel, ConEntPanel
+local EnableIKButt
 local Pos1, Pos2, Pos3, Rot1, Rot2, Rot3, Scale1, Scale2, Scale3, Entry1, Entry2, Entry3
 local Gizmo1, Gizmo2, Gizmo3
 local nodes, entnodes, conentnodes
@@ -2731,6 +2989,46 @@ local Col4
 local LockMode, LockTo = false, { id = nil, ent = nil }
 local IsPropRagdoll, TreeEntities = false, {}
 local ScaleLocks = {}
+
+cvars.AddChangeCallback("ragdollmover_ik_hand_L", function(convar, old, new)
+	if not IsValid(EnableIKButt) then return end
+
+	if tobool(new) and GetConVar("ragdollmover_ik_hand_R"):GetBool() and GetConVar("ragdollmover_ik_leg_L"):GetBool() and GetConVar("ragdollmover_ik_leg_R"):GetBool() then
+		EnableIKButt:SetText("#tool.ragdollmover.ikalloff")
+	else
+		EnableIKButt:SetText("#tool.ragdollmover.ikallon")
+	end
+end)
+
+cvars.AddChangeCallback("ragdollmover_ik_hand_R", function(convar, old, new)
+	if not IsValid(EnableIKButt) then return end
+
+	if tobool(new) and GetConVar("ragdollmover_ik_hand_L"):GetBool() and GetConVar("ragdollmover_ik_leg_L"):GetBool() and GetConVar("ragdollmover_ik_leg_R"):GetBool() then
+		EnableIKButt:SetText("#tool.ragdollmover.ikalloff")
+	else
+		EnableIKButt:SetText("#tool.ragdollmover.ikallon")
+	end
+end)
+
+cvars.AddChangeCallback("ragdollmover_ik_leg_L", function(convar, old, new)
+	if not IsValid(EnableIKButt) then return end
+
+	if tobool(new) and GetConVar("ragdollmover_ik_hand_R"):GetBool() and GetConVar("ragdollmover_ik_hand_L"):GetBool() and GetConVar("ragdollmover_ik_leg_R"):GetBool() then
+		EnableIKButt:SetText("#tool.ragdollmover.ikalloff")
+	else
+		EnableIKButt:SetText("#tool.ragdollmover.ikallon")
+	end
+end)
+
+cvars.AddChangeCallback("ragdollmover_ik_leg_R", function(convar, old, new)
+	if not IsValid(EnableIKButt) then return end
+
+	if tobool(new) and GetConVar("ragdollmover_ik_hand_R"):GetBool() and GetConVar("ragdollmover_ik_leg_L"):GetBool() and GetConVar("ragdollmover_ik_hand_L"):GetBool() then
+		EnableIKButt:SetText("#tool.ragdollmover.ikalloff")
+	else
+		EnableIKButt:SetText("#tool.ragdollmover.ikallon")
+	end
+end)
 
 local function SetBoneNodes(bonepanel, sortedbones)
 	nodes = {}
@@ -2826,7 +3124,7 @@ local function SetBoneNodes(bonepanel, sortedbones)
 					net.Start("rgmResetPos")
 						net.WriteEntity(ent)
 						net.WriteBool(false)
-						net.WriteUInt(v.id, 10) -- with SFM studiomdl, it seems like upper limit for bones is 512 (counting 0)
+						net.WriteUInt(v.id, 10) -- with SFM studiomdl, it seems like upper limit for bones is 256. Used 10 bits in case if there was 512 https://developer.valvesoftware.com/wiki/Skeleton
 					net.SendToServer()
 				end)
 				option:SetIcon("icon16/connect.png")
@@ -3080,7 +3378,7 @@ local function RGMBuildBoneMenu(ents, selectedent, bonepanel)
 	net.SendToServer()
 
 	for ent, _ in pairs(ents) do
-		if ent:IsEffectActive(EF_BONEMERGE) then
+		if ent:IsEffectActive(EF_BONEMERGE) or ent:GetClass() == "ent_advbonemerge" then
 			net.Start("rgmAskForParented")
 				net.WriteUInt(count, 13)
 				for ent, _ in pairs(ents) do
@@ -3428,7 +3726,10 @@ function TOOL.BuildCPanel(CPanel)
 		CCheckBox(Col2, "#tool.ragdollmover.ik4", "ragdollmover_ik_hand_R")
 		CCheckBox(Col2, "#tool.ragdollmover.ik1", "ragdollmover_ik_leg_L")
 		CCheckBox(Col2, "#tool.ragdollmover.ik2", "ragdollmover_ik_leg_R")
-		CButton(Col2, "#tool.ragdollmover.ikall", RGMSelectAllIK)
+		EnableIKButt = CButton(Col2, "#tool.ragdollmover.ikallon", RGMSelectAllIK)
+		if GetConVar("ragdollmover_ik_leg_L"):GetBool() and GetConVar("ragdollmover_ik_leg_R"):GetBool() and GetConVar("ragdollmover_ik_hand_L"):GetBool() and GetConVar("ragdollmover_ik_hand_R"):GetBool() then
+			EnableIKButt:SetText("#tool.ragdollmover.ikalloff")
+		end
 		CBAdditionalIKs(Col2, "#tool.ragdollmover.additional")
 
 	local Col3 = CCol(CPanel, "#tool.ragdollmover.miscpanel")
@@ -3545,6 +3846,7 @@ net.Receive("rgmDeselectEntity", function(len)
 	if IsValid(ConEntPanel) then ConEntPanel:Clear() end
 	if pl.rgm and pl.rgm.Entity then
 		pl.rgm.Entity = nil
+		pl.rgm.Axis.EntAdvMerged = false
 	end
 	IsPropRagdoll = false
 	TreeEntities = {}

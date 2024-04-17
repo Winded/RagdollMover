@@ -25,16 +25,21 @@ function ENT:ProcessMovement(_, offang, eyepos, eyeang, ent, bone, ppos, pnorm, 
 	local intersect = self:GetGrabPos(eyepos, eyeang, ppos, pnorm)
 	local localized = self:WorldToLocal(intersect)
 	local _p, _a
-	local pl = self:GetParent().Owner
+	local axis = self:GetParent()
+	local pl = axis.Owner
+
 	local axistable = {
 		(self:GetParent():LocalToWorld(VECTOR_SIDE) - self:GetPos()):Angle(),
 		(self:GetParent():LocalToWorld(vector_up) - self:GetPos()):Angle(),
 		(self:GetParent():LocalToWorld(VECTOR_FRONT) - self:GetPos()):Angle(),
 		(self:GetPos() - pl:EyePos()):Angle()
 	}
+	axistable[1]:Normalize()
+	axistable[2]:Normalize()
+	axistable[3]:Normalize()
+	axistable[4]:Normalize()
 
 	local mfmod = math.fmod
-	local axis = self:GetParent()
 
 	if movetype == 1 then
 		local offset = axis.Owner.rgm.GizmoOffset
@@ -88,11 +93,20 @@ function ENT:ProcessMovement(_, offang, eyepos, eyeang, ent, bone, ppos, pnorm, 
 		end
 	elseif movetype == 2 then
 		local rotateang, axisangle
+		local parent = ent:GetParent()
 		axisangle = axistable[self.axistype]
 
 		local _, boneang = ent:GetBonePosition(bone)
-		if ent:GetClass() == "prop_physics" then
-			local manang = ent:GetManipulateBoneAngles(bone)
+		if axis.EntAdvMerged then
+			if parent.AttachedEntity then parent = parent.AttachedEntity end
+			if pl.rgm.GizmoParentID ~= -1 then
+				local physobj = parent:GetPhysicsObjectNum(pl.rgm.GizmoParentID)
+				_, boneang = LocalToWorld(vector_origin, axis.GizmoAng, physobj:GetPos(), physobj:GetAngles())
+			else
+				_, boneang = LocalToWorld(vector_origin, axis.GizmoAng, parent:GetPos(), parent:GetAngles())
+			end
+		elseif ent:GetClass() == "prop_physics" then
+			local manang = ent:GetManipulateBoneAngles(bone)*1
 			manang:Normalize()
 
 			_, boneang = LocalToWorld(vector_origin, Angle(0, 0, -manang[3]), vector_origin, boneang)
@@ -104,6 +118,8 @@ function ENT:ProcessMovement(_, offang, eyepos, eyeang, ent, bone, ppos, pnorm, 
 
 				local _, diff = WorldToLocal(vector_origin, boneang, vector_origin, pang)
 				_, boneang = LocalToWorld(vector_origin, diff, vector_origin, axis.GizmoParent)
+			else
+				boneang = axis.LocalAngles
 			end
 		end
 		local startlocal = LocalToWorld(startangle, startangle:Angle(), vector_origin, axisangle) -- first we get our vectors into world coordinates, relative to the axis angles
@@ -133,6 +149,7 @@ function ENT:ProcessMovement(_, offang, eyepos, eyeang, ent, bone, ppos, pnorm, 
 			_a = rotateang
 		else
 			_a = ent:GetManipulateBoneAngles(bone)
+			_a = _a*1 -- do this to copy angle in case if we're rotating advanced bonemerged stuff
 			rotateang = nphysangle[self.axistype] + rotationangle
 			_a[self.axistype] = rotateang
 		end

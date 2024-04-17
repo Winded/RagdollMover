@@ -10,6 +10,7 @@ function ENT:ProcessMovement(offpos, _, eyepos, eyeang, ent, bone, ppos, pnorm, 
 	end
 
 	local axis = self:GetParent()
+	local parent = ent:GetParent()
 	local offset = axis.Owner.rgm.GizmoOffset
 	local entoffset = vector_origin
 	if axis.localoffset then
@@ -22,7 +23,6 @@ function ENT:ProcessMovement(offpos, _, eyepos, eyeang, ent, bone, ppos, pnorm, 
 		offset = offset + entoffset
 	end
 	local pos, ang
-	local pl = self:GetParent().Owner
 
 	if movetype == 1 then
 		local obj = ent:GetPhysicsObjectNum(bone)
@@ -30,7 +30,31 @@ function ENT:ProcessMovement(offpos, _, eyepos, eyeang, ent, bone, ppos, pnorm, 
 		pos = LocalToWorld(offpos, angle_zero, intersect - offset, self:GetAngles())
 	elseif movetype == 2 then
 		local localized, startmove, finalpos, boneang
-		if ent:GetBoneParent(bone) ~= -1 then
+		local advbones = nil
+		if ent:GetClass() == "ent_advbonemerge" then
+			advbones = ent.AdvBone_BoneInfo
+		end
+
+		if axis.EntAdvMerged then
+			if parent.AttachedEntity then parent = parent.AttachedEntity end
+			local pl = self:GetParent().Owner
+			local funang
+			if pl.rgm.GizmoParentID ~= -1 then
+				local physobj = parent:GetPhysicsObjectNum(pl.rgm.GizmoParentID)
+				_, funang = LocalToWorld(vector_origin, axis.GizmoAng, physobj:GetPos(), physobj:GetAngles())
+			else
+				_, funang = LocalToWorld(vector_origin, axis.GizmoAng, parent:GetPos(), parent:GetAngles())
+			end
+
+			local pbone = parent:LookupBone(advbones[bone].parent) -- may need to make an exception if the bone doesn't exist for some reason, but i think adv bonemerge would handle that already
+			local matrix = parent:GetBoneMatrix(pbone)
+			boneang = matrix:GetAngles()
+
+			local _ , pang = parent:GetBonePosition(pbone)
+
+			local _, diff = WorldToLocal(vector_origin, boneang, vector_origin, pang)
+			_, boneang = LocalToWorld(vector_origin, diff, vector_origin, funang)
+		elseif ent:GetBoneParent(bone) ~= -1 then
 			local matrix = ent:GetBoneMatrix(ent:GetBoneParent(bone))
 			boneang = matrix:GetAngles()
 			if not (ent:GetClass() == "prop_physics") then
@@ -40,10 +64,16 @@ function ENT:ProcessMovement(offpos, _, eyepos, eyeang, ent, bone, ppos, pnorm, 
 				_, boneang = LocalToWorld(vector_origin, diff, vector_origin, axis.GizmoParent)
 			end
 		else
-			if IsValid(ent) then
-				boneang = ent:GetAngles()
+			if ent:GetClass() == "ent_advbonemerge" and parent:GetClass() == "prop_ragdoll" then
+				boneang = angle_zero -- bone has no parent and isn't physical
 			else
-				boneang = angle_zero
+				local pl = self:GetParent().Owner
+				if pl.rgm.GizmoParentID ~= -1 then
+					local physobj = ent:GetPhysicsObjectNum(pl.rgm.GizmoParentID)
+					boneang = physobj:GetAngles()
+				else
+					boneang = ent:GetAngles()
+				end
 			end
 		end
 
@@ -56,7 +86,7 @@ function ENT:ProcessMovement(offpos, _, eyepos, eyeang, ent, bone, ppos, pnorm, 
 	elseif movetype == 0 then
 		ang = ent:GetLocalAngles()
 		pos = LocalToWorld(offpos, angle_zero, intersect - offset, self:GetAngles())
-		pos = ent:GetParent():WorldToLocal(pos)
+		pos = parent:WorldToLocal(pos)
 	end
 
 	return pos, ang

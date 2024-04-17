@@ -9,6 +9,7 @@ function ENT:ProcessMovement(offpos, offang, eyepos, eyeang, ent, bone, ppos, pn
 	local pos, ang
 
 	pos = ent:GetManipulateBoneScale(bone)
+	pos = pos*1 -- multiply by 1 to make a copy of the vector, in case if we scale advanced bonemerged item - those currently use modified ManipulateBoneX functions which seem to cause a bug if I keep altering vector given from GetManipulateBoneX stuff
 	localized = Vector(localized.x - startgrab.x, 0, 0)
 	local posadd = nphysscale[self.axistype] + localized.x
 	ang = ent:GetManipulateBoneAngles(bone)

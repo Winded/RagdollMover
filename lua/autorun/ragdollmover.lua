@@ -218,7 +218,7 @@ function GetPhysBoneParent(ent, bone)
 			return parent
 		end
 		i = i + 1
-		if i > 512 then
+		if i > 256 then
 			cont = true
 		end
 	end
@@ -416,6 +416,8 @@ function GetOffsetTable(tool, ent, rotate, bonelocks, entlocks)
 
 		ent.rgmIKChains[k].thighlength = pos1:Distance(pos2)
 		ent.rgmIKChains[k].shinlength = pos2:Distance(pos3)
+
+		ent.rgmIKChains[k].nphyship = nil
 
 	end
 
@@ -682,11 +684,13 @@ function SetOffsets(tool, ent, ostable, sbone, rlocks, plocks, nphysinfo)
 	return RTable
 end
 
-local function RecursiveSetScale(ostable, sbone, ent, plocks, slocks, RTable, bone, scale, scalechildren, nphysinfo)
+local function RecursiveSetScale(ostable, sbone, ent, plocks, slocks, RTable, bone, scale, scalechildren, nphysinfo, childrenbones)
 
+	local npbone = ent:TranslatePhysBoneToBone(bone)
+	local npparent = ent:GetBoneParent(npbone)
 	local parent = ostable[bone].parent
 	local nphys = nil
-	if not RTable[parent] then RecursiveSetScale(ostable, sbone, ent, plocks, slocks, RTable, parent, scale, scalechildren, nphysinfo) end
+	if not RTable[parent] then RecursiveSetScale(ostable, sbone, ent, plocks, slocks, RTable, parent, scale, scalechildren, nphysinfo, childrenbones) end
 
 	local ppos, pang = RTable[parent].pos, RTable[parent].ang
 	local bsc = RTable[parent].sc
@@ -703,7 +707,7 @@ local function RecursiveSetScale(ostable, sbone, ent, plocks, slocks, RTable, bo
 		else
 			scaleorig = -2
 		end
-		sc = (ent:GetBoneParent(ent:TranslatePhysBoneToBone(bone)) == scaleorig) and scale or VECTOR_ONE
+		sc = (npparent == scaleorig) and scale or VECTOR_ONE
 	end
 
 	if ostable[bone].nphysbone then
@@ -712,7 +716,12 @@ local function RecursiveSetScale(ostable, sbone, ent, plocks, slocks, RTable, bo
 		bsc = scale
 	end
 
-	pos, ang = LocalToWorld(ostable[bone].pos * sc, ostable[bone].ang, ppos, pang)
+	if childrenbones and childrenbones[npparent] and childrenbones[npparent][npbone] and childrenbones[npparent][npbone].wpos then
+		pos, ang = LocalToWorld(ostable[bone].pos, ostable[bone].ang, ppos, pang)
+		pos = childrenbones[npparent][npbone].wpos
+	else
+		pos, ang = LocalToWorld(ostable[bone].pos * sc, ostable[bone].ang, ppos, pang)
+	end
 
 	if bone == sbone.b then
 		bsc = scale
@@ -722,7 +731,7 @@ local function RecursiveSetScale(ostable, sbone, ent, plocks, slocks, RTable, bo
 		if plocks[ent] and IsValid(plocks[ent][bone]) then
 			pos = plocks[ent][bone]:GetPos()
 		end
-		if slocks[ent] and slocks[ent][ent:TranslatePhysBoneToBone(bone)] then
+		if slocks[ent] and slocks[ent][npbone] then
 			bsc = VECTOR_ONE
 		end
 	end
@@ -732,7 +741,7 @@ local function RecursiveSetScale(ostable, sbone, ent, plocks, slocks, RTable, bo
 	RTable[bone].sc = bsc
 end
 
-function SetScaleOffsets(tool, ent, ostable, sbone, scale, plocks, slocks, scalechildren, nphysinfo)
+function SetScaleOffsets(tool, ent, ostable, sbone, scale, plocks, slocks, scalechildren, nphysinfo, childrenbones)
 	local RTable = {}
 
 	local physcount = ent:GetPhysicsObjectCount() - 1
@@ -753,7 +762,7 @@ function SetScaleOffsets(tool, ent, ostable, sbone, scale, plocks, slocks, scale
 
 	for pb = 0, physcount do
 		if ostable[pb] and not RTable[pb] then
-			RecursiveSetScale(ostable, sbone, ent, plocks, slocks, RTable, pb, scale, scalechildren, nphysinfo)
+			RecursiveSetScale(ostable, sbone, ent, plocks, slocks, RTable, pb, scale, scalechildren, nphysinfo, childrenbones)
 		end
 	end
 
