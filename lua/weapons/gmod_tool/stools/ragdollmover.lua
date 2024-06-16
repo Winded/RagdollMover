@@ -1350,9 +1350,11 @@ net.Receive("rgmAdjustBone", function(len, pl)
 
 			if ent:GetClass() == "prop_ragdoll" then
 				local obj = ent:GetPhysicsObjectNum(pl.rgm.GizmoParentID)
-				local ppos, pang = obj:GetPos(), obj:GetAngles()
-				ppos, pang = LocalToWorld(rgmaxis.GizmoPos, rgmaxis.GizmoAng, ppos, pang)
-				RecursiveBoneScale(ent, bone, scalediff, diff, ppos, pang)
+				if IsValid(obj) then
+					local ppos, pang = obj:GetPos(), obj:GetAngles()
+					ppos, pang = LocalToWorld(rgmaxis.GizmoPos, rgmaxis.GizmoAng, ppos, pang)
+					RecursiveBoneScale(ent, bone, scalediff, diff, ppos, pang)
+				end
 			else
 				RecursiveBoneScale(ent, bone, scalediff, diff)
 			end
@@ -1364,7 +1366,9 @@ net.Receive("rgmAdjustBone", function(len, pl)
 
 				if ent:GetClass() == "prop_ragdoll" then
 					obj = ent:GetPhysicsObjectNum(pl.rgm.GizmoParentID)
-					ppos, pang = LocalToWorld(axis.GizmoPos, axis.GizmoAng, obj:GetPos(), obj:GetAngles())
+					if IsValid(obj) then
+						ppos, pang = LocalToWorld(axis.GizmoPos, axis.GizmoAng, obj:GetPos(), obj:GetAngles())
+					end
 				end
 
 				for cbone, tab in pairs(childbones[bone]) do
@@ -1434,6 +1438,8 @@ net.Receive("rgmAdjustBone", function(len, pl)
 	end
 
 	local mode, axis, value = net.ReadInt(3), net.ReadInt(3), net.ReadFloat()
+	if mode == 3 and value == 0 then value = 0.01 end
+
 	manipulate_bone[mode](axis, value)
 
 	if not pl.rgm.UIMoving then
@@ -2106,6 +2112,10 @@ if SERVER then
 			local sc, ang = apart:ProcessMovement(pl.rgmOffsetPos, pl.rgmOffsetAng, eyepos, eyeang, ent, bone, pl.rgmISPos, pl.rgmISDir, 2, snapamount, pl.rgm.StartAngle, pl.rgm.NPhysBonePos, pl.rgm.NPhysBoneAng, pl.rgm.NPhysBoneScale)
 			local childbones = pl.rgmBoneChildren
 
+			if sc.x == 0 then sc.x = 0.01 end
+			if sc.y == 0 then sc.x = 0.01 end
+			if sc.z == 0 then sc.x = 0.01 end
+
 			if axis.scalechildren and not (ent:GetClass() == "ent_advbonemerge") then
 				local scalediff = sc - prevscale
 				local diff
@@ -2156,9 +2166,11 @@ if SERVER then
 
 				if ent:GetClass() == "prop_ragdoll" then
 					local obj = ent:GetPhysicsObjectNum(pl.rgm.GizmoParentID)
-					local ppos, pang = obj:GetPos(), obj:GetAngles()
-					ppos, pang = LocalToWorld(axis.GizmoPos, axis.GizmoAng, ppos, pang)
-					RecursiveBoneScale(ent, bone, scalediff, diff, ppos, pang)
+					if IsValid(obj) then
+						local ppos, pang = obj:GetPos(), obj:GetAngles()
+						ppos, pang = LocalToWorld(axis.GizmoPos, axis.GizmoAng, ppos, pang)
+						RecursiveBoneScale(ent, bone, scalediff, diff, ppos, pang)
+					end
 				else
 					RecursiveBoneScale(ent, bone, scalediff, diff)
 				end
@@ -2171,7 +2183,9 @@ if SERVER then
 
 					if ent:GetClass() == "prop_ragdoll" then
 						obj = ent:GetPhysicsObjectNum(pl.rgm.GizmoParentID)
-						ppos, pang = LocalToWorld(axis.GizmoPos, axis.GizmoAng, obj:GetPos(), obj:GetAngles())
+						if IsValid(obj) then
+							ppos, pang = LocalToWorld(axis.GizmoPos, axis.GizmoAng, obj:GetPos(), obj:GetAngles())
+						end
 					end
 
 					for cbone, tab in pairs(childbones[bone]) do
@@ -2606,6 +2620,9 @@ local function CManipSlider(cpanel, text, mode, axis, min, max, dec, textentry)
 	function slider:OnValueChanged(value)
 		if ManipSliderUpdating then return end
 		ManipSliderUpdating = true
+
+		if mode == 3 and value == 0 then value = 0.01 end
+
 		net.Start("rgmAdjustBone")
 		net.WriteInt(mode, 3)
 		net.WriteInt(axis, 3)
@@ -2632,6 +2649,8 @@ local function CManipEntry(cpanel, mode)
 		for i = 1, 3 do
 			if values[i] and tonumber(values[i]) and IsValid(entry.Sliders[i]) then
 				entry.Sliders[i]:SetValue(tonumber(values[i]))
+
+				if mode == 3 and tonumber(values[i]) == 0 then values[i] = 0.01 end
 
 				net.Start("rgmAdjustBone")
 				net.WriteInt(mode, 3)
