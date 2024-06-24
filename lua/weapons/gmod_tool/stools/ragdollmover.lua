@@ -1698,7 +1698,7 @@ function TOOL:LeftClick(tr)
 		local dirnorm = (collision.hitpos - axis:GetPos())
 		dirnorm:Normalize()
 		pl.rgm.DirNorm = dirnorm
-		pl.rgm.MoveAxis = apart
+		pl.rgm.MoveAxis = apart.id
 		pl.rgm.Moving = true
 		pl:rgmSync()
 		return false
@@ -1943,7 +1943,7 @@ if SERVER then
 
 		local eyepos, eyeang = rgm.EyePosAng(pl)
 
-		local apart = pl.rgm.MoveAxis
+		local apart = axis[RGMGIZMOS.GizmoTable[pl.rgm.MoveAxis]]
 		local bone = pl.rgm.PhysBone
 
 		if not IsValid(ent) then
@@ -4190,15 +4190,15 @@ function TOOL:DrawHUD()
 	if IsValid(ent) and IsValid(axis) and bone then
 		local scale = GizmoScale or 10
 		local width = GizmoWidth or 0.5
-		local moveaxis = pl.rgm.MoveAxis
-		if moving and IsValid(moveaxis) then
+		local moveaxis = axis[RGMGIZMOS.GizmoTable[pl.rgm.MoveAxis]]
+		if moving and moveaxis then
 			cam.Start({type = "3D"})
 			render.SetMaterial(material)
 
 			moveaxis:DrawLines(true, scale, width)
 
 			cam.End()
-			if moveaxis:IsDisc() then
+			if moveaxis.IsDisc then
 				local intersect = moveaxis:GetGrabPos(rgm.EyePosAng(pl))
 				local fwd = (intersect - axis:GetPos())
 				fwd:Normalize()

@@ -1,60 +1,12 @@
 
 include("shared.lua")
 
+local VECTOR_FRONT = Vector(1, 0, 0)
 local COLOR_RGMGREEN = Color(0, 200, 0, 255)
-
-local TransTable = {
-	"ArrowOmni",
-	"ArrowX", "ArrowY", "ArrowZ",
-	"ArrowXY", "ArrowXZ", "ArrowYZ",
-	"DiscP", "DiscY", "DiscR", "DiscLarge",
-	"ScaleX", "ScaleY", "ScaleZ",
-	"ScaleXY", "ScaleXZ", "ScaleYZ"
-}
+local ANGLE_ARROW_OFFSET = Angle(0, 90, 90)
+local ANGLE_DISC = Angle(0, 90, 0)
 
 local Fulldisc = GetConVar("ragdollmover_fulldisc")
-
-net.Receive("rgmAxis", function(len)
-	local self = net.ReadEntity()
-	self.ArrowOmni =	net.ReadEntity()
-	self.ArrowX =		net.ReadEntity()
-	self.ArrowY =		net.ReadEntity()
-	self.ArrowZ =		net.ReadEntity()
-	self.ArrowXY =		net.ReadEntity()
-	self.ArrowXZ =		net.ReadEntity()
-	self.ArrowYZ =		net.ReadEntity()
-	self.DiscP =		net.ReadEntity()
-	self.DiscY =		net.ReadEntity()
-	self.DiscR =		net.ReadEntity()
-	self.DiscLarge = 	net.ReadEntity()
-	self.ScaleX =		net.ReadEntity()
-	self.ScaleY =		net.ReadEntity()
-	self.ScaleZ =		net.ReadEntity()
-	self.ScaleXY =		net.ReadEntity()
-	self.ScaleXZ =		net.ReadEntity()
-	self.ScaleYZ =		net.ReadEntity()
-	self.Axises = {
-		self.ArrowOmni,
-		self.ArrowX,
-		self.ArrowY,
-		self.ArrowZ,
-		self.ArrowXY,
-		self.ArrowXZ,
-		self.ArrowYZ,
-		self.DiscP,
-		self.DiscY,
-		self.DiscR,
-		self.DiscLarge,
-		self.ScaleX,
-		self.ScaleY,
-		self.ScaleZ,
-		self.ScaleXY,
-		self.ScaleXZ,
-		self.ScaleYZ
-	}
-
-	self.fulldisc = Fulldisc:GetInt() ~= 0
-end)
 
 local pl
 
@@ -67,14 +19,6 @@ function ENT:DrawLines(scale, width)
 	if rotate then start, last = 8, 11 end
 	if modescale then start, last = 12, 17 end
 	-- print(self.Axises)
-
-	if not self.Axises then
-		if self.RequestedAxis then return end
-		self.RequestedAxis = true
-		net.Start("rgmAxisRequest")
-		net.SendToServer()
-		return
-	end
 
 	local gotselected = false
 	for i = start, last do
@@ -122,6 +66,49 @@ end
 function ENT:DrawTranslucent()
 end
 
-function ENT:Think()
+local lastang = nil
 
+function ENT:Think()
+	if not pl or not pl.rgm then return end
+	if self ~= pl.rgm.Axis then return end
+
+	local ent = pl.rgm.Entity
+	if not IsValid(ent) or not pl.rgm.Bone or not self.Axises then return end
+
+	if not pl.rgm.Moving then -- Prevent whole thing from rotating when we do localized rotation
+		if pl.rgm.Rotate then
+			if not pl.rgm.IsPhysBone then
+				local manipang = ent:GetManipulateBoneAngles(pl.rgm.Bone)
+				if manipang ~= lastang then
+					self.DiscP.LocalAng = Angle(0, 90 + manipang.y, 0) -- Pitch follows Yaw angles
+					self.DiscR.LocalAng = Angle(0 + manipang.x, 0 + manipang.y, 0) -- Roll follows Pitch and Yaw angles
+					lastang = manipang
+				end
+			else
+				self.DiscP.LocalAng = ANGLE_DISC
+				self.DiscR.LocalAng = angle_zero
+				lastang = nil
+			end
+		else
+			self.DiscP.LocalAng = ANGLE_DISC
+			self.DiscR.LocalAng = angle_zero
+			lastang = nil
+		end
+	end
+
+	local pos, poseye = self:GetPos(), pl:EyePos()
+	local ang = (pos - poseye):Angle()
+	ang = self:WorldToLocalAngles(ang)
+	self.DiscLarge.LocalAng = ang
+	self.ArrowOmni.LocalAng = ang
+
+	pos, poseye = self:WorldToLocal(pos), self:WorldToLocal(poseye)
+	local xangle, yangle = (Vector(pos.y, pos.z, 0) - Vector(poseye.y, poseye.z, 0)):Angle(), (Vector(pos.x, pos.z, 0) - Vector(poseye.x, poseye.z, 0)):Angle()
+	local XAng, YAng, ZAng = Angle(0, 0, xangle.y + 90) + VECTOR_FRONT:Angle(), ANGLE_ARROW_OFFSET - Angle(0, 0, yangle.y), Angle(0, ang.y, 0) + vector_up:Angle()
+	self.ArrowX.LocalAng = XAng
+	self.ScaleX.LocalAng = XAng
+	self.ArrowY.LocalAng = YAng
+	self.ScaleY.LocalAng = YAng
+	self.ArrowZ.LocalAng = ZAng
+	self.ScaleZ.LocalAng = ZAng
 end

@@ -13,34 +13,7 @@ local ANGLE_ARROW_OFFSET = Angle(0, 90, 90)
 
 util.AddNetworkString("rgmAxisRequest")
 util.AddNetworkString("rgmAxis")
-
-local function SendAxisToPlayer(Axis, pl)
-
-	timer.Simple(0.5, function()
-		net.Start("rgmAxis")
-			net.WriteEntity(Axis)
-			net.WriteEntity(Axis.ArrowOmni)
-			net.WriteEntity(Axis.ArrowX)
-			net.WriteEntity(Axis.ArrowY)
-			net.WriteEntity(Axis.ArrowZ)
-			net.WriteEntity(Axis.ArrowXY)
-			net.WriteEntity(Axis.ArrowXZ)
-			net.WriteEntity(Axis.ArrowYZ)
-			net.WriteEntity(Axis.DiscP)
-			net.WriteEntity(Axis.DiscY)
-			net.WriteEntity(Axis.DiscR)
-			net.WriteEntity(Axis.DiscLarge)
-			net.WriteEntity(Axis.ScaleX)
-			net.WriteEntity(Axis.ScaleY)
-			net.WriteEntity(Axis.ScaleZ)
-			net.WriteEntity(Axis.ScaleXY)
-			net.WriteEntity(Axis.ScaleXZ)
-			net.WriteEntity(Axis.ScaleYZ)
-		net.Send(pl)
-	end)
-
-end
-
+--[[
 function ENT:Setup()
 
 	self.ArrowOmni = ents.Create("rgm_axis_side_omni")
@@ -221,7 +194,7 @@ net.Receive("rgmAxisRequest", function(len, pl)
 		end
 	end)
 end)
-
+]]
 function ENT:Think()
 	local pl = self.Owner
 	if not IsValid(pl) then return end
@@ -471,16 +444,16 @@ function ENT:Think()
 			self:SetAngles(moveang)
 			if not pl.rgm.IsPhysBone then
 				local manipang = ent:GetManipulateBoneAngles(bone)
-				self.DiscP:SetLocalAngles(Angle(0, 90 + manipang.y, 0)) -- Pitch follows Yaw angles
-				self.DiscR:SetLocalAngles(Angle(0 + manipang.x, 0 + manipang.y, 0)) -- Roll follows Pitch and Yaw angles
+				self.DiscP.LocalAng = Angle(0, 90 + manipang.y, 0) -- Pitch follows Yaw angles
+				self.DiscR.LocalAng = Angle(0 + manipang.x, 0 + manipang.y, 0) -- Roll follows Pitch and Yaw angles
 			else
-				self.DiscP:SetLocalAngles(ANGLE_DISC)
-				self.DiscR:SetLocalAngles(angle_zero)
+				self.DiscP.LocalAng = ANGLE_DISC
+				self.DiscR.LocalAng = angle_zero
 			end
 		else
 			self:SetAngles(angle_zero)
-			self.DiscP:SetLocalAngles(ANGLE_DISC)
-			self.DiscR:SetLocalAngles(angle_zero)
+			self.DiscP.LocalAng = ANGLE_DISC
+			self.DiscR.LocalAng = angle_zero
 		end
 		self.LocalAngles = ang
 		self.BonePos = pos
@@ -491,19 +464,19 @@ function ENT:Think()
 	local disc = self.DiscLarge
 	local ang = (pos - poseye):Angle()
 	ang = self:WorldToLocalAngles(ang)
-	disc:SetLocalAngles(ang)
-	self.ArrowOmni:SetLocalAngles(ang)
+	disc.LocalAng = ang
+	self.ArrowOmni.LocalAng = ang
 
 	if not pl.rgm.Moving then
 		pos, poseye = self:WorldToLocal(pos), self:WorldToLocal(poseye)
 		local xangle, yangle = (Vector(pos.y, pos.z, 0) - Vector(poseye.y, poseye.z, 0)):Angle(), (Vector(pos.x, pos.z, 0) - Vector(poseye.x, poseye.z, 0)):Angle()
 		local XAng, YAng, ZAng = Angle(0, 0, xangle.y + 90) + VECTOR_FRONT:Angle(), ANGLE_ARROW_OFFSET - Angle(0, 0, yangle.y), Angle(0, ang.y, 0) + vector_up:Angle()
-		self.ArrowX:SetLocalAngles(XAng)
-		self.ScaleX:SetLocalAngles(XAng)
-		self.ArrowY:SetLocalAngles(YAng)
-		self.ScaleY:SetLocalAngles(YAng)
-		self.ArrowZ:SetLocalAngles(ZAng)
-		self.ScaleZ:SetLocalAngles(ZAng)
+		self.ArrowX.LocalAng = XAng
+		self.ScaleX.LocalAng = XAng
+		self.ArrowY.LocalAng = YAng
+		self.ScaleY.LocalAng = YAng
+		self.ArrowZ.LocalAng = ZAng
+		self.ScaleZ.LocalAng = ZAng
 	end
 
 	self:NextThink(CurTime() + 0.001)
