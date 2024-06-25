@@ -1,3 +1,6 @@
+-- load gizmos library
+include("ragdollmover/rgm_gizmos.lua")
+AddCSLuaFile("ragdollmover/rgm_gizmos.lua")
 
 --[[
 	rgm module
