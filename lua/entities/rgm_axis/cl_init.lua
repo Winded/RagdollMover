@@ -30,6 +30,8 @@ function ENT:DrawLines(scale, width)
 		end
 		moveaxis:DrawLines(yellow, scale, width)
 	end
+
+	self.width = width
 end
 
 function ENT:DrawDirectionLine(norm, scale, ghost)

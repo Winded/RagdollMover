@@ -16,8 +16,6 @@ do
 	basepart.LocalAng = Angle(0, 0, 0)
 	basepart.Color = nil
 	basepart.Color2 = nil
-	basepart.width = 0
-	basepart.scale = 0
 	basepart.linepositions = nil
 	basepart.collpositions = nil
 
@@ -158,11 +156,10 @@ do
 		local localized = self:WorldToLocal(intersect)
 		local distmin, distmax
 
-		if self.scale ~= scale or not self.collpositions then
+		if self.Parent.scale ~= scale or not self.collpositions then
 			distmin	= Vector(0.1 * scale, -0.075 * scale, -0.075 * scale)
 			distmax = Vector(1 * scale, 0.075 * scale, 0.075 * scale)
 
-			self.scale = scale
 			self.collpositions = {distmin, distmax}
 		else
 			distmin = self.collpositions[1]
@@ -277,13 +274,12 @@ do
 		function posarrow:GetLinePositions(width)
 			local RTable
 
-			if self.width ~= width or not self.linepositions then
+			if self.Parent.width ~= width or not self.linepositions then
 				RTable = {
 					{Vector(0.1, -0.075 * width, 0), Vector(0.75, -0.075 * width, 0), Vector(0.75, 0.075 * width, 0), Vector(0.1, 0.075 * width, 0)},
 					{Vector(0.75, -0.0625 - 0.0625 * width, 0), VECTOR_FRONT, VECTOR_FRONT, Vector(0.75, 0.0625 + 0.0625 * width, 0)}
 				}
 
-				self.width = width
 				self.linepositions = RTable
 			else
 				RTable = self.linepositions
@@ -310,13 +306,12 @@ do
 		local localized = self:WorldToLocal(intersect)
 		local distmin1, distmax1, distmin2, distmax2
 
-		if self.scale ~= scale or not self.collpositions then
+		if self.Parent.scale ~= scale or not self.collpositions then
 			distmin1 = Vector(-0.15 * scale, scale * 0.2, 0)
 			distmax1 = Vector(0.15 * scale, scale * 0.3, scale * 0.3)
 			distmin2 = Vector(-0.15 * scale, 0, scale * 0.2)
 			distmax2 = Vector(0.15 * scale, scale * 0.3, scale * 0.3)
 
-			self.scale = scale
 			self.collpositions = {distmin1, distmax1, distmin2, distmax2}
 		else
 			distmin1 = self.collpositions[1]
@@ -430,13 +425,12 @@ do
 		function posside:GetLinePositions(width)
 			local RTable
 
-			if self.width ~= width or not self.linepositions then
+			if self.Parent.width ~= width or not self.linepositions then
 				RTable = {
 					{Vector(0, 0.25 - 0.05 * width, 0), Vector(0, 0.25 - 0.05 * width, 0.25 - 0.05 * width), Vector(0, 0.25 + 0.05 * width, 0.25 + 0.05 * width), Vector(0, 0.25 + 0.05 * width, 0)},
 					{Vector(0, 0, 0.25 - 0.05 * width), Vector(0, 0.25 - 0.05 * width, 0.25 - 0.05 * width), Vector(0, 0.25 + 0.05 * width, 0.25 + 0.05 * width), Vector(0, 0, 0.25 + 0.05 * width)}
 				}
 
-				self.width = width
 				self.linepositions = RTable
 			else
 				RTable = self.linepositions
@@ -489,11 +483,10 @@ do
 		local localized = self:WorldToLocal(intersect)
 		local distmin1, distmax1
 
-		if self.scale ~= scale or not self.collpositions then
+		if self.Parent.scale ~= scale or not self.collpositions then
 			distmin1 = Vector(-0.075 * scale, scale * (-0.08), scale * (-0.08))
 			distmax1 = Vector(0.075 * scale, scale * 0.08, scale * 0.08)
 
-			self.scale = scale
 			self.collpositions = {distmin1, distmax1}
 		else
 			distmin1 = self.collpositions[1]
@@ -606,10 +599,9 @@ do
 		function omnipos:GetLinePositions(width)
 			local RTable
 
-			if self.width ~= width or not self.linepositions then
+			if self.Parent.width ~= width or not self.linepositions then
 				RTable = {{Vector(0, -0.08 * width, -0.08 * width), Vector(0, -0.08 * width, 0.08 * width), Vector(0, 0.08 * width, 0.08 * width), Vector(0, 0.08 * width, -0.08 * width)}}
 
-				self.width = width
 				self.linepositions = RTable
 			else
 				RTable = self.linepositions
@@ -887,9 +879,10 @@ do
 			local startposmin
 			local startposmax
 
-			if self.width ~= width or not self.linepositions then
+			if self.Parent.width ~= width or not self.linepositions then
 				startposmin = Vector(0, 0,1 - 0.1 * width)
 				startposmax = Vector(0, 0,1 + 0.1 * width)
+
 				self.linepositions = {startposmin, startposmax}
 			else
 				startposmin = self.linepositions[1]
@@ -1017,11 +1010,10 @@ do
 		local localized = self:WorldToLocal(intersect)
 		local distmin, distmax
 
-		if self.scale ~= scale or not self.collpositions then
+		if self.Parent.scale ~= scale or not self.collpositions then
 			distmin = Vector(0, -0.075 * scale, -0.075 * scale)
 			distmax = Vector(1 * scale, 0.075 * scale, 0.075 * scale)
 
-			self.scale = scale
 			self.collpositions = {distmin, distmax}
 		else
 			distmin = self.collpositions[1]
@@ -1059,13 +1051,12 @@ do
 		function scalearrow:GetLinePositions(width)
 			local RTable
 
-			if self.width ~= width or not self.linepositions then
+			if self.Parent.width ~= width or not self.linepositions then
 				RTable = {
 					{Vector(0.075 * width, -0.075 * width, 0), Vector(0.97, -0.075 * width, 0), Vector( 0.97, 0.075 * width, 0), Vector(0.075 * width, 0.075 * width, 0)},
 					{Vector(0.97, -0.0625 - 0.0625 * width, 0), Vector(1, -0.0625 - 0.0625 * width, 0), Vector(1, 0.0625 + 0.0625 * width, 0), Vector(0.97, 0.0625 + 0.0625 * width, 0)}
 				}
 
-				self.width = width
 				self.linepositions = RTable
 			else
 				RTable = self.linepositions

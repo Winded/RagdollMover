@@ -62,6 +62,9 @@ function ENT:Initialize()
 		self.ScaleXZ,
 		self.ScaleYZ
 	}
+
+	self.scale = 0
+	self.width = 0
 end
 
 function ENT:TestCollision(pl, scale)
@@ -80,5 +83,6 @@ function ENT:TestCollision(pl, scale)
 		local intersect = e:TestCollision(pl, scale)
 		if intersect then return intersect end
 	end
+	self.scale = scale
 	return false
 end
