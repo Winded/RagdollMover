@@ -874,7 +874,7 @@ local function AddEntity(ent, setnext)
 			surface.PlaySound("buttons/button14.wav")
 		else
 			AddPRNode(selected, node)
-			notification.AddLegacy(language.GetPhrase("tool.ragmover_propragdoll.attach") .. " " .. selected.id, NOTIFY_GENERIC, 5)
+			notification.AddLegacy(string.Replace(language.GetPhrase("tool.ragmover_propragdoll.attach"), "%id", selected.id), NOTIFY_GENERIC, 5)
 			surface.PlaySound("buttons/button14.wav")
 		end
 
