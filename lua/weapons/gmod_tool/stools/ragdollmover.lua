@@ -127,6 +127,18 @@ local function rgmGetBone(pl, ent, bone)
 	end
 end
 
+local function rgmCanTool(ent, pl)
+	local cantool
+
+	if CPPI and ent.CPPICanTool then
+		cantool = ent:CPPICanTool(pl, "ragdollmover")
+	else
+		cantool = true
+	end
+
+	return cantool
+end
+
 local function rgmFindEntityChildren(parent)
 	local children = {}
 
@@ -283,10 +295,14 @@ ConstrainedAllowed = CreateConVar("sv_ragdollmover_allow_constrained_locking", 1
 net.Receive("rgmAskForPhysbones", function(len, pl)
 	local entcount = net.ReadUInt(13)
 	local ents = {}
+	local cancel
 
 	for i = 1, entcount do
 		ents[i] = net.ReadEntity()
+		if not rgmCanTool(ents[i], pl) then cancel = true end
 	end
+
+	if cancel then return end
 
 	if not next(ents) then return end
 	local sendents = {}
@@ -326,10 +342,14 @@ net.Receive("rgmAskForNodeUpdatePhysics", function(len, pl)
 	local isphys = net.ReadBool()
 	local entcount = net.ReadUInt(13)
 	local reents, ents = {}, {}
+	local cancel
 
 	for i = 1, entcount do
 		reents[i] = net.ReadEntity()
+		if not rgmCanTool(reents[i], pl) then cancel = true end
 	end
+
+	if cancel then return end
 
 	local validcount = 0
 	for i, ent in ipairs(reents) do
@@ -363,10 +383,14 @@ end)
 net.Receive("rgmAskForParented", function(len, pl)
 	local entcount = net.ReadUInt(13)
 	local ents = {}
+	local cancel
 
 	for i = 1, entcount do
 		ents[i] = net.ReadEntity()
+		if not rgmCanTool(ents[i], pl) then cancel = true end
 	end
+
+	if cancel then return end
 
 	local parented = {}
 	local pcount = 0
@@ -414,6 +438,8 @@ net.Receive("rgmSelectBone", function(len, pl)
 	local ent = net.ReadEntity()
 	local bone = net.ReadUInt(10)
 
+	if not rgmCanTool(ent, pl) then return end
+
 	pl.rgm.BoneToResetTo = (ent:GetClass() == "prop_ragdoll") and ent:TranslatePhysBoneToBone(0) or 0
 	pl.rgm.Entity = ent
 	pl.rgm.Axis.EntAdvMerged = false
@@ -434,6 +460,7 @@ net.Receive("rgmLockBone", function(len, pl)
 	local physbone = bone
 	local boneid
 
+	if not rgmCanTool(ent, pl) then return end
 	if not IsValid(ent) or ent:TranslateBoneToPhysBone(physbone) == -1 then return end
 	if ent:GetClass() ~= "prop_ragdoll" and not ent.rgmPRenttoid and mode ~= 3 then return end
 
@@ -480,6 +507,7 @@ net.Receive("rgmBoneFreezer", function(len, pl)
 	local bone = net.ReadUInt(10)
 	local boneid
 
+	if not rgmCanTool(ent, pl) then return end
 	if not IsValid(ent) or ent:TranslateBoneToPhysBone(bone) == -1 then return end
 
 	if ent:GetClass() == "prop_ragdoll" then
@@ -535,6 +563,7 @@ net.Receive("rgmLockToBone", function(len, pl)
 	local originent = net.ReadEntity()
 	local lockorigin = net.ReadUInt(10)
 
+	if not rgmCanTool(lockent, pl) or not rgmCanTool(originent, pl) then return end
 	if not IsValid(lockent) or not IsValid(originent) or not ((lockent:GetClass() == "prop_ragdoll") or (lockent:GetClass() == "prop_physics")) or not ((originent:GetClass() == "prop_ragdoll") or (originent:GetClass() == "prop_physics")) then return end
 	if lockent.rgmPRenttoid then
 		lockedbone = lockent.rgmPRenttoid[lockent]
@@ -597,6 +626,8 @@ net.Receive("rgmUnlockToBone", function(len, pl)
 	local unlockbone = net.ReadUInt(10)
 	local bone = rgm.BoneToPhysBone(ent, unlockbone)
 
+	if not rgmCanTool(ent, pl) then return end
+
 	if ent.rgmPRenttoid then
 		bone = ent.rgmPRenttoid[ent]
 	end
@@ -613,6 +644,8 @@ net.Receive("rgmLockConstrained", function(len, pl)
 	local ent = net.ReadEntity()
 	local lockent = net.ReadEntity()
 	local physbone = 0
+
+	if not rgmCanTool(ent, pl) then return end
 
 	local convar = ConstrainedAllowed:GetBool()
 	if not convar then
@@ -653,6 +686,7 @@ net.Receive("rgmUnlockConstrained", function(len, pl)
 	local lockent = net.ReadEntity()
 
 	if not IsValid(lockent) then return end
+	if not rgmCanTool(lockent, pl) then return end
 
 	pl.rgmEntLocks[lockent] = nil
 
@@ -667,6 +701,8 @@ net.Receive("rgmSelectEntity", function(len, pl)
 	local resetlists = net.ReadBool()
 	local tool = pl:GetTool("ragdollmover")
 	if not tool then return end
+
+	if not rgmCanTool(ent, pl) then return end
 
 	if tool:GetClientNumber("lockselected") ~= 0 then
 		net.Start("rgmNotification")
@@ -926,6 +962,8 @@ end
 net.Receive("rgmResetAllBones", function(len, pl)
 	local ent = net.ReadEntity()
 
+	if not rgmCanTool(ent, pl) then return end
+
 	for i = 0, ent:GetBoneCount() - 1 do
 		local pos, ang, scale = ent:GetManipulateBonePosition(i), ent:GetManipulateBoneAngles(i), ent:GetManipulateBoneScale(i) -- Grabbing existing vectors as to not create new ones, in case ManipulateBone functions were overriden by something like Advanced Bonemerge
 		pos:Set(vector_origin)
@@ -952,6 +990,7 @@ net.Receive("rgmResetAll", function(len, pl)
 	local children = net.ReadBool()
 
 	if not IsValid(ent) then return end
+	if not rgmCanTool(ent, pl) then return end
 
 	if children then
 		RecursiveBoneFunc(bone, ent, function(bon)
@@ -990,6 +1029,7 @@ net.Receive("rgmResetPos", function(len, pl)
 	local bone = net.ReadUInt(10)
 
 	if not IsValid(ent) then return end
+	if not rgmCanTool(ent, pl) then return end
 
 	if children then
 		RecursiveBoneFunc(bone, ent, function(bon) 
@@ -1019,6 +1059,8 @@ net.Receive("rgmResetAng", function(len, pl)
 	local children = net.ReadBool()
 	local bone = net.ReadUInt(10)
 
+	if not rgmCanTool(ent, pl) then return end
+
 	if children then
 		RecursiveBoneFunc(bone, ent, function(bon) 
 			local ang = ent:GetManipulateBoneAngles(bon)
@@ -1046,6 +1088,8 @@ net.Receive("rgmResetScale", function(len, pl)
 	local ent = net.ReadEntity()
 	local children = net.ReadBool()
 	local bone = net.ReadUInt(10)
+
+	if not rgmCanTool(ent, pl) then return end
 
 	if children then
 		RecursiveBoneFunc(bone, ent, function(bon)
@@ -1076,6 +1120,8 @@ net.Receive("rgmScaleZero", function(len, pl)
 	local ent = net.ReadEntity()
 	local children = net.ReadBool()
 	local bone = net.ReadUInt(10)
+
+	if not rgmCanTool(ent, pl) then return end
 
 	if children then
 		RecursiveBoneFunc(bone, ent, function(bon)
@@ -1110,6 +1156,9 @@ net.Receive("rgmPrepareOffsets", function(len, pl)
 
 	local ent, axis = pl.rgm.Entity, pl.rgm.Axis
 	local bone = pl.rgm.Bone
+
+	if not rgmCanTool(ent, pl) then return end
+
 	pl.rgm.UIMoving = true
 
 	pl.rgm.NPhysBonePos = ent:GetManipulateBonePosition(bone)
@@ -1146,6 +1195,8 @@ net.Receive("rgmClearOffsets", function(len, pl)
 	if not tool then return end
 	local ent = pl.rgm.Entity
 
+	if not rgmCanTool(ent, pl) then return end
+
 	pl.rgm.UIMoving = false
 
 	if pl.rgm.IsPhysBone or (pl.rgm.physmove ~= 0 and pl.rgm.NextPhysBone) then
@@ -1179,7 +1230,7 @@ net.Receive("rgmAdjustBone", function(len, pl)
 	local ent = pl.rgm.Entity
 	local childbones = pl.rgmBoneChildren
 	local physmove = pl.rgm.physmove ~= 0
-	if not IsValid(ent) then net.ReadInt(3) net.ReadInt(3) net.ReadFloat() return end
+	if not IsValid(ent) or not rgmCanTool(ent, pl) then net.ReadInt(3) net.ReadInt(3) net.ReadFloat() return end
 	local rgmaxis = pl.rgm.Axis
 
 	manipulate_bone[1] = function(axis, value)
@@ -1479,6 +1530,9 @@ net.Receive("rgmUpdateCCVar", function(len, pl)
 		axis[vars[var]] = (tool:GetClientNumber(vars[var], 1) ~= 0)
 	else
 		pl.rgm[vars[var]] = tool:GetClientNumber(vars[var], 1)
+		if var == 10 then
+			pl.rgm.snapamount = pl.rgm.snapamount < 1 and 1 or pl.rgm.snapamount
+		end
 	end
 end)
 
@@ -1611,14 +1665,11 @@ function TOOL:LeftClick(tr)
 		pl.rgm.Axis = axis
 		return false
 	end
-	if not axis.Axises then
-		axis:Setup()
-	end
 
-	local collision = axis:TestCollision(pl, self:GetClientNumber("scale", 10))
 	local ent = pl.rgm.Entity
+	local collision = axis:TestCollision(pl, self:GetClientNumber("scale", 10))
 
-	if collision and IsValid(ent) then
+	if collision and IsValid(ent) and rgmCanTool(ent, pl) then
 
 		if _G["physundo"] and _G["physundo"].Create then
 			_G["physundo"].Create(ent, pl)
@@ -1703,7 +1754,7 @@ function TOOL:LeftClick(tr)
 		pl:rgmSync()
 		return false
 
-	elseif IsValid(tr.Entity) and EntityFilter(tr.Entity, self) then
+	elseif IsValid(tr.Entity) and EntityFilter(tr.Entity, self) and rgmCanTool(tr.Entity, pl) then
 
 		local entity = tr.Entity
 
@@ -1904,8 +1955,9 @@ if SERVER then
 	local rotate = pl.rgm.Rotate or false
 	local scale = pl.rgm.Scale or false
 	local physmove = pl.rgm.physmove ~= 0
+
 	if moving then
-		if not pl:KeyDown(IN_ATTACK) then
+		if not pl:KeyDown(IN_ATTACK) or not rgmCanTool(ent, pl) then
 
 			if pl.rgm.IsPhysBone or (physmove and pl.rgm.NextPhysBone) then
 				if (pl.rgm.unfreeze or 1) ~= 0 then
@@ -1951,12 +2003,6 @@ if SERVER then
 			return
 		end
 
-		local snapamount = 0
-		if (pl.rgm.snapenable or 0) ~= 0 then
-			snapamount = pl.rgm.snapamount or 1
-			snapamount = snapamount < 1 and 1 or snapamount
-		end
-
 		local tracepos = nil
 		if pl:KeyDown(IN_SPEED) then
 			local tr = util.TraceLine({
@@ -1965,6 +2011,11 @@ if SERVER then
 				filter = pl.rgm.Ignore
 			})
 			tracepos = tr.HitPos
+		end
+
+		local snapamount = 0
+		if pl.rgm.snapenable ~= 0 then
+			snapamount = pl.rgm.snapamount
 		end
 
 		local physbonecount = ent:GetBoneCount() - 1

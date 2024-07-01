@@ -34,6 +34,18 @@ local function ClearPropRagdoll(ent)
 	duplicator.ClearEntityModifier(ent, "Ragdoll Mover Prop Ragdoll")
 end
 
+local function rgmCanTool(ent, pl)
+	local cantool
+
+	if CPPI and ent.CPPICanTool then
+		cantool = ent:CPPICanTool(pl, "ragmover_propragdoll")
+	else
+		cantool = true
+	end
+
+	return cantool
+end
+
 local function SendNotification(pl, id)
 	net.Start("rgmprDoNotify")
 		net.WriteUInt(id, 3)
@@ -110,6 +122,7 @@ net.Receive("rgmprApplySkeleton", function(len, pl)
 	local count = net.ReadUInt(13)
 	local ents, filter = {}, {}
 	local fail = false
+	local cancel = false
 
 	for i = 0, count - 1 do
 		ents[i] = {}
@@ -126,7 +139,11 @@ net.Receive("rgmprApplySkeleton", function(len, pl)
 		end
 		ents[i].offset = net.ReadVector()
 		ents[i].aoffset = net.ReadAngle()
+
+		if not rgmCanTool(ents[i], pl) then cancel = true end
 	end
+
+	if cancel then return end
 
 	if fail or count > CVMaxPRBones:GetInt() then
 		if fail then
@@ -186,7 +203,7 @@ function TOOL:LeftClick(tr)
 	local pl = self:GetOwner()
 	local ent = tr.Entity
 
-	if IsValid(ent) then
+	if IsValid(ent) and rgmCanTool(ent, self:GetOwner()) then
 		if SERVER then
 			net.Start("rgmprSendEnt")
 				net.WriteEntity(ent)
@@ -208,7 +225,7 @@ function TOOL:RightClick(tr)
 		local conents = {}
 		local count = 0
 
-		if IsValid(ent) and ent:GetClass("prop_physics") then
+		if IsValid(ent) and rgmCanTool(ent, self:GetOwner()) and ent:GetClass("prop_physics") then
 			doweusethis = true
 			local ents = constraint.GetAllConstrainedEntities(ent)
 			for ent, _ in pairs(ents) do
@@ -236,7 +253,7 @@ end
 
 function TOOL:Reload(tr)
 	local ent = tr.Entity
-	if not IsValid(ent) or not ent.rgmPRidtoent then return false end
+	if not IsValid(ent) or not rgmCanTool(ent, self:GetOwner()) or not ent.rgmPRidtoent then return false end
 
 	if SERVER then
 		local pl = self:GetOwner()
@@ -857,7 +874,7 @@ local function AddEntity(ent, setnext)
 			surface.PlaySound("buttons/button14.wav")
 		else
 			AddPRNode(selected, node)
-			notification.AddLegacy(language.GetPhrase("tool.ragmover_propragdoll.attach") .. " " .. selected.id, NOTIFY_GENERIC, 5)
+			notification.AddLegacy(string.Replace(language.GetPhrase("tool.ragmover_propragdoll.attach"), "%id", selected.id), NOTIFY_GENERIC, 5)
 			surface.PlaySound("buttons/button14.wav")
 		end
 

@@ -35,6 +35,18 @@ local function PrettifyMDLName(name)
 	return name
 end
 
+local function rgmCanTool(ent, pl)
+	local cantool
+
+	if CPPI and ent.CPPICanTool then
+		cantool = ent:CPPICanTool(pl, "ragmover_ikchains")
+	else
+		cantool = true
+	end
+
+	return cantool
+end
+
 local function rgmSendNotif(message, pl)
 	net.Start("rgmikMessage")
 		net.WriteUInt(message, 5)
@@ -118,7 +130,8 @@ net.Receive("rgmikRequestSave", function(len, pl)
 	if not tool then return end
 
 	local ent = tool.SelectedSaveEnt
-	if not ent or not ent.rgmIKChains then rgmSendNotif(6, pl) return end
+	if not IsValid(ent) or not ent.rgmIKChains then rgmSendNotif(6, pl) return end
+	if not rgmCanTool(ent, pl) then return end
 
 	local ispropragdoll = ent.rgmPRidtoent and true or false
 
@@ -183,7 +196,7 @@ net.Receive("rgmikLoad", function(len, pl)
 	if not tool then return end
 
 	local ent = tool.SelectedSaveEnt
-	if not ent then return end
+	if not IsValid(ent) or not rgmCanTool(ent, pl) then return end
 
 	if not ispropragdoll then
 		ent.rgmIKChains = {}
@@ -211,7 +224,7 @@ end
 
 function TOOL:LeftClick(tr)
 	local ent = tr.Entity
-	if not IsValid(ent) or (ent:GetClass() ~= "prop_ragdoll" and not ent.rgmPRenttoid) or not tr.PhysicsBone then return false end
+	if not IsValid(ent) or not rgmCanTool(ent, self:GetOwner()) or (ent:GetClass() ~= "prop_ragdoll" and not ent.rgmPRenttoid) or not tr.PhysicsBone then return false end
 	local stage = self:GetStage()
 
 	if stage == 0 then
@@ -304,6 +317,8 @@ end
 
 function TOOL:RightClick(tr)
 	local ent = tr.Entity
+
+	if not rgmCanTool(ent, self:GetOwner()) then return end
 
 	if ent:GetClass() == "prop_ragdoll" or (ent:GetClass() == "prop_physics" and ent.rgmPRidtoent) then
 		if SERVER then
