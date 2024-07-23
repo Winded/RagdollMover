@@ -48,20 +48,23 @@ local function rgmCanTool(ent, pl)
 end
 
 local function rgmSendNotif(message, pl)
-	net.Start("rgmikMessage")
+	net.Start("RAGDOLLMOVER_IK")
+		net.WriteUInt(1, 3)
 		net.WriteUInt(message, 5)
 	net.Send(pl)
 end
 
 local function rgmSendBone(ent, physbone, pl)
-	net.Start("rgmikSendBone")
+	net.Start("RAGDOLLMOVER_IK")
+		net.WriteUInt(3, 3)
 		net.WriteEntity(ent)
 		net.WriteUInt(ent:TranslatePhysBoneToBone(physbone), 10)
 	net.Send(pl)
 end
 
 local function rgmCallReset(pl)
-	net.Start("rgmikReset")
+	net.Start("RAGDOLLMOVER_IK")
+		net.WriteUInt(4, 3)
 	net.Send(pl)
 end
 
@@ -91,7 +94,8 @@ local function rgmReceivePhysBones()
 end
 
 local function rgmSendEnt(ent, pl)
-	net.Start("rgmikSendEnt")
+	net.Start("RAGDOLLMOVER_IK")
+		net.WriteUInt(5, 3)
 		net.WriteEntity(ent)
 	net.Send(pl)
 end
@@ -115,109 +119,108 @@ end
 
 if SERVER then
 
-util.AddNetworkString("rgmikMessage")
-util.AddNetworkString("rgmikAimedBone")
-util.AddNetworkString("rgmikSendBone")
-util.AddNetworkString("rgmikReset")
-util.AddNetworkString("rgmikSendEnt")
-util.AddNetworkString("rgmikRequestSave")
-util.AddNetworkString("rgmikSave")
-util.AddNetworkString("rgmikLoad")
+util.AddNetworkString("RAGDOLLMOVER_IK")
 
+local NETFUNC = {
+	function(len, pl) -- 	1 (0) - rgmikRequestSave
+		local tool = pl:GetTool("ragmover_ikchains")
+		if not tool then return end
 
-net.Receive("rgmikRequestSave", function(len, pl)
-	local tool = pl:GetTool("ragmover_ikchains")
-	if not tool then return end
+		local ent = tool.SelectedSaveEnt
+		if not IsValid(ent) or not ent.rgmIKChains then rgmSendNotif(6, pl) return end
+		if not rgmCanTool(ent, pl) then return end
 
-	local ent = tool.SelectedSaveEnt
-	if not IsValid(ent) or not ent.rgmIKChains then rgmSendNotif(6, pl) return end
-	if not rgmCanTool(ent, pl) then return end
+		local ispropragdoll = ent.rgmPRidtoent and true or false
 
-	local ispropragdoll = ent.rgmPRidtoent and true or false
+		local num = 0
+		local iks = {}
 
-	local num = 0
-	local iks = {}
+		for type, iktable in pairs(ent.rgmIKChains) do
+			num = num + 1
+			iks[num] = iktable
+		end
 
-	for type, iktable in pairs(ent.rgmIKChains) do
-		num = num + 1
-		iks[num] = iktable
-	end
+		net.Start("RAGDOLLMOVER_IK")
+			net.WriteUInt(6, 3)
 
-	net.Start("rgmikSave")
+			net.WriteBool(ispropragdoll)
 
-		net.WriteBool(ispropragdoll)
+			net.WriteEntity(ent)
+			net.WriteUInt(num, 4)
 
-		net.WriteEntity(ent)
-		net.WriteUInt(num, 4)
+			if not ispropragdoll then
+				for i = 1, num do
+					net.WriteUInt(iks[i].type, 4)
+					net.WriteUInt(ent:TranslatePhysBoneToBone(iks[i].hip), 10)
+					net.WriteUInt(ent:TranslatePhysBoneToBone(iks[i].knee), 10)
+					net.WriteUInt(ent:TranslatePhysBoneToBone(iks[i].foot), 10)
+				end
+			else
+				for i = 1, num do
+					net.WriteUInt(iks[i].type, 4)
+					net.WriteUInt(iks[i].hip, 13)
+					net.WriteUInt(iks[i].knee, 13)
+					net.WriteUInt(iks[i].foot, 13)
+				end
+			end
+
+		net.Send(pl)
+	end,
+
+	function(len, pl) --		2 (1) - rgmikLoad
+		local ispropragdoll = net.ReadBool()
+		local num = net.ReadUInt(4)
+		local iktable = {}
 
 		if not ispropragdoll then
 			for i = 1, num do
-				net.WriteUInt(iks[i].type, 4)
-				net.WriteUInt(ent:TranslatePhysBoneToBone(iks[i].hip), 10)
-				net.WriteUInt(ent:TranslatePhysBoneToBone(iks[i].knee), 10)
-				net.WriteUInt(ent:TranslatePhysBoneToBone(iks[i].foot), 10)
+				iktable[i] = {}
+				iktable[i].type = net.ReadUInt(4)
+				iktable[i].hip = net.ReadUInt(10)
+				iktable[i].knee = net.ReadUInt(10)
+				iktable[i].foot = net.ReadUInt(10)
 			end
 		else
 			for i = 1, num do
-				net.WriteUInt(iks[i].type, 4)
-				net.WriteUInt(iks[i].hip, 13)
-				net.WriteUInt(iks[i].knee, 13)
-				net.WriteUInt(iks[i].foot, 13)
+				iktable[i] = {}
+				iktable[i].type = net.ReadUInt(4)
+				iktable[i].hip = net.ReadUInt(13)
+				iktable[i].knee = net.ReadUInt(13)
+				iktable[i].foot = net.ReadUInt(13)
 			end
 		end
 
-	net.Send(pl)
-end)
+		local tool = pl:GetTool("ragmover_ikchains")
+		if not tool then return end
 
-net.Receive("rgmikLoad", function(len, pl)
-	local ispropragdoll = net.ReadBool()
-	local num = net.ReadUInt(4)
-	local iktable = {}
+		local ent = tool.SelectedSaveEnt
+		if not IsValid(ent) or not rgmCanTool(ent, pl) then return end
 
-	if not ispropragdoll then
-		for i = 1, num do
-			iktable[i] = {}
-			iktable[i].type = net.ReadUInt(4)
-			iktable[i].hip = net.ReadUInt(10)
-			iktable[i].knee = net.ReadUInt(10)
-			iktable[i].foot = net.ReadUInt(10)
-		end
-	else
-		for i = 1, num do
-			iktable[i] = {}
-			iktable[i].type = net.ReadUInt(4)
-			iktable[i].hip = net.ReadUInt(13)
-			iktable[i].knee = net.ReadUInt(13)
-			iktable[i].foot = net.ReadUInt(13)
-		end
-	end
-
-	local tool = pl:GetTool("ragmover_ikchains")
-	if not tool then return end
-
-	local ent = tool.SelectedSaveEnt
-	if not IsValid(ent) or not rgmCanTool(ent, pl) then return end
-
-	if not ispropragdoll then
-		ent.rgmIKChains = {}
-
-		for k, ik in ipairs(iktable) do
-			if ik.hip == 1023 or ik.knee == 1023 or ik.foot == 1023 then continue end
-			table.insert(ent.rgmIKChains, {hip = rgm.BoneToPhysBone(ent, ik.hip), knee = rgm.BoneToPhysBone(ent, ik.knee), foot = rgm.BoneToPhysBone(ent, ik.foot), type = ik.type})
-		end
-	else
-		if not ent.rgmPRidtoent or not ent:GetClass() == "prop_physics" then return end
-
-		for id, ent in pairs(ent.rgmPRidtoent) do
+		if not ispropragdoll then
 			ent.rgmIKChains = {}
 
 			for k, ik in ipairs(iktable) do
-				table.insert(ent.rgmIKChains, {hip = ik.hip, knee = ik.knee, foot = ik.foot, type = ik.type})
+				if ik.hip == 1023 or ik.knee == 1023 or ik.foot == 1023 then continue end
+				table.insert(ent.rgmIKChains, {hip = rgm.BoneToPhysBone(ent, ik.hip), knee = rgm.BoneToPhysBone(ent, ik.knee), foot = rgm.BoneToPhysBone(ent, ik.foot), type = ik.type})
+			end
+		else
+			if not ent.rgmPRidtoent or not ent:GetClass() == "prop_physics" then return end
+
+			for id, ent in pairs(ent.rgmPRidtoent) do
+				ent.rgmIKChains = {}
+
+				for k, ik in ipairs(iktable) do
+					table.insert(ent.rgmIKChains, {hip = ik.hip, knee = ik.knee, foot = ik.foot, type = ik.type})
+				end
 			end
 		end
-	end
 
-	rgmSendNotif(7, pl)
+		rgmSendNotif(7, pl)
+	end
+}
+
+net.Receive("RAGDOLLMOVER_IK", function(len, pl)
+	NETFUNC[net.ReadUInt(1) + 1](len, pl)
 end)
 
 end
@@ -359,7 +362,8 @@ function TOOL:Think()
 	local pl = self:GetOwner()
 	local tr = pl:GetEyeTrace()
 	if IsValid(tr.Entity) and tr.Entity:GetClass() == "prop_ragdoll" then
-		net.Start("rgmikAimedBone")
+		net.Start("RAGDOLLMOVER_IK")
+			net.WriteUInt(2, 3)
 			net.WriteUInt(tr.Entity:TranslatePhysBoneToBone(tr.PhysicsBone), 10)
 
 			if PrevEnt[pl] ~= tr.Entity then
@@ -410,7 +414,8 @@ local function ChainSaver(cpanel)
 	main.save = vgui.Create("DButton", main)
 	main.save:SetText("#tool.ragmover_ikchains.save")
 	main.save.DoClick = function()
-		net.Start("rgmikRequestSave")
+		net.Start("RAGDOLLMOVER_IK")
+			net.WriteUInt(0, 1)
 		net.SendToServer()
 	end
 
@@ -426,7 +431,8 @@ local function ChainSaver(cpanel)
 		local json = file.Read(IK_DIR .. "/" .. name .. ".txt", "DATA")
 		local iktable = util.JSONToTable(json)
 
-		net.Start("rgmikLoad")
+		net.Start("RAGDOLLMOVER_IK")
+			net.WriteUInt(1, 1)
 			net.WriteBool(iktable.ispropragdoll)
 			net.WriteUInt(#iktable, 4)
 			if not iktable.ispropragdoll then
@@ -612,100 +618,106 @@ local function rgmDoNotification(message)
 	end
 end
 
-net.Receive("rgmikMessage", function(len)
-	local message = net.ReadUInt(5)
-	rgmDoNotification(message)
-end)
+local NETFUNC = {
+	function(len) -- 	1 - rgmikMessage
+		local message = net.ReadUInt(5)
+		rgmDoNotification(message)
+	end,
 
-net.Receive("rgmikAimedBone", function(len)
-	local pl = LocalPlayer()
-	AIMED_BONE = net.ReadUInt(10)
+	function(len) -- 	2 - rgmikAimedBone
+		local pl = LocalPlayer()
+		AIMED_BONE = net.ReadUInt(10)
 
-	if net.ReadBool() then
-		AIMED_SKELETON = rgmReceivePhysBones()
-	end
-end)
-
-net.Receive("rgmikSendBone", function(len)
-	local ent = net.ReadEntity()
-	local bone = net.ReadUInt(10)
-	local pl = LocalPlayer()
-	local tool = pl:GetTool("ragmover_ikchains")
-	if not tool then return end
-
-	local stage = tool:GetStage()
-	if stage == 0 then
-		CHOSEN_HIP = {bone = bone, ent = ent}
-	elseif stage == 1 then
-		CHOSEN_KNEE = {bone = bone, ent = ent}
-	end
-end)
-
-net.Receive("rgmikReset", function(len)
-	local pl = LocalPlayer()
-	CHOSEN_HIP = nil
-	CHOSEN_KNEE = nil
-end)
-
-net.Receive("rgmikSendEnt", function(len)
-	SelectedEnt = net.ReadEntity()
-	local pname = PrettifyMDLName(SelectedEnt:GetModel())
-
-	SelectedEntName = "[" .. SelectedEnt:EntIndex() .. "] " .. pname
-
-	if ChainSavePanel then
-		ChainSavePanel:SetText(SelectedEntName)
-	end
-end)
-
-net.Receive("rgmikSave", function(len)
-	local iktable = {}
-	local ispropragdoll = net.ReadBool()
-	local ent = net.ReadEntity()
-	local count = net.ReadUInt(4)
-
-	if not ispropragdoll then
-		for i = 1, count do
-			iktable[i] = {}
-			iktable[i].type = net.ReadUInt(4)
-			iktable[i].hip = ent:GetBoneName(net.ReadUInt(10))
-			iktable[i].knee = ent:GetBoneName(net.ReadUInt(10))
-			iktable[i].foot = ent:GetBoneName(net.ReadUInt(10))
+		if net.ReadBool() then
+			AIMED_SKELETON = rgmReceivePhysBones()
 		end
-	else
-		iktable.ispropragdoll = true
-		for i = 1, count do
-			iktable[i] = {}
-			iktable[i].type = net.ReadUInt(4)
-			iktable[i].hip = net.ReadUInt(13)
-			iktable[i].knee = net.ReadUInt(13)
-			iktable[i].foot = net.ReadUInt(13)
+	end,
+
+	function(len) -- 	3 - rgmikSendBone
+		local ent = net.ReadEntity()
+		local bone = net.ReadUInt(10)
+		local pl = LocalPlayer()
+		local tool = pl:GetTool("ragmover_ikchains")
+		if not tool then return end
+
+		local stage = tool:GetStage()
+		if stage == 0 then
+			CHOSEN_HIP = {bone = bone, ent = ent}
+		elseif stage == 1 then
+			CHOSEN_KNEE = {bone = bone, ent = ent}
 		end
-	end
+	end,
 
-	local json = util.TableToJSON(iktable, true)
-	if not file.Exists(IK_DIR, "DATA") then file.CreateDir(IK_DIR) end
+	function(len) -- 		4 - rgmikReset
+		local pl = LocalPlayer()
+		CHOSEN_HIP = nil
+		CHOSEN_KNEE = nil
+	end,
 
-	local name = PrettifyMDLName(ent:GetModel())
-	if file.Exists(IK_DIR .. "/" .. name .. ".txt", "DATA") then
-		local exists = true
-		local count = 1
+	function(len) -- 	5 - rgmikSendEnt
+		SelectedEnt = net.ReadEntity()
+		local pname = PrettifyMDLName(SelectedEnt:GetModel())
 
-		while exists do
-			local newname = name .. count
+		SelectedEntName = "[" .. SelectedEnt:EntIndex() .. "] " .. pname
 
-			if not file.Exists(IK_DIR .. "/" .. newname .. ".txt", "DATA") then
-				name = newname
-				exists = false
+		if ChainSavePanel then
+			ChainSavePanel:SetText(SelectedEntName)
+		end
+	end,
+
+	function(len) -- 		6 - rgmikSave
+		local iktable = {}
+		local ispropragdoll = net.ReadBool()
+		local ent = net.ReadEntity()
+		local count = net.ReadUInt(4)
+
+		if not ispropragdoll then
+			for i = 1, count do
+				iktable[i] = {}
+				iktable[i].type = net.ReadUInt(4)
+				iktable[i].hip = ent:GetBoneName(net.ReadUInt(10))
+				iktable[i].knee = ent:GetBoneName(net.ReadUInt(10))
+				iktable[i].foot = ent:GetBoneName(net.ReadUInt(10))
 			end
-
-			count = count + 1
+		else
+			iktable.ispropragdoll = true
+			for i = 1, count do
+				iktable[i] = {}
+				iktable[i].type = net.ReadUInt(4)
+				iktable[i].hip = net.ReadUInt(13)
+				iktable[i].knee = net.ReadUInt(13)
+				iktable[i].foot = net.ReadUInt(13)
+			end
 		end
-	end
 
-	file.Write(IK_DIR .. "/" .. name .. ".txt", json)
-	ChainSavePanel:AddChoice(name)
-	rgmDoNotification(5)
+		local json = util.TableToJSON(iktable, true)
+		if not file.Exists(IK_DIR, "DATA") then file.CreateDir(IK_DIR) end
+
+		local name = PrettifyMDLName(ent:GetModel())
+		if file.Exists(IK_DIR .. "/" .. name .. ".txt", "DATA") then
+			local exists = true
+			local count = 1
+
+			while exists do
+				local newname = name .. count
+
+				if not file.Exists(IK_DIR .. "/" .. newname .. ".txt", "DATA") then
+					name = newname
+					exists = false
+				end
+
+				count = count + 1
+			end
+		end
+
+		file.Write(IK_DIR .. "/" .. name .. ".txt", json)
+		ChainSavePanel:AddChoice(name)
+		rgmDoNotification(5)
+	end
+}
+
+net.Receive("RAGDOLLMOVER_IK", function(len)
+	NETFUNC[net.ReadUInt(3)](len)
 end)
 
 end

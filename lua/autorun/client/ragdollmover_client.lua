@@ -4,8 +4,9 @@ hook.Add("InitPostEntity", "rgmClientSetup", function()
 	if ConVarExists("ragdollmover_rotatebutton") then
 		local BindRot = GetConVar("ragdollmover_rotatebutton"):GetInt()
 
-		if util.NetworkStringToID("rgmSetToggleRot") ~= 0 then
-			net.Start("rgmSetToggleRot")
+		if util.NetworkStringToID("RAGDOLLMOVER_META") ~= 0 then
+			net.Start("RAGDOLLMOVER_META")
+			net.WriteUInt(0, 1)
 			net.WriteInt(BindRot, 8)
 			net.SendToServer()
 		end
@@ -14,8 +15,9 @@ hook.Add("InitPostEntity", "rgmClientSetup", function()
 	if ConVarExists("ragdollmover_scalebutton") then
 		local BindScale = GetConVar("ragdollmover_scalebutton"):GetInt()
 
-		if util.NetworkStringToID("rgmSetToggleScale") ~= 0 then
-			net.Start("rgmSetToggleScale")
+		if util.NetworkStringToID("RAGDOLLMOVER_META") ~= 0 then
+			net.Start("RAGDOLLMOVER_META")
+			net.WriteUInt(1, 1)
 			net.WriteInt(BindScale, 8)
 			net.SendToServer()
 		end
