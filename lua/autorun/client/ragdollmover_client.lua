@@ -1,12 +1,5 @@
 
-local TYPE_ENTITY	 = 1
-local TYPE_NUMBER	 = 2
-local TYPE_VECTOR	 = 3
-local TYPE_ANGLE	 = 4
-local TYPE_BOOL		 = 5
-
 hook.Add("InitPostEntity", "rgmClientSetup", function()
-	local pl = LocalPlayer()
 
 	if ConVarExists("ragdollmover_rotatebutton") then
 		local BindRot = GetConVar("ragdollmover_rotatebutton"):GetInt()
