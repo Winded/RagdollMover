@@ -549,6 +549,8 @@ end
 
 local PrevEnt = nil
 local COLOR_GREEN = Color(0, 200, 0, 255)
+local AIMED_SKELETON, AIMED_BONE = nil, nil
+local CHOSEN_HIP, CHOSEN_KNEE = nil, nil
 
 function TOOL:DrawHUD()
 
@@ -558,8 +560,8 @@ function TOOL:DrawHUD()
 
 	if aimedent == PrevEnt and IsValid(aimedent) and (aimedent:GetClass() == "prop_ragdoll") then
 
-		if pl.ragdollmoverik_aimedskeleton then
-			for bone, pbone in pairs(pl.ragdollmoverik_aimedskeleton) do
+		if AIMED_SKELETON then
+			for bone, pbone in pairs(AIMED_SKELETON) do
 				local pos = aimedent:GetBonePosition(bone)
 				pos = pos:ToScreen()
 
@@ -574,9 +576,9 @@ function TOOL:DrawHUD()
 			end
 		end
 
-		local aimedbone = pl.ragdollmoverik_aimedbone or 0
-		local hipbone, kneebone = pl.ragdollmoverik_hip and pl.ragdollmoverik_hip.bone or 0, pl.ragdollmoverik_knee and pl.ragdollmoverik_knee.bone or 0
-		local hipent, kneeent = pl.ragdollmoverik_hip and pl.ragdollmoverik_hip.ent or nil, pl.ragdollmoverik_knee and pl.ragdollmoverik_knee.ent or nil
+		local aimedbone = AIMED_BONE or 0
+		local hipbone, kneebone = CHOSEN_HIP and CHOSEN_HIP.bone or 0, CHOSEN_KNEE and CHOSEN_KNEE.bone or 0
+		local hipent, kneeent = CHOSEN_HIP and CHOSEN_HIP.ent or nil, CHOSEN_KNEE and CHOSEN_KNEE.ent or nil
 		if aimedbone ~= hipbone and aimedbone ~= kneebone or aimedent ~= hipent and aimedent ~= kneeent then
 			rgm.DrawBoneName(aimedent, aimedbone)
 		end
@@ -588,14 +590,14 @@ function TOOL:DrawHUD()
 	local iktype = self:GetClientNumber("type", 1)
 	iktype = ((iktype == 3) or (iktype == 4)) and true or false
 
-	if pl.ragdollmoverik_hip and IsValid(pl.ragdollmoverik_hip.ent) then
+	if CHOSEN_HIP and IsValid(CHOSEN_HIP.ent) then
 		local hipname = iktype and "#tool.ragmover_ikchains.upperarm" or "#tool.ragmover_ikchains.hip"
-		rgm.DrawBoneName(pl.ragdollmoverik_hip.ent, pl.ragdollmoverik_hip.bone, hipname)
+		rgm.DrawBoneName(CHOSEN_HIP.ent, CHOSEN_HIP.bone, hipname)
 	end
 
-	if pl.ragdollmoverik_knee and IsValid(pl.ragdollmoverik_knee.ent) then
+	if CHOSEN_KNEE and IsValid(CHOSEN_KNEE.ent) then
 		local kneename = iktype and "#tool.ragmover_ikchains.elbow" or "#tool.ragmover_ikchains.knee"
-		rgm.DrawBoneName(pl.ragdollmoverik_knee.ent, pl.ragdollmoverik_knee.bone, kneename)
+		rgm.DrawBoneName(CHOSEN_KNEE.ent, CHOSEN_KNEE.bone, kneename)
 	end
 
 end
@@ -617,10 +619,10 @@ end)
 
 net.Receive("rgmikAimedBone", function(len)
 	local pl = LocalPlayer()
-	pl.ragdollmoverik_aimedbone = net.ReadUInt(10)
+	AIMED_BONE = net.ReadUInt(10)
 
 	if net.ReadBool() then
-		pl.ragdollmoverik_aimedskeleton = rgmReceivePhysBones()
+		AIMED_SKELETON = rgmReceivePhysBones()
 	end
 end)
 
@@ -633,16 +635,16 @@ net.Receive("rgmikSendBone", function(len)
 
 	local stage = tool:GetStage()
 	if stage == 0 then
-		pl.ragdollmoverik_hip = {bone = bone, ent = ent}
+		CHOSEN_HIP = {bone = bone, ent = ent}
 	elseif stage == 1 then
-		pl.ragdollmoverik_knee = {bone = bone, ent = ent}
+		CHOSEN_KNEE = {bone = bone, ent = ent}
 	end
 end)
 
 net.Receive("rgmikReset", function(len)
 	local pl = LocalPlayer()
-	pl.ragdollmoverik_hip = nil
-	pl.ragdollmoverik_knee = nil
+	CHOSEN_HIP = nil
+	CHOSEN_KNEE = nil
 end)
 
 net.Receive("rgmikSendEnt", function(len)

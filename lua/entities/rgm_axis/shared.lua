@@ -69,8 +69,8 @@ end
 
 function ENT:TestCollision(pl, scale)
 	-- PrintTable(self:GetTable())
-	local rotate = pl.rgm.Rotate or false
-	local modescale = pl.rgm.Scale or false
+	local rotate = RAGDOLLMOVER[pl].Rotate or false
+	local modescale = RAGDOLLMOVER[pl].Scale or false
 	local start, last = 1, 7
 
 	if rotate then start, last = 8, 11 end

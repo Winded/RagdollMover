@@ -13,8 +13,8 @@ local PROPRAGDOLL_CLEARED = 5
 local function ClearPropRagdoll(ent)
 	if SERVER then
 		for id, pl in ipairs(player.GetAll()) do
-			if pl.rgm and pl.rgm.Entity == ent then
-				pl.rgm.Entity = nil
+			if RAGDOLLMOVER[pl] and RAGDOLLMOVER[pl].Entity == ent then
+				RAGDOLLMOVER[pl].Entity = nil
 				net.Start("rgmDeselectEntity")
 				net.Send(pl)
 			end
@@ -187,8 +187,8 @@ net.Receive("rgmprApplySkeleton", function(len, pl)
 	end
 
 	for id, ply in ipairs(player.GetAll()) do
-		if filter[ply.rgm.Entity]  then
-			ply.rgm.Entity = nil
+		if filter[RAGDOLLMOVER[pl].Entity]  then
+			RAGDOLLMOVER[pl].Entity = nil
 			net.Start("rgmDeselectEntity")
 			net.Send(ply)
 		end

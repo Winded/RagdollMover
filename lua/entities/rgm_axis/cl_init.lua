@@ -13,8 +13,8 @@ local pl
 function ENT:DrawLines(scale, width)
 	if not pl then pl = LocalPlayer() end
 
-	local rotate = pl.rgm.Rotate or false
-	local modescale = pl.rgm.Scale or false
+	local rotate = RAGDOLLMOVER[pl].Rotate or false
+	local modescale = RAGDOLLMOVER[pl].Scale or false
 	local start, last = 1, 7
 	if rotate then start, last = 8, 11 end
 	if modescale then start, last = 12, 17 end
@@ -71,16 +71,16 @@ end
 local lastang = nil
 
 function ENT:Think()
-	if not pl or not pl.rgm then return end
-	if self ~= pl.rgm.Axis then return end
+	if not pl or not RAGDOLLMOVER[pl] then return end
+	if self ~= RAGDOLLMOVER[pl].Axis then return end
 
-	local ent = pl.rgm.Entity
-	if not IsValid(ent) or not pl.rgm.Bone or not self.Axises then return end
+	local ent = RAGDOLLMOVER[pl].Entity
+	if not IsValid(ent) or not RAGDOLLMOVER[pl].Bone or not self.Axises then return end
 
-	if not pl.rgm.Moving then -- Prevent whole thing from rotating when we do localized rotation
-		if pl.rgm.Rotate then
-			if not pl.rgm.IsPhysBone then
-				local manipang = ent:GetManipulateBoneAngles(pl.rgm.Bone)
+	if not RAGDOLLMOVER[pl].Moving then -- Prevent whole thing from rotating when we do localized rotation
+		if RAGDOLLMOVER[pl].Rotate then
+			if not RAGDOLLMOVER[pl].IsPhysBone then
+				local manipang = ent:GetManipulateBoneAngles(RAGDOLLMOVER[pl].Bone)
 				if manipang ~= lastang then
 					self.DiscP.LocalAng = Angle(0, 90 + manipang.y, 0) -- Pitch follows Yaw angles
 					self.DiscR.LocalAng = Angle(0 + manipang.x, 0 + manipang.y, 0) -- Roll follows Pitch and Yaw angles
