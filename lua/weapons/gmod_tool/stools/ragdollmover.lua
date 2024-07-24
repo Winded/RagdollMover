@@ -3152,7 +3152,7 @@ local function SetBoneNodes(bonepanel, sortedbones)
 			nodes[ent][v.id].DoClick = function()
 				if not LockMode then
 					net.Start("RAGDOLLMOVER")
-					net.WriteUInt(4, 5)
+						net.WriteUInt(4, 5)
 						net.WriteEntity(ent)
 						net.WriteUInt(v.id, 10)
 					net.SendToServer()
