@@ -13,47 +13,9 @@ local TYPE_BOOL		 = 5
 
 RAGDOLLMOVER = {}
 
-function RAGDOLLMOVER.Sync(pl, ...)
-	if CLIENT or not RAGDOLLMOVER[pl] then return end
-
-	net.Start("rgmSync")
-
-	local arg = {...}
-	local count = #arg
-	net.WriteInt(count, 4)
-
-	for k, v in ipairs(arg) do
-		net.WriteString(v)
-
-		local val = RAGDOLLMOVER[pl][v]
-
-		local Type = string.lower(type(val))
-		if Type == "entity" then
-			net.WriteUInt(TYPE_ENTITY, 3)
-			net.WriteEntity(val)
-		elseif Type == "number" then
-			net.WriteUInt(TYPE_NUMBER, 3)
-			net.WriteFloat(val)
-		elseif Type == "vector" then
-			net.WriteUInt(TYPE_VECTOR, 3)
-			net.WriteVector(val)
-		elseif Type == "angle" then
-			net.WriteUInt(TYPE_ANGLE, 3)
-			net.WriteAngle(val)
-		elseif Type == "boolean" then
-			net.WriteUInt(TYPE_BOOL, 3)
-			net.WriteBit(val)
-		end
-	end
-
-	net.Send(pl)
-end
-
 if SERVER then
 
-util.AddNetworkString("rgmSync")
-util.AddNetworkString("rgmSetToggleRot")
-util.AddNetworkString("rgmSetToggleScale")
+util.AddNetworkString("RAGDOLLMOVER_META")
 
 hook.Add("PlayerSpawn", "rgmSpawn", function(pl) --PlayerSpawn is a hook that runs only serverside btw
 	if not RAGDOLLMOVER[pl] then
@@ -95,13 +57,66 @@ end)
 
 end
 
-net.Receive("rgmSetToggleRot", function(len, pl)
-	local key = net.ReadInt(8)
-	if not key then return end
+function RAGDOLLMOVER.Sync(pl, ...)
+	if CLIENT or not RAGDOLLMOVER[pl] then return end
 
-	RotKey[pl] = key
-	if NumpadBindRot[pl] then numpad.Remove(NumpadBindRot[pl]) end
-	NumpadBindRot[pl] = numpad.OnDown(pl, key, "rgmAxisChangeStateRot")
+	net.Start("RAGDOLLMOVER_META") -- rgmSync
+
+	local arg = {...}
+	local count = #arg
+	net.WriteInt(count, 4)
+
+	for k, v in ipairs(arg) do
+		net.WriteString(v)
+
+		local val = RAGDOLLMOVER[pl][v]
+
+		local Type = string.lower(type(val))
+		if Type == "entity" then
+			net.WriteUInt(TYPE_ENTITY, 3)
+			net.WriteEntity(val)
+		elseif Type == "number" then
+			net.WriteUInt(TYPE_NUMBER, 3)
+			net.WriteFloat(val)
+		elseif Type == "vector" then
+			net.WriteUInt(TYPE_VECTOR, 3)
+			net.WriteVector(val)
+		elseif Type == "angle" then
+			net.WriteUInt(TYPE_ANGLE, 3)
+			net.WriteAngle(val)
+		elseif Type == "boolean" then
+			net.WriteUInt(TYPE_BOOL, 3)
+			net.WriteBit(val)
+		end
+	end
+
+	net.Send(pl)
+end
+
+local NETFUNC = {
+
+	function(len, pl) -- 1 - rgmSetToggleRot
+		local key = net.ReadInt(8)
+		if not key then return end
+
+		RotKey[pl] = key
+		if NumpadBindRot[pl] then numpad.Remove(NumpadBindRot[pl]) end
+		NumpadBindRot[pl] = numpad.OnDown(pl, key, "rgmAxisChangeStateRot")
+	end,
+
+	function(len, pl) -- 2 - rgmSetToggleScale
+		local key = net.ReadInt(8)
+		if not key then return end
+
+		ScaleKey[pl] = key
+		if NumpadBindScale[pl] then numpad.Remove(NumpadBindScale[pl]) end
+		NumpadBindScale[pl] = numpad.OnDown(pl, key, "rgmAxisChangeStateScale")
+	end
+
+}
+
+net.Receive("RAGDOLLMOVER_META", function(len, pl)
+	NETFUNC[net.ReadUInt(1) + 1](len, pl)
 end)
 
 numpad.Register("rgmAxisChangeStateRot", function(pl)
@@ -125,16 +140,6 @@ numpad.Register("rgmAxisChangeStateRot", function(pl)
 	return true
 end)
 
-
-net.Receive("rgmSetToggleScale", function(len, pl)
-	local key = net.ReadInt(8)
-	if not key then return end
-
-	ScaleKey[pl] = key
-	if NumpadBindScale[pl] then numpad.Remove(NumpadBindScale[pl]) end
-	NumpadBindScale[pl] = numpad.OnDown(pl, key, "rgmAxisChangeStateScale")
-end)
-
 numpad.Register("rgmAxisChangeStateScale", function(pl)
 	if not RAGDOLLMOVER[pl] then RAGDOLLMOVER[pl] = {} end
 
@@ -148,9 +153,9 @@ numpad.Register("rgmAxisChangeStateScale", function(pl)
 	return true
 end)
 
-else
+elseif CLIENT then
 
-net.Receive("rgmSync", function(len)
+net.Receive("RAGDOLLMOVER_META", function(len) -- rgmSync
 	local pl = LocalPlayer()
 	if not RAGDOLLMOVER[pl] then RAGDOLLMOVER[pl] = {} end
 

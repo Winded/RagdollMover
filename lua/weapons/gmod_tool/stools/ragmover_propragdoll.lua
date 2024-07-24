@@ -15,7 +15,8 @@ local function ClearPropRagdoll(ent)
 		for id, pl in ipairs(player.GetAll()) do
 			if RAGDOLLMOVER[pl] and RAGDOLLMOVER[pl].Entity == ent then
 				RAGDOLLMOVER[pl].Entity = nil
-				net.Start("rgmDeselectEntity")
+				net.Start("RAGDOLLMOVER")
+					net.WriteUInt(1, 4)
 				net.Send(pl)
 			end
 		end
@@ -47,7 +48,8 @@ local function rgmCanTool(ent, pl)
 end
 
 local function SendNotification(pl, id)
-	net.Start("rgmprDoNotify")
+	net.Start("RAGDOLLMOVER_PROPRAGDOLL")
+		net.WriteUInt(3, 2)
 		net.WriteUInt(id, 3)
 	net.Send(pl)
 end
@@ -55,10 +57,7 @@ end
 
 if SERVER then
 
-util.AddNetworkString("rgmprSendConEnts")
-util.AddNetworkString("rgmprApplySkeleton")
-util.AddNetworkString("rgmprDoNotify")
-util.AddNetworkString("rgmprSendEnt")
+util.AddNetworkString("RAGDOLLMOVER_PROPRAGDOLL")
 
 duplicator.RegisterEntityModifier("Ragdoll Mover Prop Ragdoll", function(pl, ent, data)
 
@@ -118,7 +117,7 @@ hook.Add("EntityRemoved", "rgmPropRagdollEntRemoved", function(ent)
 	end
 end)
 
-net.Receive("rgmprApplySkeleton", function(len, pl)
+net.Receive("RAGDOLLMOVER_PROPRAGDOLL", function(len, pl)
 	local count = net.ReadUInt(13)
 	local ents, filter = {}, {}
 	local fail = false
@@ -189,7 +188,8 @@ net.Receive("rgmprApplySkeleton", function(len, pl)
 	for id, ply in ipairs(player.GetAll()) do
 		if filter[RAGDOLLMOVER[pl].Entity]  then
 			RAGDOLLMOVER[pl].Entity = nil
-			net.Start("rgmDeselectEntity")
+			net.Start("RAGDOLLMOVER")
+				net.WriteUInt(1, 4)
 			net.Send(ply)
 		end
 	end
@@ -205,7 +205,8 @@ function TOOL:LeftClick(tr)
 
 	if IsValid(ent) and rgmCanTool(ent, self:GetOwner()) then
 		if SERVER then
-			net.Start("rgmprSendEnt")
+			net.Start("RAGDOLLMOVER_PROPRAGDOLL")
+				net.WriteUInt(2, 2)
 				net.WriteEntity(ent)
 				net.WriteBool(pl:KeyDown(IN_USE))
 			net.Send(pl)
@@ -236,7 +237,8 @@ function TOOL:RightClick(tr)
 			end
 		end
 
-		net.Start("rgmprSendConEnts")
+		net.Start("RAGDOLLMOVER_PROPRAGDOLL")
+			net.WriteUInt(1, 2)
 			net.WriteBool(doweusethis)
 			if doweusethis then
 				net.WriteUInt(count, 13)
@@ -299,7 +301,7 @@ local function RGMCallApplySkeleton()
 	if not next(PRUI.PRTree.Nodes) then return end
 	local tree = PRUI.PRTree
 
-	net.Start("rgmprApplySkeleton")
+	net.Start("RAGDOLLMOVER_PROPRAGDOLL")
 		net.WriteUInt(tree.Bones, 13)
 		for id, node in pairs(tree.Nodes) do
 			net.WriteEntity(node.ent)
@@ -1020,31 +1022,37 @@ hook.Add("PreDrawHalos", "rgmPRDrawSelectedHalo", function()
 	end
 end)
 
-net.Receive("rgmprSendConEnts", function(len)
+local NETFUNC = {
+	function(len) -- 	1 - rgmprSendConEnts
 
-	local validents = net.ReadBool()
-	local ents = {}
+		local validents = net.ReadBool()
+		local ents = {}
 
-	if validents then
-		local count = net.ReadUInt(13)
-		for i = 1, count do
-			ents[i] = net.ReadEntity()
+		if validents then
+			local count = net.ReadUInt(13)
+			for i = 1, count do
+				ents[i] = net.ReadEntity()
+			end
 		end
+
+		UpdateConstrainedEnts(ents)
+	end,
+
+	function(len) -- 		2 - rgmprSendEnt
+		local ent = net.ReadEntity()
+		local setnext = net.ReadBool()
+		if not IsValid(ent) then return end
+		AddEntity(ent, setnext)
+	end,
+
+	function(len) -- 		3 - rgmprDoNotify
+		local msgid = net.ReadUInt(3)
+		rgmDoNotification(msgid)
 	end
+}
 
-	UpdateConstrainedEnts(ents)
-end)
-
-net.Receive("rgmprSendEnt", function(len)
-	local ent = net.ReadEntity()
-	local setnext = net.ReadBool()
-	if not IsValid(ent) then return end
-	AddEntity(ent, setnext)
-end)
-
-net.Receive("rgmprDoNotify", function(len)
-	local msgid = net.ReadUInt(3)
-	rgmDoNotification(msgid)
+net.Receive("RAGDOLLMOVER_PROPRAGDOLL", function(len)
+	NETFUNC[net.ReadUInt(2)](len)
 end)
 
 end

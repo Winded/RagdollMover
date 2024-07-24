@@ -11,9 +11,6 @@ local VECTOR_FRONT = Vector(1, 0, 0)
 local ANGLE_DISC = Angle(0, 90, 0)
 local ANGLE_ARROW_OFFSET = Angle(0, 90, 90)
 
-util.AddNetworkString("rgmAxisRequest")
-util.AddNetworkString("rgmAxis")
-
 function ENT:Think()
 	local pl = self.Owner
 	if not IsValid(pl) then return end
