@@ -1401,7 +1401,7 @@ local NETFUNC = {
 					if ent:GetClass() == "prop_ragdoll" then
 						obj = ent:GetPhysicsObjectNum(RAGDOLLMOVER[pl].GizmoParentID)
 						if IsValid(obj) then
-							ppos, pang = LocalToWorld(axis.GizmoPos, axis.GizmoAng, obj:GetPos(), obj:GetAngles())
+							ppos, pang = LocalToWorld(rgmaxis.GizmoPos, rgmaxis.GizmoAng, obj:GetPos(), obj:GetAngles())
 						end
 					end
 
