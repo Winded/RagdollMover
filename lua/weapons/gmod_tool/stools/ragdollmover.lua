@@ -2751,6 +2751,25 @@ local function CGizmoSlider(cpanel, text, axis, min, max, dec)
 	slider:SetValue(0)
 	slider:SetDefaultValue(0)
 
+	function slider:SetValue(val) -- copy of and SetValue ValueChanged from gmod git without clamp, 28.07.2024
+		if (self:GetValue() == val) then return end
+
+		self.Scratch:SetValue(val) -- This will also call ValueChanged
+
+		self:ValueChanged(self:GetValue()) -- In most cases this will cause double execution of OnValueChanged
+	end
+
+	function slider:ValueChanged(val)
+		if (self.TextArea != vgui.GetKeyboardFocus()) then
+			self.TextArea:SetValue(self.Scratch:GetTextValue())
+		end
+
+		self.Slider:SetSlideX(self.Scratch:GetFraction())
+
+		self:OnValueChanged(val)
+		self:SetCookie("slider_val", val)
+	end
+
 	function slider:OnValueChanged(value)
 		net.Start("RAGDOLLMOVER")
 			net.WriteUInt(25, 5)
