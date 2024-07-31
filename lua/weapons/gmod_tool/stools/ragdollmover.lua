@@ -53,6 +53,8 @@ local ENTSELECT_LOCKRESPONSE = 20
 local BONE_FROZEN = 7
 local BONE_UNFROZEN = 8
 
+local VECTOR_FRONT = Vector(1, 0, 0)
+local VECTOR_LEFT = Vector(0, 1, 0)
 local VECTOR_SCALEDEF = Vector(1, 1, 1)
 
 local function rgmGetBone(pl, ent, bone)
@@ -1464,12 +1466,11 @@ local NETFUNC = {
 									nwpos = LocalToWorld(newpos, angle_zero, opos, oang)
 									tab.wpos = nwpos
 
-									local bscale1, bscale2, bscale3 = scale*1, scale*1, scale*1 -- there has to be a better way to do this
-									bscale1.y, bscale1.z, bscale2.x, bscale2.z, bscale3.x, bscale3.y = 0, 0, 0, 0, 0, 0
+									local bscale1, bscale2, bscale3 = VECTOR_FRONT, VECTOR_LEFT, vector_up
 
 									local nbscale1 = LocalToWorld(bscale1, angle_zero, vector_origin, oang)
 									nbscale1 = WorldToLocal(nbscale1, angle_zero, vector_origin, wang)
-									if bscale1.x < 0 then
+									if scale.x < 0 then
 										nbscale1.x = -math.abs(nbscale1.x)
 										nbscale1.y = -math.abs(nbscale1.y)
 										nbscale1.z = -math.abs(nbscale1.z)
@@ -1478,10 +1479,11 @@ local NETFUNC = {
 										nbscale1.y = math.abs(nbscale1.y)
 										nbscale1.z = math.abs(nbscale1.z)
 									end
-									
+									nbscale1 = nbscale1 * math.abs(scale.x)
+
 									local nbscale2 = LocalToWorld(bscale2, angle_zero, vector_origin, oang)
 									nbscale2 = WorldToLocal(nbscale2, angle_zero, vector_origin, wang)
-									if bscale2.y < 0 then
+									if scale.y < 0 then
 										nbscale2.x = -math.abs(nbscale2.x)
 										nbscale2.y = -math.abs(nbscale2.y)
 										nbscale2.z = -math.abs(nbscale2.z)
@@ -1490,10 +1492,11 @@ local NETFUNC = {
 										nbscale2.y = math.abs(nbscale2.y)
 										nbscale2.z = math.abs(nbscale2.z)
 									end
+									nbscale2 = nbscale2 * math.abs(scale.y)
 									
 									local nbscale3 = LocalToWorld(bscale3, angle_zero, vector_origin, oang)
 									nbscale3 = WorldToLocal(nbscale3, angle_zero, vector_origin, wang)
-									if bscale3.z < 0 then
+									if scale.z < 0 then
 										nbscale3.x = -math.abs(nbscale3.x)
 										nbscale3.y = -math.abs(nbscale3.y)
 										nbscale3.z = -math.abs(nbscale3.z)
@@ -1502,6 +1505,7 @@ local NETFUNC = {
 										nbscale3.y = math.abs(nbscale3.y)
 										nbscale3.z = math.abs(nbscale3.z)
 									end
+									nbscale3 = nbscale3 * math.abs(scale.z)
 
 									local bscale = nbscale1 + nbscale2 + nbscale3
 
@@ -1570,7 +1574,7 @@ local NETFUNC = {
 				else
 					local ppos, pang = ent:GetPos(), ent:GetAngles()
 					ppos, pang = LocalToWorld(rgmaxis.GizmoPos, rgmaxis.GizmoAng, ppos, pang)
-					RecursiveBoneScale(ent, pbone, scalediff, diff, ppos, pang, rgmaxis:GetPos(), pang, ppos)
+					RecursiveBoneScale(ent, pbone, scalediff, diff, ppos, pang, ppos, pang, ppos)
 				end
 			else
 				if rgmaxis.smovechildren and childbones and childbones[pbone] and not (ent:GetClass() == "ent_advbonemerge") then
@@ -4660,7 +4664,6 @@ local material = CreateMaterial("rgmGizmoMaterial", "UnlitGeneric", {
 	["$nocull"] = 		1,
 })
 
-local VECTOR_FRONT = Vector(1, 0, 0)
 
 function TOOL:DrawHUD()
 
