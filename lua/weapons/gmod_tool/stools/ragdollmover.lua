@@ -1467,45 +1467,43 @@ local NETFUNC = {
 									tab.wpos = nwpos
 
 									local bscale1, bscale2, bscale3 = VECTOR_FRONT, VECTOR_LEFT, vector_up
+									local bigvec = nil
 
-									local nbscale1 = LocalToWorld(bscale1, angle_zero, vector_origin, oang)
+									local nbscale1 = LocalToWorld(bscale1, angle_zero, vector_origin, oang) -- there has to be a better way of doing this
 									nbscale1 = WorldToLocal(nbscale1, angle_zero, vector_origin, wang)
-									if scale.x < 0 then
-										nbscale1.x = -math.abs(nbscale1.x)
-										nbscale1.y = -math.abs(nbscale1.y)
-										nbscale1.z = -math.abs(nbscale1.z)
-									else
-										nbscale1.x = math.abs(nbscale1.x)
-										nbscale1.y = math.abs(nbscale1.y)
-										nbscale1.z = math.abs(nbscale1.z)
+									nbscale1.x = math.abs(nbscale1.x)
+									nbscale1.y = math.abs(nbscale1.y)
+									nbscale1.z = math.abs(nbscale1.z)
+									bigvec = nil
+									for i = 1, 3 do
+										if not bigvec or (nbscale1[i] > nbscale1[bigvec]) then bigvec = i end
 									end
-									nbscale1 = nbscale1 * math.abs(scale.x)
+									nbscale1:Zero()
+									nbscale1[bigvec] = scale.x
 
 									local nbscale2 = LocalToWorld(bscale2, angle_zero, vector_origin, oang)
 									nbscale2 = WorldToLocal(nbscale2, angle_zero, vector_origin, wang)
-									if scale.y < 0 then
-										nbscale2.x = -math.abs(nbscale2.x)
-										nbscale2.y = -math.abs(nbscale2.y)
-										nbscale2.z = -math.abs(nbscale2.z)
-									else
-										nbscale2.x = math.abs(nbscale2.x)
-										nbscale2.y = math.abs(nbscale2.y)
-										nbscale2.z = math.abs(nbscale2.z)
+									nbscale2.x = math.abs(nbscale2.x)
+									nbscale2.y = math.abs(nbscale2.y)
+									nbscale2.z = math.abs(nbscale2.z)
+									bigvec = nil
+									for i = 1, 3 do
+										if not bigvec or (nbscale2[i] > nbscale2[bigvec]) then bigvec = i end
 									end
-									nbscale2 = nbscale2 * math.abs(scale.y)
-									
+									nbscale2:Zero()
+									nbscale2[bigvec] = scale.y
+
 									local nbscale3 = LocalToWorld(bscale3, angle_zero, vector_origin, oang)
 									nbscale3 = WorldToLocal(nbscale3, angle_zero, vector_origin, wang)
-									if scale.z < 0 then
-										nbscale3.x = -math.abs(nbscale3.x)
-										nbscale3.y = -math.abs(nbscale3.y)
-										nbscale3.z = -math.abs(nbscale3.z)
-									else
-										nbscale3.x = math.abs(nbscale3.x)
-										nbscale3.y = math.abs(nbscale3.y)
-										nbscale3.z = math.abs(nbscale3.z)
+									nbscale3.x = math.abs(nbscale3.x)
+									nbscale3.y = math.abs(nbscale3.y)
+									nbscale3.z = math.abs(nbscale3.z)
+									bigvec = nil
+									for i = 1, 3 do
+										if not bigvec or (nbscale3[i] > nbscale3[bigvec]) then bigvec = i end
 									end
-									nbscale3 = nbscale3 * math.abs(scale.z)
+									nbscale3:Zero()
+									nbscale3[bigvec] = scale.z
 
 									local bscale = nbscale1 + nbscale2 + nbscale3
 
@@ -1537,10 +1535,9 @@ local NETFUNC = {
 									local pos = tab.pos
 									local bonepos = ent:GetManipulateBonePosition(cbone)
 									local newpos = Vector(pos.x * diff.x, pos.y * diff.y, pos.z * diff.z)
-									local wpos, wang = nil, nil
 									ent:ManipulateBonePosition(cbone, bonepos + (newpos - pos))
 
-									wpos, wang = LocalToWorld(newpos, tab.ang, ppos, pang)
+									local wpos, wang = LocalToWorld(newpos, tab.ang, ppos, pang)
 									tab.wpos = wpos
 
 									tab.pos = newpos
@@ -2470,44 +2467,44 @@ if SERVER then
 									nwpos = LocalToWorld(newpos, angle_zero, opos, oang)
 									tab.wpos = nwpos
 
-									local bscale1, bscale2, bscale3 = scale*1, scale*1, scale*1 -- there has to be a better way to do this
-									bscale1.y, bscale1.z, bscale2.x, bscale2.z, bscale3.x, bscale3.y = 0, 0, 0, 0, 0, 0
+									local bscale1, bscale2, bscale3 = VECTOR_FRONT, VECTOR_LEFT, vector_up
+									local bigvec = nil
 
 									local nbscale1 = LocalToWorld(bscale1, angle_zero, vector_origin, oang)
 									nbscale1 = WorldToLocal(nbscale1, angle_zero, vector_origin, wang)
-									if bscale1.x < 0 then
-										nbscale1.x = -math.abs(nbscale1.x)
-										nbscale1.y = -math.abs(nbscale1.y)
-										nbscale1.z = -math.abs(nbscale1.z)
-									else
-										nbscale1.x = math.abs(nbscale1.x)
-										nbscale1.y = math.abs(nbscale1.y)
-										nbscale1.z = math.abs(nbscale1.z)
+									nbscale1.x = math.abs(nbscale1.x)
+									nbscale1.y = math.abs(nbscale1.y)
+									nbscale1.z = math.abs(nbscale1.z)
+									bigvec = nil
+									for i = 1, 3 do
+										if not bigvec or (nbscale1[i] > nbscale1[bigvec]) then bigvec = i end
 									end
-									
+									nbscale1:Zero()
+									nbscale1[bigvec] = scale.x
+
 									local nbscale2 = LocalToWorld(bscale2, angle_zero, vector_origin, oang)
 									nbscale2 = WorldToLocal(nbscale2, angle_zero, vector_origin, wang)
-									if bscale2.y < 0 then
-										nbscale2.x = -math.abs(nbscale2.x)
-										nbscale2.y = -math.abs(nbscale2.y)
-										nbscale2.z = -math.abs(nbscale2.z)
-									else
-										nbscale2.x = math.abs(nbscale2.x)
-										nbscale2.y = math.abs(nbscale2.y)
-										nbscale2.z = math.abs(nbscale2.z)
+									nbscale2.x = math.abs(nbscale2.x)
+									nbscale2.y = math.abs(nbscale2.y)
+									nbscale2.z = math.abs(nbscale2.z)
+									bigvec = nil
+									for i = 1, 3 do
+										if not bigvec or (nbscale2[i] > nbscale2[bigvec]) then bigvec = i end
 									end
-									
+									nbscale2:Zero()
+									nbscale2[bigvec] = scale.y
+
 									local nbscale3 = LocalToWorld(bscale3, angle_zero, vector_origin, oang)
 									nbscale3 = WorldToLocal(nbscale3, angle_zero, vector_origin, wang)
-									if bscale3.z < 0 then
-										nbscale3.x = -math.abs(nbscale3.x)
-										nbscale3.y = -math.abs(nbscale3.y)
-										nbscale3.z = -math.abs(nbscale3.z)
-									else
-										nbscale3.x = math.abs(nbscale3.x)
-										nbscale3.y = math.abs(nbscale3.y)
-										nbscale3.z = math.abs(nbscale3.z)
+									nbscale3.x = math.abs(nbscale3.x)
+									nbscale3.y = math.abs(nbscale3.y)
+									nbscale3.z = math.abs(nbscale3.z)
+									bigvec = nil
+									for i = 1, 3 do
+										if not bigvec or (nbscale3[i] > nbscale3[bigvec]) then bigvec = i end
 									end
+									nbscale3:Zero()
+									nbscale3[bigvec] = scale.z
 
 									local bscale = nbscale1 + nbscale2 + nbscale3
 
@@ -2539,12 +2536,11 @@ if SERVER then
 									local pos = tab.pos
 									local bonepos = ent:GetManipulateBonePosition(cbone)
 									local newpos = Vector(pos.x * diff.x, pos.y * diff.y, pos.z * diff.z)
-									local wpos, wang = nil, nil
 									ent:ManipulateBonePosition(cbone, bonepos + (newpos - pos))
-									if ent:GetClass() == "prop_ragdoll" then
-										wpos, wang = LocalToWorld(newpos, tab.ang, ppos, pang)
-										tab.wpos = wpos
-									end
+
+									local wpos, wang = LocalToWorld(newpos, tab.ang, ppos, pang)
+									tab.wpos = wpos
+
 									tab.pos = newpos
 
 									RecursiveBoneScale(ent, cbone, scale, diff, wpos, wang)
