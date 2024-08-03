@@ -99,6 +99,12 @@ function ENT:Think()
 	end
 
 	local pos, poseye = self:GetPos(), pl:EyePos()
+
+	local viewent = pl:GetViewEntity()
+	if IsValid(viewent) and viewent ~= pl then
+		poseye = viewent:GetPos()
+	end
+
 	local ang = (pos - poseye):Angle()
 	ang = self:WorldToLocalAngles(ang)
 	self.DiscLarge.LocalAng = ang

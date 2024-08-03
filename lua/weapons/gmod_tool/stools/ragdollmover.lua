@@ -1770,12 +1770,18 @@ local function EntityFilter(ent, tool)
 	return (ent:GetClass() == "prop_ragdoll" or ent:GetClass() == "prop_physics" or ent:GetClass() == "prop_effect") or (tool:GetClientNumber("disablefilter") ~= 0 and not ent:IsWorld())
 end
 
-function TOOL:LeftClick(tr)
+function TOOL:LeftClick()
+	local pl = self:GetOwner()
+	local eyepos, eyeang = rgm.EyePosAng(pl)
+	local tr = util.TraceLine({
+		start = eyepos,
+		endpos = eyepos + pl:GetAimVector() * 16384,
+		filter = { pl, pl:GetViewEntity() }
+	})
 
 	if self:GetOperation() == 1 then
 
 		if SERVER then
-			local pl = self:GetOwner()
 			local axis, ent = RAGDOLLMOVER[pl].Axis, RAGDOLLMOVER[pl].Entity
 
 			if not IsValid(axis) or not IsValid(ent) then self:SetOperation(0) return true end
@@ -1821,8 +1827,6 @@ function TOOL:LeftClick(tr)
 	end
 
 	if CLIENT then return false end
-
-	local pl = self:GetOwner()
 
 	if RAGDOLLMOVER[pl].Moving then return false end
 
@@ -1880,14 +1884,14 @@ function TOOL:LeftClick(tr)
 		RAGDOLLMOVER[pl].NPhysBoneAng = ent:GetManipulateBoneAngles(RAGDOLLMOVER[pl].Bone)
 		RAGDOLLMOVER[pl].NPhysBoneScale = ent:GetManipulateBoneScale(RAGDOLLMOVER[pl].Bone)
 
-		local ignore = { pl }
+		local ignore = { pl, pl:GetViewEntity() }
 
 		if ent.rgmPRidtoent then
 			for id, e in pairs(ent.rgmPRidtoent) do
 				ignore[#ignore + 1] = e
 			end
 		else
-			ignore[2] = ent
+			ignore[3] = ent
 		end
 
 		local function FindRecursiveIfParent(findid, id, ent)
@@ -2037,12 +2041,18 @@ function TOOL:LeftClick(tr)
 	return false
 end
 
-function TOOL:RightClick(tr)
+function TOOL:RightClick()
+	local pl = self:GetOwner()
+	local eyepos, eyeang = rgm.EyePosAng(pl)
+	local tr = util.TraceLine({
+		start = eyepos,
+		endpos = eyepos + pl:GetAimVector() * 16384,
+		filter = { pl, pl:GetViewEntity() }
+	})
 
 	if self:GetOperation() == 1 then
 
 		if SERVER then
-			local pl = self:GetOwner()
 			local axis = RAGDOLLMOVER[pl].Axis
 			local ent, rgment = tr.Entity, RAGDOLLMOVER[pl].Entity
 			local offset
@@ -2132,6 +2142,8 @@ if SERVER then
 	local scale = RAGDOLLMOVER[pl].Scale or false
 	local physmove = RAGDOLLMOVER[pl].physmove ~= 0
 
+	local eyepos, eyeang = rgm.EyePosAng(pl)
+
 	if moving then
 		if not pl:KeyDown(IN_ATTACK) or not rgmCanTool(ent, pl) then
 
@@ -2174,8 +2186,6 @@ if SERVER then
 
 		if not IsValid(axis) then return end
 
-		local eyepos, eyeang = rgm.EyePosAng(pl)
-
 		local apart = axis[RGMGIZMOS.GizmoTable[RAGDOLLMOVER[pl].MoveAxis]]
 		local bone = RAGDOLLMOVER[pl].PhysBone
 
@@ -2188,8 +2198,8 @@ if SERVER then
 		local tracepos = nil
 		if pl:KeyDown(IN_SPEED) then
 			local tr = util.TraceLine({
-				start = pl:EyePos(),
-				endpos = pl:EyePos() + pl:GetAimVector() * 4096,
+				start = eyepos,
+				endpos = eyepos + pl:GetAimVector() * 16384,
 				filter = RAGDOLLMOVER[pl].Ignore
 			})
 			tracepos = tr.HitPos
@@ -2657,7 +2667,12 @@ if SERVER then
 
 	end
 
-	local tr = pl:GetEyeTrace()
+	local tr = util.TraceLine({
+		start = eyepos,
+		endpos = eyepos + pl:GetAimVector() * 16384,
+		filter = { pl, pl:GetViewEntity() }
+	})
+
 	if IsValid(tr.Entity) and tr.Entity:GetClass() == "prop_ragdoll" then
 		local b = tr.Entity:TranslatePhysBoneToBone(tr.PhysicsBone)
 		if RAGDOLLMOVER[pl].AimedBone ~= b then
@@ -4700,7 +4715,12 @@ function TOOL:DrawHUD()
 		end
 	end
 
-	local tr = pl:GetEyeTrace()
+	local eyepos, eyeang = rgm.EyePosAng(pl)
+	local tr = util.TraceLine({
+		start = eyepos,
+		endpos = eyepos + pl:GetAimVector() * 16384,
+		filter = { pl, pl:GetViewEntity() }
+	})
 	local aimedbone = IsValid(tr.Entity) and (tr.Entity:GetClass() == "prop_ragdoll" and RAGDOLLMOVER[pl].AimedBone or 0) or 0
 	if IsValid(ent) and EntityFilter(ent, self) and SkeletonDraw then
 		rgm.DrawSkeleton(ent)

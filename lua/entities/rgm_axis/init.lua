@@ -276,7 +276,13 @@ function ENT:Think()
 		self.NMBonePos = LocalToWorld(-ent:GetManipulateBonePosition(bone), angle_zero, pos, self.GizmoParent)
 	end
 
+	local viewent = pl:GetViewEntity()
 	local pos, poseye = self:GetPos(), pl:EyePos()
+
+	if IsValid(viewent) and viewent ~= pl then
+		poseye = viewent:GetPos()
+	end
+
 	local disc = self.DiscLarge
 	local ang = (pos - poseye):Angle()
 	ang = self:WorldToLocalAngles(ang)
