@@ -26,7 +26,11 @@ local VECTOR_ONE = Vector(1, 1, 1)
 --Receives player eye position and eye angles.
 --If cursor is visible, eye angles are based on cursor position.
 function EyePosAng(pl)
-	local eyepos, eyeang = pl:EyePos(), pl:EyeAngles()
+	local eyepos = pl:EyePos()
+	local viewent = pl:GetViewEntity()
+	if IsValid(viewent) and viewent ~= pl then
+		eyepos = viewent:GetPos()
+	end
 	local cursorvec = pl:GetAimVector()
 	--local cursorvec = pl:EyeAngles()
 	return eyepos, cursorvec:Angle()

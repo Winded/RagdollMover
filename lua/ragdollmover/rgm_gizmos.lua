@@ -909,6 +909,12 @@ do
 			local toscreen = {}
 			local linetable = self:GetLinePositions(width)
 			local eyepos = pl:EyePos()
+
+			local viewent = pl:GetViewEntity()
+			if IsValid(viewent) and viewent ~= pl then
+				eyepos = viewent:GetPos()
+			end
+
 			local largedisc = parent.DiscLarge
 			if not largedisc then return end
 
