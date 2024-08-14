@@ -16,7 +16,7 @@ local function ClearPropRagdoll(ent)
 			if RAGDOLLMOVER[pl] and RAGDOLLMOVER[pl].Entity == ent then
 				RAGDOLLMOVER[pl].Entity = nil
 				net.Start("RAGDOLLMOVER")
-					net.WriteUInt(1, 4)
+					net.WriteUInt(0, 4)
 				net.Send(pl)
 			end
 		end
@@ -189,7 +189,7 @@ net.Receive("RAGDOLLMOVER_PROPRAGDOLL", function(len, pl)
 		if filter[RAGDOLLMOVER[pl].Entity]  then
 			RAGDOLLMOVER[pl].Entity = nil
 			net.Start("RAGDOLLMOVER")
-				net.WriteUInt(1, 4)
+				net.WriteUInt(0, 4)
 			net.Send(ply)
 		end
 	end
