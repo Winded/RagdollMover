@@ -2732,7 +2732,7 @@ hook.Add("KeyPress", "rgmSwitchSelectionMode", function(pl, key)
 		local opset = 0
 
 		if key == IN_WALK then
-			if op ~= 2 then opset = 2 end
+			if op ~= 2 and IsValid(RAGDOLLMOVER[pl].Entity) then opset = 2 end
 
 			net.Start("RAGDOLLMOVER")
 				net.WriteUInt(14, 5)
@@ -3551,7 +3551,7 @@ local function SetBoneNodes(bonepanel, sortedbones)
 		for k, v in ipairs(entdata) do
 			local text1 = ent:GetBoneName(v.id)
 
-			if nodes[ent].parent then
+			if nodes[ent].parent and not v.parent then
 				nodes[ent][v.id] = nodes[nodes[ent].parent][0]:AddNode(text1)
 			elseif v.parent then
 				nodes[ent][v.id] = nodes[ent][v.parent]:AddNode(text1)
