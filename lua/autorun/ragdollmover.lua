@@ -945,6 +945,8 @@ end
 if CLIENT then
 
 local COLOR_RGMGREEN = Color(0, 200, 0, 255)
+local COLOR_RGMBLACK = Color(0, 0, 0, 255)
+local OUTLINE_WIDTH = 1
 
 function DrawBoneName(ent, bone, name)
 	if not name then
@@ -958,7 +960,7 @@ function DrawBoneName(ent, bone, name)
 	_pos = _pos:ToScreen()
 	local textpos = {x = _pos.x + 5, y = _pos.y - 5}
 	surface.DrawCircle(_pos.x, _pos.y, 3.5, COLOR_RGMGREEN)
-	draw.SimpleText(name, "Default", textpos.x, textpos.y, COLOR_RGMGREEN, TEXT_ALIGN_LEFT, TEXT_ALIGN_BOTTOM)
+	draw.SimpleTextOutlined(name, "Default", textpos.x, textpos.y, COLOR_RGMGREEN, TEXT_ALIGN_LEFT, TEXT_ALIGN_BOTTOM, OUTLINE_WIDTH, COLOR_RGMBLACK)
 end
 
 function DrawEntName(ent)
@@ -978,7 +980,7 @@ function DrawEntName(ent)
 	pos = pos:ToScreen()
 	local textpos = {x = pos.x + 5, y = pos.y - 5}
 	surface.DrawCircle(pos.x, pos.y, 3.5, COLOR_RGMGREEN)
-	draw.SimpleText(name, "Default", textpos.x, textpos.y, COLOR_RGMGREEN, TEXT_ALIGN_LEFT, TEXT_ALIGN_BOTTOM)
+	draw.SimpleTextOutlined(name, "Default", textpos.x, textpos.y, COLOR_RGMGREEN, TEXT_ALIGN_LEFT, TEXT_ALIGN_BOTTOM, OUTLINE_WIDTH, COLOR_RGMBLACK)
 end
 
 local RGM_CIRCLE = {
@@ -996,9 +998,9 @@ local RGM_CIRCLE = {
 function DrawBoneSelect(ent)
 	local mx, my = input.GetCursorPos() -- possible bug on mac https://wiki.facepunch.com/gmod/input.GetCursorPos
 
-	local maxBoneNames = GetConVar("ragdollmover_maxbonenames"):GetInt()
-	local selectedBones = 0
+	local selectedBones = {}
 	for i = 0, ent:GetBoneCount() do
+		local selected = false
 		local name = ent:GetBoneName(i)
 		if name == "__INVALIDBONE__" then continue end
 		local pos = ent:GetBonePosition(i)
@@ -1014,17 +1016,18 @@ function DrawBoneSelect(ent)
 
 		if dist < 576 then -- 24 pixels
 			surface.SetDrawColor(255, 255, 0, 255)
-			selectedBones = selectedBones + 1
-			if selectedBones <= maxBoneNames then
-				local textpos = {x = pos.x + 5, y = pos.y - 5}
-				draw.SimpleText(name, "Default", textpos.x, textpos.y, COLOR_RGMGREEN, TEXT_ALIGN_LEFT, TEXT_ALIGN_BOTTOM)
-			end
+			table.insert(selectedBones, name)
 		else
 			surface.SetDrawColor(0, 200, 0, 255)
 		end
 
 		draw.NoTexture()
 		surface.DrawPoly(circ)
+	end
+
+	for i = 1, #selectedBones do
+		local listItemPos = {x = mx + 5, y = my + i * 15}
+		draw.SimpleTextOutlined(selectedBones[i], "Default", listItemPos.x, listItemPos.y, COLOR_RGMGREEN, TEXT_ALIGN_LEFT, TEXT_ALIGN_BOTTOM, OUTLINE_WIDTH, COLOR_RGMBLACK)
 	end
 end
 
@@ -1092,7 +1095,7 @@ function DrawBoneCircle(ent, bones)
 		surface.DrawPoly(circ)
 
 		surface.DrawCircle(uix, uiy, 3.5, color)
-		draw.SimpleText(name, "Default", uix, uiy - 14, color, TEXT_ALIGN_CENTER, TEXT_ALIGN_BOTTOM)
+		draw.SimpleTextOutlined(name, "Default", uix, uiy - 14, color, TEXT_ALIGN_CENTER, TEXT_ALIGN_BOTTOM, OUTLINE_WIDTH, COLOR_RGMBLACK)
 	end
 end
 
