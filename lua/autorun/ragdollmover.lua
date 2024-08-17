@@ -1055,7 +1055,6 @@ function DrawBoneCircle(ent, bones)
 		local thisang = (360 / count * (k - 1))
 		local thisrad = thisang / 180 * math.pi
 		local uix, uiy = (math.sin(thisrad) * 250), (math.cos(thisrad) * -250)
-		local uix2, uiy2 = uix * 1.1 + midw, uiy * 1.1 + midh
 		local color = COLOR_WHITE
 		uix, uiy = uix + midw, uiy + midh
 
@@ -1085,7 +1084,7 @@ function DrawBoneCircle(ent, bones)
 		surface.DrawPoly(circ)
 
 		surface.DrawCircle(uix, uiy, 3.5, color)
-		draw.SimpleText(name, "Default", uix2, uiy2, color, TEXT_ALIGN_CENTER, TEXT_ALIGN_BOTTOM)
+		draw.SimpleText(name, "Default", uix, uiy - 14, color, TEXT_ALIGN_CENTER, TEXT_ALIGN_BOTTOM)
 	end
 end
 
