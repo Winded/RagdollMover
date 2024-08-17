@@ -996,8 +996,11 @@ local RGM_CIRCLE = {
 function DrawBoneSelect(ent)
 	local mx, my = input.GetCursorPos() -- possible bug on mac https://wiki.facepunch.com/gmod/input.GetCursorPos
 
+	local maxBoneNames = GetConVar("ragdollmover_maxbonenames"):GetInt()
+	local selectedBones = 0
 	for i = 0, ent:GetBoneCount() do
-		if ent:GetBoneName(i) == "__INVALIDBONE__" then continue end
+		local name = ent:GetBoneName(i)
+		if name == "__INVALIDBONE__" then continue end
 		local pos = ent:GetBonePosition(i)
 		pos = pos:ToScreen()
 
@@ -1011,6 +1014,11 @@ function DrawBoneSelect(ent)
 
 		if dist < 576 then -- 24 pixels
 			surface.SetDrawColor(255, 255, 0, 255)
+			selectedBones = selectedBones + 1
+			if selectedBones <= maxBoneNames then
+				local textpos = {x = pos.x + 5, y = pos.y - 5}
+				draw.SimpleText(name, "Default", textpos.x, textpos.y, COLOR_RGMGREEN, TEXT_ALIGN_LEFT, TEXT_ALIGN_BOTTOM)
+			end
 		else
 			surface.SetDrawColor(0, 200, 0, 255)
 		end
