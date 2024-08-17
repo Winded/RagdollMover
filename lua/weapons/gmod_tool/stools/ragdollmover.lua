@@ -2053,15 +2053,16 @@ end
 function TOOL:RightClick()
 	local pl = self:GetOwner()
 	local eyepos, eyeang = rgm.EyePosAng(pl)
-	local tr = util.TraceLine({
-		start = eyepos,
-		endpos = eyepos + pl:GetAimVector() * 16384,
-		filter = { pl, pl:GetViewEntity() }
-	})
 
 	if self:GetOperation() == 1 then
 
 		if SERVER then
+			local tr = util.TraceLine({
+				start = eyepos,
+				endpos = eyepos + pl:GetAimVector() * 16384,
+				filter = { pl, pl:GetViewEntity() }
+			})
+
 			local axis = RAGDOLLMOVER[pl].Axis
 			local ent, rgment = tr.Entity, RAGDOLLMOVER[pl].Entity
 			local offset
