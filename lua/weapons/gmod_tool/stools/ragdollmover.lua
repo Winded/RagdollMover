@@ -1809,7 +1809,7 @@ function TOOL:LeftClick()
 			elseif ent:GetClass() == "prop_ragdoll" then
 				ent = ent:GetPhysicsObjectNum(RAGDOLLMOVER[pl].PhysBone)
 				ogpos, ogang = ent:GetPos(), ent:GetAngles()
-			elseif ent:GetClass() == "prop_physics" then
+			elseif ent:GetPhysicsObjectCount() == 1 then
 				ent = ent:GetPhysicsObjectNum(0)
 				ogpos, ogang = ent:GetPos(), ent:GetAngles()
 			end
@@ -2092,7 +2092,7 @@ function TOOL:RightClick()
 			elseif rgment:GetClass() == "prop_ragdoll" then
 				rgment = rgment:GetPhysicsObjectNum(RAGDOLLMOVER[pl].PhysBone)
 				ogpos, ogang = rgment:GetPos(), rgment:GetAngles()
-			elseif rgment:GetClass() == "prop_physics" then
+			elseif rgment:GetPhysicsObjectCount() == 1 then
 				rgment = rgment:GetPhysicsObjectNum(0)
 				ogpos, ogang = rgment:GetPos(), rgment:GetAngles()
 			end
