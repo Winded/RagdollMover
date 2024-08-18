@@ -993,7 +993,7 @@ local RGM_CIRCLE = {
 	{ x = -4, y = 0 }
 }
 
-function DrawBoneSelect(ent)
+function AdvBoneSelectRender(ent)
 	local mx, my = input.GetCursorPos() -- possible bug on mac https://wiki.facepunch.com/gmod/input.GetCursorPos
 
 	for i = 0, ent:GetBoneCount() do
@@ -1020,7 +1020,7 @@ function DrawBoneSelect(ent)
 	end
 end
 
-function BoneSelect(ent)
+function AdvBoneSelectPick(ent)
 	local selected = {}
 	local mx, my = input.GetCursorPos()
 
@@ -1044,7 +1044,7 @@ local COLOR_WHITE = Color(255, 255, 255, 255)
 local COLOR_YELLOW = Color(255, 255, 0, 255)
 local SelectedBone = nil
 
-function DrawBoneCircle(ent, bones)
+function AdvBoneSelectRadialRender(ent, bones)
 	local mx, my = input.GetCursorPos()
 	local midw, midh = ScrW()/2, ScrH()/2
 	local count = #bones
@@ -1088,7 +1088,7 @@ function DrawBoneCircle(ent, bones)
 	end
 end
 
-function SelectBone()
+function AdvBoneSelectRadialPick()
 	if not SelectedBone then return 0 end
 	return SelectedBone
 end

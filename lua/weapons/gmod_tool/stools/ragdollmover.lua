@@ -4716,7 +4716,7 @@ function TOOL:Think()
 
 			if IsValid(ent) then
 				if self:GetStage() ~= 1 then
-					local selbones = rgm.BoneSelect(ent)
+					local selbones = rgm.AdvBoneSelectPick(ent)
 					if next(selbones) then
 						if #selbones == 1 then
 							net.Start("RAGDOLLMOVER")
@@ -4746,7 +4746,7 @@ function TOOL:Think()
 					net.Start("RAGDOLLMOVER")
 						net.WriteUInt(4, 5)
 						net.WriteEntity(ent)
-						net.WriteUInt(rgm.SelectBone(), 10)
+						net.WriteUInt(rgm.AdvBoneSelectRadialPick(), 10)
 					net.SendToServer()
 
 					timer.Simple(0.1, function()
@@ -4818,9 +4818,9 @@ function TOOL:DrawHUD()
 
 	if self:GetOperation() == 2 and IsValid(ent) then
 		if self:GetStage() == 0 then
-			rgm.DrawBoneSelect(ent)
+			rgm.AdvBoneSelectRender(ent)
 		else
-			rgm.DrawBoneCircle(ent, RAGDOLLMOVER[pl].SelectedBones)
+			rgm.AdvBoneSelectRadialRender(ent, RAGDOLLMOVER[pl].SelectedBones)
 		end
 	elseif IsValid(HoveredEntBone) and EntityFilter(HoveredEntBone, self) and HoveredBone then
 		rgm.DrawBoneConnections(HoveredEntBone, HoveredBone)
