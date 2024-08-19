@@ -732,7 +732,7 @@ do
 
 				local rotationangle = localized.y
 				if snapamount ~= 0 then
-					snapAngle(localized, startangle, snapamount)
+					rotationangle = snapAngle(localized, startangle, snapamount)
 				end
 
 				local pos = self:GetPos()
@@ -847,7 +847,7 @@ do
 
 				local rotationangle = localized.y
 				if snapamount ~= 0 then
-					snapAngle(localized, startangle, snapamount)
+					rotationangle = snapAngle(localized, startangle, snapamount)
 				end
 
 				local pos = self:GetPos()
