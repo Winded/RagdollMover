@@ -1,3 +1,7 @@
+-- load dconstants
+include("ragdollmover/constants.lua")
+AddCSLuaFile("ragdollmover/constants.lua")
+
 -- load gizmos library
 include("ragdollmover/rgm_gizmos.lua")
 AddCSLuaFile("ragdollmover/rgm_gizmos.lua")
@@ -8,6 +12,7 @@ AddCSLuaFile("ragdollmover/rgm_gizmos.lua")
 ]]
 
 module("rgm", package.seeall)
+
 
 --[[	Line-Plane intersection, and return the result vector
 	I honestly cannot explain this at all. I just followed this tutorial:
@@ -21,7 +26,7 @@ function IntersectRayWithPlane(planepoint, norm, line, linenormal)
 	return vec
 end
 
-local VECTOR_ONE = Vector(1, 1, 1)
+local VECTOR_ONE = RGM_Constants.VECTOR_ONE
 
 --Receives player eye position and eye angles.
 --If cursor is visible, eye angles are based on cursor position.
@@ -944,9 +949,9 @@ end
 
 if CLIENT then
 
-local COLOR_RGMGREEN = Color(0, 200, 0, 255)
-local COLOR_RGMBLACK = Color(0, 0, 0, 255)
-local OUTLINE_WIDTH = 1
+local COLOR_RGMGREEN = RGM_Constants.COLOR_GREEN
+local COLOR_RGMBLACK = RGM_Constants.COLOR_BLACK
+local OUTLINE_WIDTH = RGM_Constants.OUTLINE_WIDTH
 
 function DrawBoneName(ent, bone, name)
 	if not name then

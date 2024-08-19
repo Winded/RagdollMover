@@ -1,8 +1,8 @@
 RGMGIZMOS = {}
 
-local VECTOR_FRONT = Vector(1, 0, 0)
-local VECTOR_SIDE = Vector(0, 1, 0)
-local COLOR_YELLOW = Color(255, 255, 0, 255)
+local VECTOR_FRONT = RGM_Constants.VECTOR_FRONT
+local VECTOR_SIDE = RGM_Constants.VECTOR_LEFT
+local COLOR_YELLOW = RGM_Constants.COLOR_YELLOW
 
 ----------------
 -- BASE GIZMO --
