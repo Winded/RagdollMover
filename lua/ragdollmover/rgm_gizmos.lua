@@ -654,6 +654,46 @@ do
 			return result
 		end
 
+		local snapAngle do
+			local accumulated = 0
+			local lastStartAngle = 0
+			local oldLocalAngle = 0
+
+			-- Accumulate delta angles per frame until startangle is different (stopped rotating)
+			-- Allows for correct snapped angles set by the rotation delta
+			function snapAngle(localized, startangle, snapamount)
+				local localAng = localized.y
+	
+				if lastStartAngle ~= startangle.y then
+					accumulated = 0
+					oldLocalAngle = localAng
+					lastStartAngle = startangle.y
+				end
+
+				-- https://discussions.unity.com/t/can-i-read-from-a-rotation-that-doesnt-wrap-from-360-to-zero/621621/7
+				while (localAng < oldLocalAngle - 180) do
+					localAng = localAng + 360
+				end
+				while (localAng > oldLocalAngle + 180) do
+					localAng = localAng - 360
+				end
+
+				local delta = oldLocalAngle - localAng
+				accumulated = accumulated + delta
+				oldLocalAngle = localAng
+	
+				local mathfunc = nil
+				if accumulated >= 0 then
+					mathfunc = math.floor
+				else
+					mathfunc = math.ceil
+				end
+
+	
+				return startangle.y - (mathfunc(accumulated / snapamount) * snapamount)
+			end
+		end
+
 		function disc:ProcessMovement(_, offang, eyepos, eyeang, ent, bone, ppos, pnorm, movetype, snapamount, startangle, _, nphysangle) -- initially i had a table instead of separate things for initial bone pos and angle, but sync command can't handle tables and i thought implementing a way to handle those would be too much hassle
 			local intersect = self:GetGrabPos(eyepos, eyeang, ppos, pnorm)
 			local localized = self:WorldToLocal(intersect)
@@ -692,26 +732,7 @@ do
 
 				local rotationangle = localized.y
 				if snapamount ~= 0 then
-					local localAng = mfmod(localized.y, 360)
-					if localAng > 181 then localAng = localAng - 360 end
-					if localAng < -181 then localAng = localAng + 360 end
-
-					local localStart = mfmod(startangle.y, 360)
-					if localStart > 181 then localStart = localStart - 360 end
-					if localStart < -181 then localStart = localStart + 360 end
-
-					local diff = mfmod(localStart - localAng, 360)
-					if diff > 181 then diff = diff - 360 end
-					if diff < -181 then diff = diff + 360 end
-
-					local mathfunc = nil
-					if diff >= 0 then
-						mathfunc = math.floor
-					else
-						mathfunc = math.ceil
-					end
-
-					rotationangle = startangle.y - (mathfunc(diff / snapamount) * snapamount)
+					snapAngle(localized, startangle, snapamount)
 				end
 
 				local pos = self:GetPos()
@@ -826,26 +847,7 @@ do
 
 				local rotationangle = localized.y
 				if snapamount ~= 0 then
-					local localAng = mfmod(localized.y, 360)
-					if localAng > 181 then localAng = localAng - 360 end
-					if localAng < -181 then localAng = localAng + 360 end
-
-					local localStart = mfmod(startangle.y, 360)
-					if localStart > 181 then localStart = localStart - 360 end
-					if localStart < -181 then localStart = localStart + 360 end
-
-					local diff = mfmod(localStart - localAng, 360)
-					if diff > 181 then diff = diff - 360 end
-					if diff < -181 then diff = diff + 360 end
-
-					local mathfunc = nil
-					if diff >= 0 then
-						mathfunc = math.floor
-					else
-						mathfunc = math.ceil
-					end
-
-					rotationangle = startangle.y - (mathfunc(diff / snapamount) * snapamount)
+					snapAngle(localized, startangle, snapamount)
 				end
 
 				local pos = self:GetPos()
