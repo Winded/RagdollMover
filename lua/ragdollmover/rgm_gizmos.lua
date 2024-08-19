@@ -788,14 +788,7 @@ do
 
 				local rotationangle = localized.y
 				if snapamount ~= 0 then
-					local localAng = mfmod(localized.y, 360)
-					if localAng > 181 then localAng = localAng - 360 end
-					if localAng < -181 then localAng = localAng + 360 end
-
-					local mathfunc = math.floor
-					if localAng < 0 then mathfunc = math.ceil end
-
-					rotationangle = mathfunc(localAng / snapamount) * snapamount
+					rotationangle = snapAngle(localized, startlocal, snapamount)
 				end
 
 				if self.axistype == 4 then
