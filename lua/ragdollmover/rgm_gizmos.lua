@@ -694,7 +694,7 @@ do
 
 	
 				if nonphys then
-					return mathfunc(accumulated / snapamount) * snapamount
+					return -mathfunc(accumulated / snapamount) * snapamount
 				else
 					return startangle.y - (mathfunc(accumulated / snapamount) * snapamount)
 				end
@@ -793,7 +793,7 @@ do
 
 				local rotationangle = localized.y
 				if snapamount ~= 0 then
-					rotationangle = snapAngle(localized, startlocal, snapamount, true)
+					rotationangle = snapAngle(localized, startangle, snapamount, true)
 				end
 
 				if self.axistype == 4 then
