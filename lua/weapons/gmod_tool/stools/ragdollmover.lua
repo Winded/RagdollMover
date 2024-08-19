@@ -2712,7 +2712,8 @@ local RGM_NOTIFY = { -- table with info for messages, true for errors
 	[BONE_UNFROZEN] = false,
 }
 
-local pl
+-- If we hotload this file, pl gets set to nil, which causes issues when tables attempt to index with this variable; initialize it here 
+local pl = LocalPlayer()
 
 hook.Add("InitPostEntity", "rgmSetPlayer", function()
 	pl = LocalPlayer()
