@@ -664,7 +664,7 @@ do
 
 			-- Accumulate delta angles per frame until startangle is different (stopped rotating)
 			-- Allows for correct snapped angles set by the rotation delta
-			function snapAngle(localized, startangle, snapamount)
+			function snapAngle(localized, startangle, snapamount, nonphys)
 				local localAng = localized.y
 	
 				if lastStartAngle ~= startangle.y then
@@ -693,7 +693,11 @@ do
 				end
 
 	
-				return startangle.y - (mathfunc(accumulated / snapamount) * snapamount)
+				if nonphys then
+					return mathfunc(accumulated / snapamount) * snapamount
+				else
+					return startangle.y - (mathfunc(accumulated / snapamount) * snapamount)
+				end
 			end
 		end
 
@@ -789,7 +793,7 @@ do
 
 				local rotationangle = localized.y
 				if snapamount ~= 0 then
-					rotationangle = snapAngle(localized, startlocal, snapamount)
+					rotationangle = snapAngle(localized, startlocal, snapamount, true)
 				end
 
 				if self.axistype == 4 then
