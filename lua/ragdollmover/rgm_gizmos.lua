@@ -659,6 +659,9 @@ do
 			local lastStartAngle = 0
 			local oldLocalAngle = 0
 
+			local floor = math.floor
+			local ceil = math.ceil
+
 			-- Accumulate delta angles per frame until startangle is different (stopped rotating)
 			-- Allows for correct snapped angles set by the rotation delta
 			function snapAngle(localized, startangle, snapamount)
@@ -684,9 +687,9 @@ do
 	
 				local mathfunc = nil
 				if accumulated >= 0 then
-					mathfunc = math.floor
+					mathfunc = floor
 				else
-					mathfunc = math.ceil
+					mathfunc = ceil
 				end
 
 	
@@ -711,8 +714,6 @@ do
 			axistable[2]:Normalize()
 			axistable[3]:Normalize()
 			axistable[4]:Normalize()
-
-			local mfmod = math.fmod
 
 			if movetype == 1 then
 				local offset = RAGDOLLMOVER[axis.Owner].GizmoOffset
