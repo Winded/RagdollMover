@@ -53,9 +53,9 @@ local ENTSELECT_LOCKRESPONSE = 20
 local BONE_FROZEN = 7
 local BONE_UNFROZEN = 8
 
-local VECTOR_FRONT = Vector(1, 0, 0)
-local VECTOR_LEFT = Vector(0, 1, 0)
-local VECTOR_SCALEDEF = Vector(1, 1, 1)
+local VECTOR_FRONT = RGM_Constants.VECTOR_FRONT
+local VECTOR_LEFT = RGM_Constants.VECTOR_LEFT
+local VECTOR_SCALEDEF = RGM_Constants.VECTOR_ONE
 
 local function rgmGetBone(pl, ent, bone)
 	--------------------------------------------------------- yeah this part is from locrotscale
@@ -244,8 +244,8 @@ util.AddNetworkString("RAGDOLLMOVER")
 
 ConstrainedAllowed = CreateConVar("sv_ragdollmover_allow_constrained_locking", 1, FCVAR_ARCHIVE + FCVAR_NOTIFY, "Allow usage of locking constrained entities to Ragdoll Mover's selected entity (Can be abused by attempting to move a lot of entities)", 0, 1)
 
-local VECTOR_NEARZERO = Vector(0.01, 0.01, 0.01)
-local VECTOR_ONE = Vector(1, 1, 1)
+local VECTOR_NEARZERO = RGM_Constants.VECTOR_NEARZERO
+local VECTOR_ONE = RGM_Constants.VECTOR_ONE
 
 local function RecursiveFindIfParent(ent, lockbone, locktobone)
 	local parent = ent:GetBoneParent(locktobone)
