@@ -1,3 +1,7 @@
+-- load dconstants
+include("ragdollmover/constants.lua")
+AddCSLuaFile("ragdollmover/constants.lua")
+
 -- load gizmos library
 include("ragdollmover/rgm_gizmos.lua")
 AddCSLuaFile("ragdollmover/rgm_gizmos.lua")
@@ -8,6 +12,7 @@ AddCSLuaFile("ragdollmover/rgm_gizmos.lua")
 ]]
 
 module("rgm", package.seeall)
+
 
 --[[	Line-Plane intersection, and return the result vector
 	I honestly cannot explain this at all. I just followed this tutorial:
@@ -21,7 +26,7 @@ function IntersectRayWithPlane(planepoint, norm, line, linenormal)
 	return vec
 end
 
-local VECTOR_ONE = Vector(1, 1, 1)
+local VECTOR_ONE = RGM_Constants.VECTOR_ONE
 
 --Receives player eye position and eye angles.
 --If cursor is visible, eye angles are based on cursor position.
@@ -944,7 +949,9 @@ end
 
 if CLIENT then
 
-local COLOR_RGMGREEN = Color(0, 200, 0, 255)
+local COLOR_RGMGREEN = RGM_Constants.COLOR_GREEN
+local COLOR_RGMBLACK = RGM_Constants.COLOR_BLACK
+local OUTLINE_WIDTH = RGM_Constants.OUTLINE_WIDTH
 
 function DrawBoneName(ent, bone, name)
 	if not name then
@@ -958,7 +965,7 @@ function DrawBoneName(ent, bone, name)
 	_pos = _pos:ToScreen()
 	local textpos = {x = _pos.x + 5, y = _pos.y - 5}
 	surface.DrawCircle(_pos.x, _pos.y, 3.5, COLOR_RGMGREEN)
-	draw.SimpleText(name, "Default", textpos.x, textpos.y, COLOR_RGMGREEN, TEXT_ALIGN_LEFT, TEXT_ALIGN_BOTTOM)
+	draw.SimpleTextOutlined(name, "Default", textpos.x, textpos.y, COLOR_RGMGREEN, TEXT_ALIGN_LEFT, TEXT_ALIGN_BOTTOM, OUTLINE_WIDTH, COLOR_RGMBLACK)
 end
 
 function DrawEntName(ent)
@@ -978,7 +985,128 @@ function DrawEntName(ent)
 	pos = pos:ToScreen()
 	local textpos = {x = pos.x + 5, y = pos.y - 5}
 	surface.DrawCircle(pos.x, pos.y, 3.5, COLOR_RGMGREEN)
-	draw.SimpleText(name, "Default", textpos.x, textpos.y, COLOR_RGMGREEN, TEXT_ALIGN_LEFT, TEXT_ALIGN_BOTTOM)
+	draw.SimpleTextOutlined(name, "Default", textpos.x, textpos.y, COLOR_RGMGREEN, TEXT_ALIGN_LEFT, TEXT_ALIGN_BOTTOM, OUTLINE_WIDTH, COLOR_RGMBLACK)
+end
+
+local RGM_CIRCLE = {
+	{ x = -3, y = -3 },
+
+	{ x = 0, y = -4 },
+	{ x = 3, y = -3 },
+	{ x = 4, y = 0 },
+	{ x = 3, y = 3 },
+	{ x = 0, y = 4 },
+	{ x = -3, y = 3 },
+	{ x = -4, y = 0 }
+}
+
+function AdvBoneSelectRender(ent)
+	local mx, my = input.GetCursorPos() -- possible bug on mac https://wiki.facepunch.com/gmod/input.GetCursorPos
+
+	local selectedBones = {}
+	for i = 0, ent:GetBoneCount() do
+		local selected = false
+		local name = ent:GetBoneName(i)
+		if name == "__INVALIDBONE__" then continue end
+		local pos = ent:GetBonePosition(i)
+		pos = pos:ToScreen()
+
+		local dist = math.abs((mx - pos.x)^2 + (my - pos.y)^2)
+
+		local circ = table.Copy(RGM_CIRCLE)
+		for k, v in ipairs(circ) do
+			v.x = v.x + pos.x
+			v.y = v.y + pos.y
+		end
+
+		if dist < 576 then -- 24 pixels
+			surface.SetDrawColor(255, 255, 0, 255)
+			table.insert(selectedBones, name)
+		else
+			surface.SetDrawColor(0, 200, 0, 255)
+		end
+
+		draw.NoTexture()
+		surface.DrawPoly(circ)
+	end
+
+	for i = 1, #selectedBones do
+		local listItemPos = {x = mx + 5, y = my + i * 15}
+		draw.SimpleTextOutlined(selectedBones[i], "Default", listItemPos.x, listItemPos.y, COLOR_RGMGREEN, TEXT_ALIGN_LEFT, TEXT_ALIGN_BOTTOM, OUTLINE_WIDTH, COLOR_RGMBLACK)
+	end
+end
+
+function AdvBoneSelectPick(ent)
+	local selected = {}
+	local mx, my = input.GetCursorPos()
+
+	cam.Start3D()
+	for i = 0, ent:GetBoneCount() do
+		if ent:GetBoneName(i) == "__INVALIDBONE__" then continue end
+
+		local pos = ent:GetBonePosition(i)
+		pos = pos:ToScreen()
+		local dist = math.abs((mx - pos.x)^2 + (my - pos.y)^2)
+		if dist < 576 then
+			table.insert(selected, i)
+		end
+	end
+	cam.End3D()
+
+	return selected
+end
+
+local COLOR_WHITE = Color(255, 255, 255, 255)
+local COLOR_YELLOW = Color(255, 255, 0, 255)
+local SelectedBone = nil
+
+function AdvBoneSelectRadialRender(ent, bones)
+	local mx, my = input.GetCursorPos()
+	local midw, midh = ScrW()/2, ScrH()/2
+	local count = #bones
+	local angborder = (360 / count) / 2
+
+	for k, bone in ipairs(bones) do
+		local name = ent:GetBoneName(bone)
+		local thisang = (360 / count * (k - 1))
+		local thisrad = thisang / 180 * math.pi
+		local uix, uiy = (math.sin(thisrad) * 250), (math.cos(thisrad) * -250)
+		local color = COLOR_WHITE
+		uix, uiy = uix + midw, uiy + midh
+
+		local selangle = 360 - (math.deg(math.atan2(mx - midw, my - midh)) + 180) -- took this one from overhauled radial menu, which took some of the inspiration from wiremod
+
+		local diff = math.abs((thisang - selangle + 180) % 360 - 180)
+		local isselected = diff < angborder and true or false
+
+		local pos = ent:GetBonePosition(bone)
+		pos = pos:ToScreen()
+
+		local circ = table.Copy(RGM_CIRCLE)
+		for k, v in ipairs(circ) do
+			v.x = v.x + pos.x
+			v.y = v.y + pos.y
+		end
+
+		if isselected then
+			surface.SetDrawColor(255, 255, 0, 255)
+			color = COLOR_YELLOW
+			SelectedBone = bone
+		else
+			surface.SetDrawColor(0, 200, 0, 255)
+		end
+
+		draw.NoTexture()
+		surface.DrawPoly(circ)
+
+		surface.DrawCircle(uix, uiy, 3.5, color)
+		draw.SimpleTextOutlined(name, "Default", uix, uiy - 14, color, TEXT_ALIGN_CENTER, TEXT_ALIGN_BOTTOM, OUTLINE_WIDTH, COLOR_RGMBLACK)
+	end
+end
+
+function AdvBoneSelectRadialPick()
+	if not SelectedBone then return 0 end
+	return SelectedBone
 end
 
 function DrawBoneConnections(ent, bone)

@@ -6,8 +6,8 @@ AddCSLuaFile("shared.lua")
 ENT.DisableDuplicator = true
 ENT.DoNotDuplicate = true
 
-local VECTOR_ORIGIN = Vector(0, 0, 0)
-local VECTOR_FRONT = Vector(1, 0, 0)
+local VECTOR_ORIGIN = vector_origin
+local VECTOR_FRONT = RGM_Constants.VECTOR_FRONT
 local ANGLE_DISC = Angle(0, 90, 0)
 local ANGLE_ARROW_OFFSET = Angle(0, 90, 90)
 

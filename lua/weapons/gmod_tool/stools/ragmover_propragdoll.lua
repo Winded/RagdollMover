@@ -16,7 +16,7 @@ local function ClearPropRagdoll(ent)
 			if RAGDOLLMOVER[pl] and RAGDOLLMOVER[pl].Entity == ent then
 				RAGDOLLMOVER[pl].Entity = nil
 				net.Start("RAGDOLLMOVER")
-					net.WriteUInt(1, 4)
+					net.WriteUInt(0, 4)
 				net.Send(pl)
 			end
 		end
@@ -189,7 +189,7 @@ net.Receive("RAGDOLLMOVER_PROPRAGDOLL", function(len, pl)
 		if filter[RAGDOLLMOVER[pl].Entity]  then
 			RAGDOLLMOVER[pl].Entity = nil
 			net.Start("RAGDOLLMOVER")
-				net.WriteUInt(1, 4)
+				net.WriteUInt(0, 4)
 			net.Send(ply)
 		end
 	end
@@ -938,9 +938,11 @@ function TOOL.BuildCPanel(CPanel)
 
 end
 
-local COLOR_RGMGREEN = Color(0, 200, 0, 255)
-local VECTOR_FORWARD = Vector(1, 0, 0)
-local VECTOR_LEFT = Vector(0, 1, 0)
+local COLOR_RGMGREEN = RGM_Constants.COLOR_GREEN
+local COLOR_RGMBLACK = RGM_Constants.COLOR_BLACK
+local OUTLINE_WIDTH = RGM_Constants.OUTLINE_WIDTH
+local VECTOR_FORWARD = RGM_Constants.VECTOR_FRONT
+local VECTOR_LEFT = RGM_Constants.VECTOR_LEFT
 
 function TOOL:DrawHUD()
 
@@ -956,7 +958,7 @@ function TOOL:DrawHUD()
 			local textpos = { x = pos.x + 5, y = pos.y - 5 }
 			surface.DrawCircle(pos.x, pos.y, 3.5, COLOR_RGMGREEN)
 			if ent ~= HoveredEnt then
-				draw.SimpleText(node.id, "Default", textpos.x, textpos.y, COLOR_RGMGREEN, TEXT_ALIGN_LEFT, TEXT_ALIGN_BOTTOM)
+				draw.SimpleTextOutlined(node.id, "Default", textpos.x, textpos.y, COLOR_RGMGREEN, TEXT_ALIGN_LEFT, TEXT_ALIGN_BOTTOM, OUTLINE_WIDTH, COLOR_RGMBLACK)
 			end
 
 			if not node.parent then continue end
