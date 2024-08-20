@@ -1,8 +1,10 @@
 
 include("shared.lua")
 
-local VECTOR_FRONT = Vector(1, 0, 0)
-local COLOR_RGMGREEN = Color(0, 200, 0, 255)
+local VECTOR_FRONT = RGM_Constants.VECTOR_FRONT
+local COLOR_RGMGREEN = RGM_Constants.COLOR_GREEN
+local COLOR_RGMBLACK = RGM_Constants.COLOR_BLACK
+local OUTLINE_WIDTH = RGM_Constants.OUTLINE_WIDTH
 local ANGLE_ARROW_OFFSET = Angle(0, 90, 90)
 local ANGLE_DISC = Angle(0, 90, 0)
 
@@ -60,7 +62,7 @@ function ENT:DrawAngleText(axis, hitpos, startAngle)
 
 	local textAngle = mabs(mround((overnine - localized.y) * 100) / 100)
 	local textpos = hitpos:ToScreen()
-	draw.SimpleText(textAngle, "HudHintTextLarge", textpos.x + 5, textpos.y, COLOR_RGMGREEN, TEXT_ALIGN_LEFT, TEXT_ALIGN_BOTTOM)
+	draw.SimpleTextOutlined(textAngle, "HudDefault", textpos.x + 5, textpos.y, COLOR_RGMGREEN, TEXT_ALIGN_LEFT, TEXT_ALIGN_BOTTOM, OUTLINE_WIDTH, COLOR_RGMBLACK)
 end
 
 function ENT:Draw()
