@@ -655,38 +655,42 @@ do
 		end
 
 		local snapAngle do
-			local accumulated = 0
-			local lastStartAngle = 0
-			local oldLocalAngle = 0
 
 			local floor = math.floor
 			local ceil = math.ceil
 
 			-- Accumulate delta angles per frame until startangle is different (stopped rotating)
 			-- Allows for correct snapped angles set by the rotation delta
-			function snapAngle(localized, startangle, snapamount, nonphys)
+			function snapAngle(self, localized, startangle, snapamount, nonphys)
+				local parent = self.Parent
+				if not parent.Accumulated then
+					parent.Accumulated = 0
+					parent.LastStartAngle = 0
+					parent.OldLocalAngle = 0
+				end
+
 				local localAng = localized.y
 	
-				if lastStartAngle ~= startangle.y then
-					accumulated = 0
-					oldLocalAngle = localAng
-					lastStartAngle = startangle.y
+				if parent.LastStartAngle ~= startangle.y then
+					parent.Accumulated = 0
+					parent.OldLocalAngle = localAng
+					parent.LastStartAngle = startangle.y
 				end
 
 				-- https://discussions.unity.com/t/can-i-read-from-a-rotation-that-doesnt-wrap-from-360-to-zero/621621/7
-				while (localAng < oldLocalAngle - 180) do
+				while (localAng < parent.OldLocalAngle - 180) do
 					localAng = localAng + 360
 				end
-				while (localAng > oldLocalAngle + 180) do
+				while (localAng > parent.OldLocalAngle + 180) do
 					localAng = localAng - 360
 				end
 
-				local delta = oldLocalAngle - localAng
-				accumulated = accumulated + delta
-				oldLocalAngle = localAng
+				local delta = parent.OldLocalAngle - localAng
+				parent.Accumulated = parent.Accumulated + delta
+				parent.OldLocalAngle = localAng
 	
 				local mathfunc = nil
-				if accumulated >= 0 then
+				if parent.Accumulated >= 0 then
 					mathfunc = floor
 				else
 					mathfunc = ceil
@@ -694,9 +698,9 @@ do
 
 	
 				if nonphys then
-					return -mathfunc(accumulated / snapamount) * snapamount
+					return -mathfunc(parent.Accumulated / snapamount) * snapamount
 				else
-					return startangle.y - (mathfunc(accumulated / snapamount) * snapamount)
+					return startangle.y - (mathfunc(parent.Accumulated / snapamount) * snapamount)
 				end
 			end
 		end
@@ -737,7 +741,7 @@ do
 
 				local rotationangle = localized.y
 				if snapamount ~= 0 then
-					rotationangle = snapAngle(localized, startangle, snapamount)
+					rotationangle = snapAngle(self, localized, startangle, snapamount)
 				end
 
 				local pos = self:GetPos()
@@ -793,7 +797,7 @@ do
 
 				local rotationangle = localized.y
 				if snapamount ~= 0 then
-					rotationangle = snapAngle(localized, startangle, snapamount, true)
+					rotationangle = snapAngle(self, localized, startangle, snapamount, true)
 				end
 
 				if self.axistype == 4 then
@@ -845,7 +849,7 @@ do
 
 				local rotationangle = localized.y
 				if snapamount ~= 0 then
-					rotationangle = snapAngle(localized, startangle, snapamount)
+					rotationangle = snapAngle(self, localized, startangle, snapamount)
 				end
 
 				local pos = self:GetPos()
