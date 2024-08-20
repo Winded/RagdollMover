@@ -5,6 +5,8 @@
 
 resource.AddSingleFile("resource/localization/en/ragdollmover_tools.properties")
 
+local MAX_EDICT_BITS = 13
+
 local TYPE_ENTITY	 = 1
 local TYPE_NUMBER	 = 2
 local TYPE_VECTOR	 = 3
@@ -74,7 +76,7 @@ function RAGDOLLMOVER.Sync(pl, ...)
 		local Type = string.lower(type(val))
 		if Type == "entity" then
 			net.WriteUInt(TYPE_ENTITY, 3)
-			net.WriteEntity(val)
+			net.WriteUInt(val:EntIndex(), MAX_EDICT_BITS)
 		elseif Type == "number" then
 			net.WriteUInt(TYPE_NUMBER, 3)
 			net.WriteFloat(val)
@@ -157,7 +159,9 @@ elseif CLIENT then
 
 net.Receive("RAGDOLLMOVER_META", function(len) -- rgmSync
 	local pl = LocalPlayer()
-	if not RAGDOLLMOVER[pl] then RAGDOLLMOVER[pl] = {} end
+
+	-- See edge case explanation below
+	if IsValid(pl) and not RAGDOLLMOVER[pl] then RAGDOLLMOVER[pl] = {} end
 
 	local count = net.ReadInt(4)
 
@@ -167,7 +171,8 @@ net.Receive("RAGDOLLMOVER_META", function(len) -- rgmSync
 		local type = net.ReadUInt(3)
 		local value = nil
 		if type == TYPE_ENTITY then
-			value = net.ReadEntity()
+			-- Read the entity index instead of the entity itself, so we can do our own validation step later
+			value = net.ReadUInt(MAX_EDICT_BITS)
 		elseif type == TYPE_NUMBER then
 			value = net.ReadFloat()
 		elseif type == TYPE_VECTOR then
@@ -177,7 +182,24 @@ net.Receive("RAGDOLLMOVER_META", function(len) -- rgmSync
 		elseif type == TYPE_BOOL then
 			value = net.ReadBit() == 1
 		end
-		RAGDOLLMOVER[pl][name] = value
+
+		-- Sometimes, entities are not available during startup in multiplayer.   
+		if type == TYPE_ENTITY then
+			timer.Create("RAGDOLLMOVER_VALIDATE_ENTITY", 0.1, 10, function()
+				-- Edge case: If ragdollmover is already deployed on the player in the server, then the net.Receive callback calls,
+				-- but the local player is not initialized. We can initialize pl here and also set the RAGDOLLMOVER[pl]
+				-- table
+				pl = LocalPlayer()
+				if not RAGDOLLMOVER[pl] then RAGDOLLMOVER[pl] = {} end
+
+				if IsValid(Entity(value)) and IsValid(pl) then
+					RAGDOLLMOVER[pl][name] = Entity(value)
+					timer.Remove("RAGDOLLMOVER_VALIDATE_ENTITY")
+				end
+			end)
+		else
+			RAGDOLLMOVER[pl][name] = value
+		end
 	end
 end)
 
