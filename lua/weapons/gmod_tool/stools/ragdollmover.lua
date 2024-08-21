@@ -2383,7 +2383,7 @@ if SERVER then
 
 					if axis.scalerelativemove then
 
-						RecursiveBoneScale = function(ent, bone, scale, diff, ppos, pang, opos, oang, nppos)
+						RecursiveBoneScale = function(ent, bone, scale, diff, ppos, pang, opos, oang, nppos, poschange)
 							if RAGDOLLMOVER[pl].Bone == bone then
 								local oldscale = ent:GetManipulateBoneScale(bone)
 								ent:ManipulateBoneScale(bone, oldscale + scale)
@@ -2469,26 +2469,33 @@ if SERVER then
 							
 							if childbones[bone] then
 								for cbone, tab in pairs(childbones[bone]) do
+									local poschange = poschange
 									local pos = tab.pos
 									local wpos, wang = LocalToWorld(tab.pos, tab.ang, ppos, pang)
 									local scale = scale
-									if noscale[ent][cbone] then 
-										scale = vector_origin
-									end
 
 									local nwpos
 
-									local lpos = WorldToLocal(wpos, angle_zero, opos, oang)
-									local newpos = lpos*1
+									if not poschange then
+										local lpos = WorldToLocal(wpos, angle_zero, opos, oang)
+										local newpos = lpos*1
 
-									local pscale = ent:GetManipulateBoneScale(RAGDOLLMOVER[pl].Bone) - scale
-									newpos.x, newpos.y, newpos.z = newpos.x / pscale.x, newpos.y / pscale.y, newpos.z / pscale.z
+										local pscale = ent:GetManipulateBoneScale(RAGDOLLMOVER[pl].Bone) - scale
+										newpos.x, newpos.y, newpos.z = newpos.x / pscale.x, newpos.y / pscale.y, newpos.z / pscale.z
 
-									pscale = pscale + scale
-									newpos.x, newpos.y, newpos.z = newpos.x * pscale.x, newpos.y * pscale.y, newpos.z * pscale.z
+										pscale = pscale + scale
+										newpos.x, newpos.y, newpos.z = newpos.x * pscale.x, newpos.y * pscale.y, newpos.z * pscale.z
 
-									nwpos = LocalToWorld(newpos, angle_zero, opos, oang)
+										nwpos = LocalToWorld(newpos, angle_zero, opos, oang)
+									else
+										nwpos = wpos + poschange
+									end
 									tab.wpos = nwpos
+
+									if noscale[ent][cbone] then 
+										scale = vector_origin
+										poschange = nwpos - wpos
+									end
 
 									local bscale1, bscale2, bscale3 = VECTOR_FRONT, VECTOR_LEFT, vector_up
 									local bigvec = nil
@@ -2538,7 +2545,7 @@ if SERVER then
 									ent:ManipulateBonePosition(cbone, bonepos + (newpos - pos))
 									tab.pos = newpos
 
-									RecursiveBoneScale(ent, cbone, scale, diff, wpos, wang, opos, oang, nwpos)
+									RecursiveBoneScale(ent, cbone, scale, diff, wpos, wang, opos, oang, nwpos, poschange)
 								end
 							end
 						end

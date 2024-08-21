@@ -1120,8 +1120,20 @@ function AdvBoneSelectRadialRender(ent, bones)
 		draw.NoTexture()
 		surface.DrawPoly(circ)
 
+		local ytextoffset = -14
+		if uiy > (midh + 30) then ytextoffset = 28 end
+
+		local xtextoffset = 0
+		if uix > (midw + 5) then
+			xtextoffset = 20
+		elseif uix < (midw - 5) then
+			xtextoffset = -20
+		else
+			ytextoffset = ytextoffset*1.5
+		end
+
 		surface.DrawCircle(uix, uiy, 3.5, color)
-		draw.SimpleTextOutlined(name, "Default", uix, uiy - 14, color, TEXT_ALIGN_CENTER, TEXT_ALIGN_BOTTOM, OUTLINE_WIDTH, COLOR_RGMBLACK)
+		draw.SimpleTextOutlined(name, "Default", uix + xtextoffset, uiy + ytextoffset, color, TEXT_ALIGN_CENTER, TEXT_ALIGN_BOTTOM, OUTLINE_WIDTH, COLOR_RGMBLACK)
 	end
 end
 
