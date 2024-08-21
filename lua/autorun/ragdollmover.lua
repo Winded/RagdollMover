@@ -1005,7 +1005,6 @@ function AdvBoneSelectRender(ent)
 
 	local selectedBones = {}
 	for i = 0, ent:GetBoneCount() do
-		local selected = false
 		local name = ent:GetBoneName(i)
 		if name == "__INVALIDBONE__" then continue end
 		local pos = ent:GetBonePosition(i)
@@ -1030,9 +1029,31 @@ function AdvBoneSelectRender(ent)
 		surface.DrawPoly(circ)
 	end
 
+	-- We use the average length of all bone names to ensure some names don't overlap each other
+	local meanNameLength = 0
+	-- Assume default font is about this wide
+	local fontWidth = 7.5
 	for i = 1, #selectedBones do
-		local listItemPos = {x = mx + 5, y = my + i * 15}
-		draw.SimpleTextOutlined(selectedBones[i], "Default", listItemPos.x, listItemPos.y, COLOR_RGMGREEN, TEXT_ALIGN_LEFT, TEXT_ALIGN_BOTTOM, OUTLINE_WIDTH, COLOR_RGMBLACK)
+		meanNameLength = meanNameLength + #selectedBones[i] * fontWidth
+	end
+	meanNameLength = meanNameLength / #selectedBones
+
+	local maxItemsPerColumn = 257 * 15
+	local scrH = ScrH() - 100 -- Some padding to keep the bones centered
+	local columns = 0
+
+	-- List the selected bones. If they attempt to overflow through the screen, add the items to another column.
+	for i = 0, #selectedBones - 1 do
+		local yPos = my + (i % maxItemsPerColumn) * 15
+		local xPos = mx + 5 + meanNameLength * columns
+		if yPos > scrH then
+			maxItemsPerColumn = i + 1
+		end
+		if i > 0 and i % maxItemsPerColumn == 0 then
+			columns = columns + 1
+			xPos = mx + 5 + meanNameLength * columns
+		end
+		draw.SimpleTextOutlined(selectedBones[i + 1], "Default", xPos, yPos, COLOR_RGMGREEN, TEXT_ALIGN_LEFT, TEXT_ALIGN_BOTTOM, OUTLINE_WIDTH, COLOR_RGMBLACK)
 	end
 end
 
