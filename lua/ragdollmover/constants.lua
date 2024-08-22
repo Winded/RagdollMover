@@ -7,4 +7,5 @@ RGM_Constants = {
 	VECTOR_FRONT = Vector(1, 0, 0),
 	VECTOR_LEFT = Vector(0, 1, 0),
 	VECTOR_NEARZERO = Vector(0.01, 0.01, 0.01),
+	FLOAT_1DIVIDE540 = 0.00185185185
 }

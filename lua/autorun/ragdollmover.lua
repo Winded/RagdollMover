@@ -6,6 +6,31 @@ AddCSLuaFile("ragdollmover/constants.lua")
 include("ragdollmover/rgm_gizmos.lua")
 AddCSLuaFile("ragdollmover/rgm_gizmos.lua")
 
+-- create font for drawing functions that scales with screen size
+local RGMFontSize
+
+if CLIENT then
+
+RGMFontSize = math.Round(12 * ScrH()/1080)
+
+if RGMFontSize < 10 then RGMFontSize = 10 end
+
+surface.CreateFont("RagdollMoverFont", {
+	font = "Verdana",
+	size = RGMFontSize,
+	weight = 700,
+	antialias = true
+})
+
+surface.CreateFont("RagdollMoverAngleFont", {
+	font = "Verdana",
+	size = RGMFontSize * 1.5,
+	weight = 700,
+	antialias = true
+})
+
+end
+
 --[[
 	rgm module
 	Various functions used by Ragdoll Mover tool, and the axis entities.
@@ -965,7 +990,7 @@ function DrawBoneName(ent, bone, name)
 	_pos = _pos:ToScreen()
 	local textpos = {x = _pos.x + 5, y = _pos.y - 5}
 	surface.DrawCircle(_pos.x, _pos.y, 3.5, COLOR_RGMGREEN)
-	draw.SimpleTextOutlined(name, "Default", textpos.x, textpos.y, COLOR_RGMGREEN, TEXT_ALIGN_LEFT, TEXT_ALIGN_BOTTOM, OUTLINE_WIDTH, COLOR_RGMBLACK)
+	draw.SimpleTextOutlined(name, "RagdollMoverFont", textpos.x, textpos.y, COLOR_RGMGREEN, TEXT_ALIGN_LEFT, TEXT_ALIGN_BOTTOM, OUTLINE_WIDTH, COLOR_RGMBLACK)
 end
 
 function DrawEntName(ent)
@@ -985,7 +1010,7 @@ function DrawEntName(ent)
 	pos = pos:ToScreen()
 	local textpos = {x = pos.x + 5, y = pos.y - 5}
 	surface.DrawCircle(pos.x, pos.y, 3.5, COLOR_RGMGREEN)
-	draw.SimpleTextOutlined(name, "Default", textpos.x, textpos.y, COLOR_RGMGREEN, TEXT_ALIGN_LEFT, TEXT_ALIGN_BOTTOM, OUTLINE_WIDTH, COLOR_RGMBLACK)
+	draw.SimpleTextOutlined(name, "RagdollMoverFont", textpos.x, textpos.y, COLOR_RGMGREEN, TEXT_ALIGN_LEFT, TEXT_ALIGN_BOTTOM, OUTLINE_WIDTH, COLOR_RGMBLACK)
 end
 
 local RGM_CIRCLE = {
@@ -999,6 +1024,13 @@ local RGM_CIRCLE = {
 	{ x = -3, y = 3 },
 	{ x = -4, y = 0 }
 }
+
+local midw, midh = ScrW()/2, ScrH()/2
+local divide540 = RGM_Constants.FLOAT_1DIVIDE540 -- aggressive microoptimizations
+
+hook.Add("OnScreenSizeChanged", "RagdollMoverHUDUpdate", function(_, _, newWidth, newHeight)
+	midw, midh = newWidth/2, newHeight/2
+end)
 
 function AdvBoneSelectRender(ent)
 	local mx, my = input.GetCursorPos() -- possible bug on mac https://wiki.facepunch.com/gmod/input.GetCursorPos
@@ -1032,19 +1064,20 @@ function AdvBoneSelectRender(ent)
 	-- We use the average length of all bone names to ensure some names don't overlap each other
 	local meanNameLength = 0
 	-- Assume default font is about this wide
-	local fontWidth = 7.5
+	local fontWidth = 7.5 * divide540 * midh
+	if fontWidth < 6.5 then fontWidth = 6.5 end
 	for i = 1, #selectedBones do
 		meanNameLength = meanNameLength + #selectedBones[i] * fontWidth
 	end
 	meanNameLength = meanNameLength / #selectedBones
 
-	local maxItemsPerColumn = 257 * 15
+	local maxItemsPerColumn = 257 * (RGMFontSize + 3)
 	local scrH = ScrH() - 100 -- Some padding to keep the bones centered
 	local columns = 0
 
 	-- List the selected bones. If they attempt to overflow through the screen, add the items to another column.
 	for i = 0, #selectedBones - 1 do
-		local yPos = my + (i % maxItemsPerColumn) * 15
+		local yPos = my + (i % maxItemsPerColumn) * (RGMFontSize + 3)
 		local xPos = mx + 5 + meanNameLength * columns
 		if yPos > scrH then
 			maxItemsPerColumn = i + 1
@@ -1053,7 +1086,7 @@ function AdvBoneSelectRender(ent)
 			columns = columns + 1
 			xPos = mx + 5 + meanNameLength * columns
 		end
-		draw.SimpleTextOutlined(selectedBones[i + 1], "Default", xPos, yPos, COLOR_RGMGREEN, TEXT_ALIGN_LEFT, TEXT_ALIGN_BOTTOM, OUTLINE_WIDTH, COLOR_RGMBLACK)
+		draw.SimpleTextOutlined(selectedBones[i + 1], "RagdollMoverFont", xPos, yPos, COLOR_RGMGREEN, TEXT_ALIGN_LEFT, TEXT_ALIGN_BOTTOM, OUTLINE_WIDTH, COLOR_RGMBLACK)
 	end
 end
 
@@ -1083,15 +1116,15 @@ local SelectedBone = nil
 
 function AdvBoneSelectRadialRender(ent, bones)
 	local mx, my = input.GetCursorPos()
-	local midw, midh = ScrW()/2, ScrH()/2
 	local count = #bones
 	local angborder = (360 / count) / 2
+	local modifier = divide540 * midh
 
 	for k, bone in ipairs(bones) do
 		local name = ent:GetBoneName(bone)
 		local thisang = (360 / count * (k - 1))
 		local thisrad = thisang / 180 * math.pi
-		local uix, uiy = (math.sin(thisrad) * 250), (math.cos(thisrad) * -250)
+		local uix, uiy = (math.sin(thisrad) * 250 * modifier), (math.cos(thisrad) * -250 * modifier)
 		local color = COLOR_WHITE
 		uix, uiy = uix + midw, uiy + midh
 
@@ -1121,7 +1154,7 @@ function AdvBoneSelectRadialRender(ent, bones)
 		surface.DrawPoly(circ)
 
 		local ytextoffset = -14
-		if uiy > (midh + 30) then ytextoffset = 28 end
+		if uiy > (midh + 30) then ytextoffset = RGMFontSize + 14 end
 
 		local xtextoffset = 0
 		if uix > (midw + 5) then
@@ -1133,7 +1166,7 @@ function AdvBoneSelectRadialRender(ent, bones)
 		end
 
 		surface.DrawCircle(uix, uiy, 3.5, color)
-		draw.SimpleTextOutlined(name, "Default", uix + xtextoffset, uiy + ytextoffset, color, TEXT_ALIGN_CENTER, TEXT_ALIGN_BOTTOM, OUTLINE_WIDTH, COLOR_RGMBLACK)
+		draw.SimpleTextOutlined(name, "RagdollMoverFont", uix + xtextoffset, uiy + ytextoffset, color, TEXT_ALIGN_CENTER, TEXT_ALIGN_BOTTOM, OUTLINE_WIDTH, COLOR_RGMBLACK)
 	end
 end
 
