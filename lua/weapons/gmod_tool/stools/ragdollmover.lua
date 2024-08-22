@@ -2743,7 +2743,7 @@ end)
 
 hook.Add("KeyPress", "rgmSwitchSelectionMode", function(pl, key)
 	local tool = pl:GetTool()
-	if RAGDOLLMOVER[pl] and pl:GetActiveWeapon():GetClass() == "gmod_tool" and tool and tool.Mode == "ragdollmover" then
+	if RAGDOLLMOVER[pl] and IsValid(pl:GetActiveWeapon()) and  pl:GetActiveWeapon():GetClass() == "gmod_tool" and tool and tool.Mode == "ragdollmover" then
 		local op = tool:GetOperation()
 		local opset = 0
 
