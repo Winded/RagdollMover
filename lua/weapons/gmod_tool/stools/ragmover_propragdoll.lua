@@ -958,7 +958,7 @@ function TOOL:DrawHUD()
 			local textpos = { x = pos.x + 5, y = pos.y - 5 }
 			surface.DrawCircle(pos.x, pos.y, 3.5, COLOR_RGMGREEN)
 			if ent ~= HoveredEnt then
-				draw.SimpleTextOutlined(node.id, "Default", textpos.x, textpos.y, COLOR_RGMGREEN, TEXT_ALIGN_LEFT, TEXT_ALIGN_BOTTOM, OUTLINE_WIDTH, COLOR_RGMBLACK)
+				draw.SimpleTextOutlined(node.id, "RagdollMoverFont", textpos.x, textpos.y, COLOR_RGMGREEN, TEXT_ALIGN_LEFT, TEXT_ALIGN_BOTTOM, OUTLINE_WIDTH, COLOR_RGMBLACK)
 			end
 
 			if not node.parent then continue end

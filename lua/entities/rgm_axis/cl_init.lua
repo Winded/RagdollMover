@@ -62,7 +62,7 @@ function ENT:DrawAngleText(axis, hitpos, startAngle)
 
 	local textAngle = mabs(mround((overnine - localized.y) * 100) / 100)
 	local textpos = hitpos:ToScreen()
-	draw.SimpleTextOutlined(textAngle, "HudDefault", textpos.x + 5, textpos.y, COLOR_RGMGREEN, TEXT_ALIGN_LEFT, TEXT_ALIGN_BOTTOM, OUTLINE_WIDTH, COLOR_RGMBLACK)
+	draw.SimpleTextOutlined(textAngle, "RagdollMoverAngleFont", textpos.x + 5, textpos.y, COLOR_RGMGREEN, TEXT_ALIGN_LEFT, TEXT_ALIGN_BOTTOM, OUTLINE_WIDTH, COLOR_RGMBLACK)
 end
 
 function ENT:Draw()
