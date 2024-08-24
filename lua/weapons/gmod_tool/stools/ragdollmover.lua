@@ -1479,46 +1479,27 @@ local NETFUNC = {
 										poschange = nwpos - wpos
 									end
 
-									local bscale1, bscale2, bscale3 = VECTOR_FRONT, VECTOR_LEFT, vector_up
-									local bigvec = nil
+									local refscale = {VECTOR_FRONT, VECTOR_LEFT, vector_up}
+									local nbscale, normscale = {}, {}
 
-									local nbscale1 = LocalToWorld(bscale1, angle_zero, vector_origin, oang) -- there has to be a better way of doing this
-									nbscale1 = WorldToLocal(nbscale1, angle_zero, vector_origin, wang)
-									nbscale1.x = math.abs(nbscale1.x)
-									nbscale1.y = math.abs(nbscale1.y)
-									nbscale1.z = math.abs(nbscale1.z)
-									bigvec = nil
 									for i = 1, 3 do
-										if not bigvec or (nbscale1[i] > nbscale1[bigvec]) then bigvec = i end
+										nbscale[i] = LocalToWorld(refscale[i], angle_zero, vector_origin, oang) -- there has to be a better way of doing this
+										nbscale[i] = WorldToLocal(nbscale[i], angle_zero, vector_origin, wang)
+										nbscale[i].x = math.abs(nbscale[i].x)
+										nbscale[i].y = math.abs(nbscale[i].y)
+										nbscale[i].z = math.abs(nbscale[i].z)
+										normscale[i] = nbscale[i]
+										nbscale[i] = nbscale[i] * scale[i]
 									end
-									nbscale1:Zero()
-									nbscale1[bigvec] = scale.x
+									local normsum = normscale[1] + normscale[2] + normscale[3]
+									normsum.x = 1 / normsum.x
+									normsum.y = 1 / normsum.y
+									normsum.z = 1 / normsum.z
 
-									local nbscale2 = LocalToWorld(bscale2, angle_zero, vector_origin, oang)
-									nbscale2 = WorldToLocal(nbscale2, angle_zero, vector_origin, wang)
-									nbscale2.x = math.abs(nbscale2.x)
-									nbscale2.y = math.abs(nbscale2.y)
-									nbscale2.z = math.abs(nbscale2.z)
-									bigvec = nil
-									for i = 1, 3 do
-										if not bigvec or (nbscale2[i] > nbscale2[bigvec]) then bigvec = i end
-									end
-									nbscale2:Zero()
-									nbscale2[bigvec] = scale.y
-
-									local nbscale3 = LocalToWorld(bscale3, angle_zero, vector_origin, oang)
-									nbscale3 = WorldToLocal(nbscale3, angle_zero, vector_origin, wang)
-									nbscale3.x = math.abs(nbscale3.x)
-									nbscale3.y = math.abs(nbscale3.y)
-									nbscale3.z = math.abs(nbscale3.z)
-									bigvec = nil
-									for i = 1, 3 do
-										if not bigvec or (nbscale3[i] > nbscale3[bigvec]) then bigvec = i end
-									end
-									nbscale3:Zero()
-									nbscale3[bigvec] = scale.z
-
-									local bscale = nbscale1 + nbscale2 + nbscale3
+									local bscale = nbscale[1] + nbscale[2] + nbscale[3]
+									bscale.x = bscale.x * normsum.x
+									bscale.y = bscale.y * normsum.y
+									bscale.z = bscale.z * normsum.z
 
 									ent:ManipulateBoneScale(cbone, ent:GetManipulateBoneScale(cbone) + bscale)
 
@@ -2497,46 +2478,27 @@ if SERVER then
 										poschange = nwpos - wpos
 									end
 
-									local bscale1, bscale2, bscale3 = VECTOR_FRONT, VECTOR_LEFT, vector_up
-									local bigvec = nil
+									local refscale = {VECTOR_FRONT, VECTOR_LEFT, vector_up}
+									local nbscale, normscale = {}, {}
 
-									local nbscale1 = LocalToWorld(bscale1, angle_zero, vector_origin, oang)
-									nbscale1 = WorldToLocal(nbscale1, angle_zero, vector_origin, wang)
-									nbscale1.x = math.abs(nbscale1.x)
-									nbscale1.y = math.abs(nbscale1.y)
-									nbscale1.z = math.abs(nbscale1.z)
-									bigvec = nil
 									for i = 1, 3 do
-										if not bigvec or (nbscale1[i] > nbscale1[bigvec]) then bigvec = i end
+										nbscale[i] = LocalToWorld(refscale[i], angle_zero, vector_origin, oang) -- there has to be a better way of doing this
+										nbscale[i] = WorldToLocal(nbscale[i], angle_zero, vector_origin, wang)
+										nbscale[i].x = math.abs(nbscale[i].x)
+										nbscale[i].y = math.abs(nbscale[i].y)
+										nbscale[i].z = math.abs(nbscale[i].z)
+										normscale[i] = nbscale[i]
+										nbscale[i] = nbscale[i] * scale[i]
 									end
-									nbscale1:Zero()
-									nbscale1[bigvec] = scale.x
+									local normsum = normscale[1] + normscale[2] + normscale[3]
+									normsum.x = 1 / normsum.x
+									normsum.y = 1 / normsum.y
+									normsum.z = 1 / normsum.z
 
-									local nbscale2 = LocalToWorld(bscale2, angle_zero, vector_origin, oang)
-									nbscale2 = WorldToLocal(nbscale2, angle_zero, vector_origin, wang)
-									nbscale2.x = math.abs(nbscale2.x)
-									nbscale2.y = math.abs(nbscale2.y)
-									nbscale2.z = math.abs(nbscale2.z)
-									bigvec = nil
-									for i = 1, 3 do
-										if not bigvec or (nbscale2[i] > nbscale2[bigvec]) then bigvec = i end
-									end
-									nbscale2:Zero()
-									nbscale2[bigvec] = scale.y
-
-									local nbscale3 = LocalToWorld(bscale3, angle_zero, vector_origin, oang)
-									nbscale3 = WorldToLocal(nbscale3, angle_zero, vector_origin, wang)
-									nbscale3.x = math.abs(nbscale3.x)
-									nbscale3.y = math.abs(nbscale3.y)
-									nbscale3.z = math.abs(nbscale3.z)
-									bigvec = nil
-									for i = 1, 3 do
-										if not bigvec or (nbscale3[i] > nbscale3[bigvec]) then bigvec = i end
-									end
-									nbscale3:Zero()
-									nbscale3[bigvec] = scale.z
-
-									local bscale = nbscale1 + nbscale2 + nbscale3
+									local bscale = nbscale[1] + nbscale[2] + nbscale[3]
+									bscale.x = bscale.x * normsum.x
+									bscale.y = bscale.y * normsum.y
+									bscale.z = bscale.z * normsum.z
 
 									ent:ManipulateBoneScale(cbone, ent:GetManipulateBoneScale(cbone) + bscale)
 
