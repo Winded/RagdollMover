@@ -1,7 +1,8 @@
 RGM_Constants = {
 	COLOR_RED = Color(200, 0, 0, 255),
 	COLOR_GREEN = Color(0, 200, 0, 255),
-	COLOR_BLUE = Color(0, 200, 200, 255), -- it's actually cyan but shhhhh
+	COLOR_BLUE = Color(0, 0, 200, 255),
+	COLOR_CYAN = Color(0, 200, 200, 255),
 	COLOR_YELLOW = Color(200, 200, 0, 255),
 	COLOR_BRIGHT_YELLOW = Color(255, 255, 0, 255),
 	COLOR_WHITE = Color(255, 255, 255, 255),

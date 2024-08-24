@@ -976,9 +976,12 @@ if CLIENT then
 
 local COLOR_RGMGREEN = RGM_Constants.COLOR_GREEN
 local COLOR_RGMBLACK = RGM_Constants.COLOR_BLACK
+local COLOR_WHITE = RGM_Constants.COLOR_WHITE
+local COLOR_BLUE = RGM_Constants.COLOR_BLUE
+local COLOR_BRIGHT_YELLOW = RGM_Constants.COLOR_BRIGHT_YELLOW
 local OUTLINE_WIDTH = RGM_Constants.OUTLINE_WIDTH
 
-local BONETYPE_COLORS = {RGM_Constants.COLOR_GREEN, RGM_Constants.COLOR_BLUE, RGM_Constants.COLOR_YELLOW, RGM_Constants.COLOR_RED}
+local BONETYPE_COLORS = {RGM_Constants.COLOR_GREEN, RGM_Constants.COLOR_CYAN, RGM_Constants.COLOR_YELLOW, RGM_Constants.COLOR_RED}
 
 function DrawBoneName(ent, bone, name)
 	if not name then
@@ -1053,21 +1056,13 @@ function AdvBoneSelectRender(ent, bonenodes)
 		end
 
 		if dist < 576 then -- 24 pixels
-			surface.SetDrawColor(255, 255, 0, 255)
+			surface.SetDrawColor(COLOR_BRIGHT_YELLOW:Unpack())
 			table.insert(selectedBones, {name, i})
 		else
 			if bonenodes and bonenodes[ent] and bonenodes[ent][i] and bonenodes[ent][i].Type then
-				if bonenodes[ent][i].Type == 1 then	-- physical
-					surface.SetDrawColor(0, 200, 0, 255)
-				elseif bonenodes[ent][i].Type == 2 then -- non physical
-					surface.SetDrawColor(0, 200, 200, 255)
-				elseif bonenodes[ent][i].Type == 3 then -- procedural
-					surface.SetDrawColor(200, 200, 0, 255)
-				elseif bonenodes[ent][i].Type == 4 then -- parented
-					surface.SetDrawColor(200, 0, 0, 255)
-				end
+				surface.SetDrawColor(BONETYPE_COLORS[bonenodes[ent][i].Type]:Unpack())
 			else
-				surface.SetDrawColor(0, 200, 0, 255)
+				surface.SetDrawColor(COLOR_RGMGREEN:Unpack())
 			end
 		end
 
@@ -1132,8 +1127,6 @@ function AdvBoneSelectPick(ent)
 	return selected
 end
 
-local COLOR_WHITE = RGM_Constants.COLOR_WHITE
-local COLOR_BRIGHT_YELLOW = RGM_Constants.COLOR_BRIGHT_YELLOW
 local SelectedBone = nil
 
 function AdvBoneSelectRadialRender(ent, bones, bonenodes)
@@ -1168,22 +1161,14 @@ function AdvBoneSelectRadialRender(ent, bones, bonenodes)
 		end
 
 		if isselected then
-			surface.SetDrawColor(255, 255, 0, 255)
+			surface.SetDrawColor(COLOR_BRIGHT_YELLOW:Unpack())
 			color = COLOR_BRIGHT_YELLOW
 			SelectedBone = bone
 		else
 			if bonenodes and bonenodes[ent] and bonenodes[ent][bone] and bonenodes[ent][bone].Type then
-				if bonenodes[ent][bone].Type == 1 then	-- physical
-					surface.SetDrawColor(0, 200, 0, 255)
-				elseif bonenodes[ent][bone].Type == 2 then -- non physical
-					surface.SetDrawColor(0, 200, 200, 255)
-				elseif bonenodes[ent][bone].Type == 3 then -- procedural
-					surface.SetDrawColor(200, 200, 0, 255)
-				elseif bonenodes[ent][bone].Type == 4 then -- parented
-					surface.SetDrawColor(200, 0, 0, 255)
-				end
+				surface.SetDrawColor(BONETYPE_COLORS[bonenodes[ent][bone].Type]:Unpack())
 			else
-				surface.SetDrawColor(0, 200, 0, 255)
+				surface.SetDrawColor(COLOR_RGMGREEN:Unpack())
 			end
 		end
 
@@ -1219,7 +1204,7 @@ function DrawBoneConnections(ent, bone)
 	end
 	mainpos = mainpos:ToScreen()
 
-	surface.SetDrawColor(0, 200, 0, 255)
+	surface.SetDrawColor(COLOR_RGMGREEN:Unpack())
 	for _, childbone in ipairs(ent:GetChildBones(bone) or {}) do
 		local pos = ent:GetBonePosition(childbone)
 		pos = pos:ToScreen()
@@ -1228,7 +1213,7 @@ function DrawBoneConnections(ent, bone)
 	end
 
 	if ent:GetBoneParent(bone) ~= -1 then
-		surface.SetDrawColor(0, 0, 200, 255)
+		surface.SetDrawColor(COLOR_BLUE:Unpack())
 		local pos = ent:GetBonePosition(ent:GetBoneParent(bone))
 		pos = pos:ToScreen()
 
@@ -1247,7 +1232,7 @@ local function DrawRecursiveBones(ent, bone, bonenodes)
 		local pos = ent:GetBonePosition(boneid)
 		pos = pos:ToScreen()
 
-		surface.SetDrawColor(255, 255, 255, 255)
+		surface.SetDrawColor(COLOR_WHITE:Unpack())
 		surface.DrawLine(mainpos.x, mainpos.y, pos.x, pos.y)
 		DrawRecursiveBones(ent, boneid, bonenodes)
 		local color
@@ -1297,7 +1282,7 @@ function DrawSkeleton(ent, bonenodes)
 
 			local parentpos = ent:GetBonePosition(parent)
 			parentpos = parentpos:ToScreen()
-			surface.SetDrawColor(255, 255, 255, 255)
+			surface.SetDrawColor(COLOR_WHITE:Unpack())
 			surface.DrawLine(parentpos.x, parentpos.y, pos.x, pos.y)
 		end
 
