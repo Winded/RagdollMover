@@ -2,7 +2,7 @@ RGMGIZMOS = {}
 
 local VECTOR_FRONT = RGM_Constants.VECTOR_FRONT
 local VECTOR_SIDE = RGM_Constants.VECTOR_LEFT
-local COLOR_YELLOW = RGM_Constants.COLOR_YELLOW
+local COLOR_BRIGHT_YELLOW = RGM_Constants.COLOR_BRIGHT_YELLOW
 
 ----------------
 -- BASE GIZMO --
@@ -115,7 +115,7 @@ do
 				local points = self:PointsToWorld(v, scale)
 				local col = color
 				if yellow then
-					col = COLOR_YELLOW
+					col = COLOR_BRIGHT_YELLOW
 				end
 				table.insert(toscreen, {points, col})
 			end
@@ -454,7 +454,7 @@ do
 				local points = self:PointsToWorld(v, scale)
 				local col = color
 				if yellow then
-					col = COLOR_YELLOW
+					col = COLOR_BRIGHT_YELLOW
 				elseif i == 2 then
 					col = color2
 				end
@@ -932,7 +932,7 @@ do
 				local points = self:PointsToWorld(v, scale)
 				local col = color
 				if yellow then
-					col = COLOR_YELLOW
+					col = COLOR_BRIGHT_YELLOW
 				end
 				if parent.fulldisc or (moving or
 				(points[1]:DistToSqr(eyepos) <= borderpos:DistToSqr(eyepos) and points[2]:DistToSqr(eyepos) <= borderpos:DistToSqr(eyepos) and 
@@ -980,7 +980,7 @@ do
 			for i, v in ipairs(linetable) do
 				local col = color
 				if yellow then
-					col = COLOR_YELLOW
+					col = COLOR_BRIGHT_YELLOW
 				end
 				local points = self:PointsToWorld(v, scale * 1.25)
 				table.insert(toscreen, {points, col})

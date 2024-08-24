@@ -4370,6 +4370,17 @@ local NETFUNC = {
 		IsPropRagdoll = false
 		TreeEntities = {}
 		ScaleLocks = {}
+
+		local tool = pl:GetTool()
+		if RAGDOLLMOVER[pl] and IsValid(pl:GetActiveWeapon()) and  pl:GetActiveWeapon():GetClass() == "gmod_tool" and tool and tool.Mode == "ragdollmover" then
+
+			net.Start("RAGDOLLMOVER")
+				net.WriteUInt(14, 5)
+				net.WriteUInt(0, 2)
+			net.SendToServer()
+
+			if tool:GetStage() == 1 then gui.EnableScreenClicker(false) end
+		end
 	end,
 
 	function(len) --					1 - rgmUpdateSliders
@@ -4431,6 +4442,17 @@ local NETFUNC = {
 		if IsValid(ConEntPanel) then
 			RGMBuildConstrainedEnts(selectedent, physchildren, ConEntPanel)
 		end
+
+		local tool = pl:GetTool()
+		if RAGDOLLMOVER[pl] and IsValid(pl:GetActiveWeapon()) and  pl:GetActiveWeapon():GetClass() == "gmod_tool" and tool and tool.Mode == "ragdollmover" then
+
+			net.Start("RAGDOLLMOVER")
+				net.WriteUInt(14, 5)
+				net.WriteUInt(0, 2)
+			net.SendToServer()
+
+			if tool:GetStage() == 1 then gui.EnableScreenClicker(false) end
+		end
 	end,
 
 	function(len) --						3 - rgmUpdateGizmo
@@ -4466,6 +4488,17 @@ local NETFUNC = {
 		end
 		if IsValid(ConEntPanel) then
 			RGMBuildConstrainedEnts(ent, physchildren, ConEntPanel)
+		end
+
+		local tool = pl:GetTool()
+		if RAGDOLLMOVER[pl] and IsValid(pl:GetActiveWeapon()) and  pl:GetActiveWeapon():GetClass() == "gmod_tool" and tool and tool.Mode == "ragdollmover" then
+
+			net.Start("RAGDOLLMOVER")
+				net.WriteUInt(14, 5)
+				net.WriteUInt(0, 2)
+			net.SendToServer()
+
+			if tool:GetStage() == 1 then gui.EnableScreenClicker(false) end
 		end
 	end,
 
@@ -4790,14 +4823,14 @@ function TOOL:DrawHUD()
 	})
 	local aimedbone = IsValid(tr.Entity) and (tr.Entity:GetClass() == "prop_ragdoll" and RAGDOLLMOVER[pl].AimedBone or 0) or 0
 	if IsValid(ent) and EntityFilter(ent, self) and SkeletonDraw then
-		rgm.DrawSkeleton(ent)
+		rgm.DrawSkeleton(ent, nodes)
 	end
 
 	if self:GetOperation() == 2 and IsValid(ent) then
 		if self:GetStage() == 0 then
-			rgm.AdvBoneSelectRender(ent)
+			rgm.AdvBoneSelectRender(ent, nodes)
 		else
-			rgm.AdvBoneSelectRadialRender(ent, RAGDOLLMOVER[pl].SelectedBones)
+			rgm.AdvBoneSelectRadialRender(ent, RAGDOLLMOVER[pl].SelectedBones, nodes)
 		end
 	elseif IsValid(HoveredEntBone) and EntityFilter(HoveredEntBone, self) and HoveredBone then
 		rgm.DrawBoneConnections(HoveredEntBone, HoveredBone)
