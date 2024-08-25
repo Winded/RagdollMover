@@ -1217,29 +1217,41 @@ local NETFUNC = {
 	function(len, pl) --			15 - rgmSetGizmoToBone
 		local vector = net.ReadVector()
 		if not vector or not RAGDOLLMOVER[pl] then return end
-		local axis = RAGDOLLMOVER[pl].Axis
-		local ent = RAGDOLLMOVER[pl].Entity
+		local pltable = RAGDOLLMOVER[pl]
+		local axis = pltable.Axis
+		local ent = pltable.Entity
 		local wpos, wang = nil, nil
 
-		if RAGDOLLMOVER[pl].GizmoParentID ~= -1 then
-			ent = ent:GetPhysicsObjectNum(RAGDOLLMOVER[pl].GizmoParentID)
-			if not RAGDOLLMOVER[pl].IsPhysBone then
-				local rgmaxis = RAGDOLLMOVER[pl].Axis
-				wpos, wang = LocalToWorld(rgmaxis.GizmoPos, rgmaxis.GizmoAng, ent:GetPos(), ent:GetAngles())
+		if not pltable.IsPhysBone then
+			if axis.EntAdvMerged then
+				ent = ent:GetParent()
+				if ent.AttachedEntity then ent = ent.AttachedEntity end
 			end
+			if pltable.GizmoParentID ~= -1 then
+				local physobj = ent:GetPhysicsObjectNum(pltable.GizmoParentID)
+				wpos, wang = LocalToWorld(axis.GizmoPos, axis.GizmoAng, physobj:GetPos(), physobj:GetAngles())
+			else
+				wpos, wang = LocalToWorld(axis.GizmoPos, axis.GizmoAng, ent:GetPos(), ent:GetAngles())
+			end
+		elseif ent:GetClass() == "prop_ragdoll" then
+			ent = ent:GetPhysicsObjectNum(pltable.PhysBone)
+			wpos, wang = ent:GetPos(), ent:GetAngles()
+		elseif ent:GetPhysicsObjectCount() == 1 then
+			ent = ent:GetPhysicsObjectNum(0)
+			wpos, wang = ent:GetPos(), ent:GetAngles()
 		end
 
 		if axis.localoffset then
-			vector = WorldToLocal(vector, angle_zero, wpos and wpos or ent:GetPos(), wang and wang or ent:GetAngles())
+			vector = WorldToLocal(vector, angle_zero, wpos, wang)
 		else
-			vector = WorldToLocal(vector, angle_zero, wpos and wpos or ent:GetPos(), angle_zero)
+			vector = WorldToLocal(vector, angle_zero, wpos, angle_zero)
 		end
 
-		RAGDOLLMOVER[pl].GizmoOffset = vector
+		pltable.GizmoOffset = vector
 
 		net.Start("RAGDOLLMOVER")
 			net.WriteUInt(3, 4)
-			net.WriteVector(RAGDOLLMOVER[pl].GizmoOffset)
+			net.WriteVector(pltable.GizmoOffset)
 		net.Send(pl)
 	end,
 
