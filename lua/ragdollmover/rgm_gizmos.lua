@@ -740,7 +740,7 @@ do
 				startangle = Vector(startangle.y, startangle.z, 0):Angle()
 
 				local rotationangle = localized.y
-				if snapamount and snapamount ~= 0 then
+				if snapamount ~= 0 then
 					rotationangle = snapAngle(self, localized, startangle, snapamount)
 				end
 
@@ -796,7 +796,7 @@ do
 				localized = localized:Angle() - startlocal:Angle()
 
 				local rotationangle = localized.y
-				if snapamount and snapamount ~= 0 then
+				if snapamount ~= 0 then
 					rotationangle = snapAngle(self, localized, startangle, snapamount, true)
 				end
 
@@ -848,7 +848,7 @@ do
 				startangle = Vector(startangle.y, startangle.z, 0):Angle()
 
 				local rotationangle = localized.y
-				if snapamount and snapamount ~= 0 then
+				if snapamount ~= 0 then
 					rotationangle = snapAngle(self, localized, startangle, snapamount)
 				end
 
