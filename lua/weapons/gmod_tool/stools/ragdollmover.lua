@@ -1832,6 +1832,21 @@ function TOOL:LeftClick()
 		axis:SetPos(pl:EyePos())
 		axis:Spawn()
 		axis.Owner = pl
+		axis.localpos = self:GetClientNumber("localpos", 0) ~= 0
+		axis.localang = self:GetClientNumber("localang", 1) ~= 0
+		axis.localoffset = self:GetClientNumber("localoffset", 1) ~= 0
+		axis.relativerotate = self:GetClientNumber("relativerotate", 0) ~= 0
+		axis.scalechildren = self:GetClientNumber("scalechildren", 0) ~= 0
+		axis.smovechildren = self:GetClientNumber("smovechildren", 0) ~= 0
+		axis.scalerelativemove = self:GetClientNumber("scalerelativemove", 0) ~= 0
+		RAGDOLLMOVER[pl].Axis = axis
+
+		RAGDOLLMOVER[pl].updaterate = self:GetClientNumber("updaterate", 0.01)
+		RAGDOLLMOVER[pl].unfreeze = self:GetClientNumber("unfreeze", 0)
+		RAGDOLLMOVER[pl].snapenable = self:GetClientNumber("snapenable", 0)
+		RAGDOLLMOVER[pl].snapamount = self:GetClientNumber("snapamount", 30)
+		RAGDOLLMOVER[pl].physmove = self:GetClientNumber("physmove", 0)
+
 		RAGDOLLMOVER[pl].Axis = axis
 
 		RAGDOLLMOVER.Sync(pl, "Axis")
