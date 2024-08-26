@@ -241,8 +241,9 @@ local function rgmAdjustScaleTable(parent, childbones, ppos, pang)
 end
 
 local function rgmDoScale(pl, ent, axis, childbones, bone, sc, prevscale, physmove)
+	local plTable = RAGDOLLMOVER[pl]
+
 	if axis.scalechildren and not (ent:GetClass() == "ent_advbonemerge") then
-		local plTable = RAGDOLLMOVER[pl]
 		local scalediff = sc - prevscale
 		local diff
 		local noscale = plTable.rgmScaleLocks
