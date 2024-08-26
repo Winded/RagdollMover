@@ -242,9 +242,10 @@ end
 
 local function rgmDoScale(pl, ent, axis, childbones, bone, sc, prevscale, physmove)
 	if axis.scalechildren and not (ent:GetClass() == "ent_advbonemerge") then
+		local plTable = RAGDOLLMOVER[pl]
 		local scalediff = sc - prevscale
 		local diff
-		local noscale = RAGDOLLMOVER[pl].rgmScaleLocks
+		local noscale = plTable.rgmScaleLocks
 		local RecursiveBoneScale
 
 		if axis.smovechildren and childbones and childbones[bone] then
@@ -253,12 +254,12 @@ local function rgmDoScale(pl, ent, axis, childbones, bone, sc, prevscale, physmo
 			if axis.scalerelativemove then
 
 				RecursiveBoneScale = function(ent, bone, scale, diff, ppos, pang, opos, oang, nppos, poschange)
-					if RAGDOLLMOVER[pl].Bone == bone then
+					if plTable.Bone == bone then
 						local oldscale = ent:GetManipulateBoneScale(bone)
 						ent:ManipulateBoneScale(bone, oldscale + scale)
 
 
-						if RAGDOLLMOVER[pl].IsPhysBone then
+						if plTable.IsPhysBone then
 							local nwpos
 							local lpos = WorldToLocal(ppos, angle_zero, opos, oang)
 							local newpos = lpos*1
@@ -272,7 +273,7 @@ local function rgmDoScale(pl, ent, axis, childbones, bone, sc, prevscale, physmo
 							nwpos = LocalToWorld(newpos, angle_zero, opos, oang)
 							local newpos = nwpos - ppos
 
-							local obj = ent:GetPhysicsObjectNum(RAGDOLLMOVER[pl].GizmoParentID)
+							local obj = ent:GetPhysicsObjectNum(plTable.GizmoParentID)
 							obj:EnableMotion(true)
 							obj:Wake()
 							obj:SetPos(obj:GetPos() + newpos)
@@ -284,14 +285,14 @@ local function rgmDoScale(pl, ent, axis, childbones, bone, sc, prevscale, physmo
 								offset = LocalToWorld(offset, angle_zero, ppos, angle_zero)
 								offset = WorldToLocal(offset, angle_zero, ppos, pang)
 							end
-							RAGDOLLMOVER[pl].GizmoOffset = RAGDOLLMOVER[pl].GizmoOffset + offset
+							plTable.GizmoOffset = plTable.GizmoOffset + offset
 
 							nppos = nwpos
 						elseif bone ~= 0 then
 							local ang
 
 							if ent:GetBoneParent(bone) ~= -1 then
-								if not RAGDOLLMOVER[pl].GizmoParent then
+								if not plTable.GizmoParent then
 									local matrix = ent:GetBoneMatrix(ent:GetBoneParent(bone))
 									ang = matrix:GetAngles()
 								else
@@ -299,8 +300,8 @@ local function rgmDoScale(pl, ent, axis, childbones, bone, sc, prevscale, physmo
 								end
 							else
 								if IsValid(ent) then
-									if RAGDOLLMOVER[pl].GizmoParentID ~= -1 then
-										local physobj = ent:GetPhysicsObjectNum(RAGDOLLMOVER[pl].GizmoParentID)
+									if plTable.GizmoParentID ~= -1 then
+										local physobj = ent:GetPhysicsObjectNum(plTable.GizmoParentID)
 										_, ang = LocalToWorld(vector_origin, axis.GizmoAng, physobj:GetPos(), physobj:GetAngles())
 									else
 										_, ang = LocalToWorld(vector_origin, axis.GizmoAng, ent:GetPos(), ent:GetAngles())
@@ -330,7 +331,7 @@ local function rgmDoScale(pl, ent, axis, childbones, bone, sc, prevscale, physmo
 								offset = LocalToWorld(offset, angle_zero, ppos, angle_zero)
 								offset = WorldToLocal(offset, angle_zero, ppos, pang)
 							end
-							RAGDOLLMOVER[pl].GizmoOffset = RAGDOLLMOVER[pl].GizmoOffset + offset
+							plTable.GizmoOffset = plTable.GizmoOffset + offset
 
 							nppos = nwpos
 						end
@@ -349,7 +350,7 @@ local function rgmDoScale(pl, ent, axis, childbones, bone, sc, prevscale, physmo
 								local lpos = WorldToLocal(wpos, angle_zero, opos, oang)
 								local newpos = lpos*1
 
-								local pscale = ent:GetManipulateBoneScale(RAGDOLLMOVER[pl].Bone) - scale
+								local pscale = ent:GetManipulateBoneScale(plTable.Bone) - scale
 								newpos.x, newpos.y, newpos.z = newpos.x / pscale.x, newpos.y / pscale.y, newpos.z / pscale.z
 
 								pscale = pscale + scale
@@ -403,7 +404,7 @@ local function rgmDoScale(pl, ent, axis, childbones, bone, sc, prevscale, physmo
 			else
 
 				RecursiveBoneScale = function(ent, bone, scale, diff, ppos, pang)
-					if noscale[ent][bone] and not (RAGDOLLMOVER[pl].Bone == bone) then 
+					if noscale[ent][bone] and not (plTable.Bone == bone) then 
 						scale = vector_origin
 						diff = VECTOR_SCALEDEF
 					end
@@ -442,8 +443,8 @@ local function rgmDoScale(pl, ent, axis, childbones, bone, sc, prevscale, physmo
 			end
 		end
 
-		if RAGDOLLMOVER[pl].GizmoParentID and RAGDOLLMOVER[pl].GizmoParentID ~= -1 then
-			local obj = ent:GetPhysicsObjectNum(RAGDOLLMOVER[pl].GizmoParentID)
+		if plTable.GizmoParentID and plTable.GizmoParentID ~= -1 then
+			local obj = ent:GetPhysicsObjectNum(plTable.GizmoParentID)
 			if IsValid(obj) then
 				local ppos, pang = obj:GetPos(), obj:GetAngles()
 				ppos, pang = LocalToWorld(axis.GizmoPos, axis.GizmoAng, ppos, pang)
@@ -462,7 +463,7 @@ local function rgmDoScale(pl, ent, axis, childbones, bone, sc, prevscale, physmo
 			local ppos, pang
 
 			if ent:GetClass() == "prop_ragdoll" then
-				obj = ent:GetPhysicsObjectNum(RAGDOLLMOVER[pl].GizmoParentID)
+				obj = ent:GetPhysicsObjectNum(plTable.GizmoParentID)
 				if IsValid(obj) then
 					ppos, pang = LocalToWorld(axis.GizmoPos, axis.GizmoAng, obj:GetPos(), obj:GetAngles())
 				end
@@ -486,24 +487,24 @@ local function rgmDoScale(pl, ent, axis, childbones, bone, sc, prevscale, physmo
 		ent:ManipulateBoneScale(bone, sc)
 	end
 
-	if ent:GetClass() == "prop_ragdoll" and physmove and (IsValid(ent:GetPhysicsObjectNum(RAGDOLLMOVER[pl].PhysBone)) or IsValid(ent:GetPhysicsObjectNum(RAGDOLLMOVER[pl].NextPhysBone))) and axis.smovechildren then -- moving physical if allowed
-		local pbone = RAGDOLLMOVER[pl].PhysBone
-		local prevscale = RAGDOLLMOVER[pl].NPhysBoneScale
-		if RAGDOLLMOVER[pl].NextPhysBone then
-			pbone = RAGDOLLMOVER[pl].NextPhysBone
+	if ent:GetClass() == "prop_ragdoll" and physmove and (IsValid(ent:GetPhysicsObjectNum(plTable.PhysBone)) or IsValid(ent:GetPhysicsObjectNum(plTable.NextPhysBone))) and axis.smovechildren then -- moving physical if allowed
+		local pbone = plTable.PhysBone
+		local prevscale = plTable.NPhysBoneScale
+		if plTable.NextPhysBone then
+			pbone = plTable.NextPhysBone
 		end
 		local obj = ent:GetPhysicsObjectNum(pbone)
 
 		local p, a = obj:GetPos(), obj:GetAngles()
 		local npos, nang = LocalToWorld(axis.GizmoPos, axis.GizmoAng, p, a)
 		local diff = Vector(sc.x / prevscale.x, sc.y / prevscale.y, sc.z / prevscale.z)
-		local sbone = RAGDOLLMOVER[pl].IsPhysBone and {b = pbone, p = p, a = a} or {}
-		local postable = rgm.SetScaleOffsets(self, ent, RAGDOLLMOVER[pl].rgmOffsetTable, sbone, diff, RAGDOLLMOVER[pl].rgmPosLocks, RAGDOLLMOVER[pl].rgmScaleLocks, axis.scalechildren, {b = RAGDOLLMOVER[pl].Bone, pos = npos, ang = nang}, childbones)
+		local sbone = plTable.IsPhysBone and {b = pbone, p = p, a = a} or {}
+		local postable = rgm.SetScaleOffsets(self, ent, plTable.rgmOffsetTable, sbone, diff, plTable.rgmPosLocks, plTable.rgmScaleLocks, axis.scalechildren, {b = plTable.Bone, pos = npos, ang = nang}, childbones)
 
 		for i = 0, ent:GetPhysicsObjectCount() - 1 do
 			if postable[i] and not postable[i].dontset then
-				local ent = not RAGDOLLMOVER[pl].PropRagdoll and ent or ent.rgmPRidtoent[i]
-				local boneid = not RAGDOLLMOVER[pl].PropRagdoll and i or 0
+				local ent = not plTable.PropRagdoll and ent or ent.rgmPRidtoent[i]
+				local boneid = not plTable.PropRagdoll and i or 0
 				local obj = ent:GetPhysicsObjectNum(boneid)
 
 				obj:EnableMotion(true)
@@ -1234,14 +1235,14 @@ local NETFUNC = {
 				ent = ent:GetParent()
 				if ent.AttachedEntity then ent = ent.AttachedEntity end
 			end
-			if pltable.GizmoParentID ~= -1 then
-				local physobj = ent:GetPhysicsObjectNum(pltable.GizmoParentID)
+			if plTable.GizmoParentID ~= -1 then
+				local physobj = ent:GetPhysicsObjectNum(plTable.GizmoParentID)
 				wpos, wang = LocalToWorld(axis.GizmoPos, axis.GizmoAng, physobj:GetPos(), physobj:GetAngles())
 			else
 				wpos, wang = LocalToWorld(axis.GizmoPos, axis.GizmoAng, ent:GetPos(), ent:GetAngles())
 			end
 		elseif ent:GetClass() == "prop_ragdoll" then
-			ent = ent:GetPhysicsObjectNum(pltable.PhysBone)
+			ent = ent:GetPhysicsObjectNum(plTable.PhysBone)
 			wpos, wang = ent:GetPos(), ent:GetAngles()
 		elseif ent:GetPhysicsObjectCount() == 1 then
 			ent = ent:GetPhysicsObjectNum(0)
