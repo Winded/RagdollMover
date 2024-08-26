@@ -179,10 +179,11 @@ do
 		function posarrow:ProcessMovement(offpos, _, eyepos, eyeang, ent, bone, ppos, _, movetype, _, _, nphyspos)
 			local intersect = self:GetGrabPos(eyepos, eyeang, ppos)
 			local axis = self.Parent
+			local plTable = RAGDOLLMOVER[axis.Owner]
 			local parent = ent:GetParent()
 			local arrowAng = axis:LocalToWorldAngles(self.AngOffset)
 			local localized = WorldToLocal(intersect, angle_zero, axis:GetPos(), arrowAng)
-			local offset = RAGDOLLMOVER[axis.Owner].GizmoOffset
+			local offset = plTable.GizmoOffset
 			local entoffset = vector_origin
 			if axis.localoffset then
 				offset = LocalToWorld(offset, angle_zero, axis:GetPos(), axis.LocalAngles)
@@ -204,7 +205,6 @@ do
 				pos = LocalToWorld(Vector(offpos.x, 0, 0), angle_zero, intersect - offset, selfangle)
 			elseif movetype == 2 then
 				local finalpos, boneang
-				local pl = axis.Owner
 				local advbones = nil
 				if ent:GetClass() == "ent_advbonemerge" then
 					advbones = ent.AdvBone_BoneInfo
@@ -213,8 +213,8 @@ do
 				if axis.EntAdvMerged then
 					if parent.AttachedEntity then parent = parent.AttachedEntity end
 					local funang
-					if RAGDOLLMOVER[pl].GizmoParentID ~= -1 then
-						local physobj = parent:GetPhysicsObjectNum(RAGDOLLMOVER[pl].GizmoParentID)
+					if plTable.GizmoParentID ~= -1 then
+						local physobj = parent:GetPhysicsObjectNum(plTable.GizmoParentID)
 						_, funang = LocalToWorld(vector_origin, axis.GizmoAng, physobj:GetPos(), physobj:GetAngles())
 					else
 						_, funang = LocalToWorld(vector_origin, axis.GizmoAng, parent:GetPos(), parent:GetAngles())
@@ -241,8 +241,8 @@ do
 					if ent:GetClass() == "ent_advbonemerge" and parent:GetClass() == "prop_ragdoll" then
 						boneang = angle_zero -- bone has no parent and isn't physical
 					else
-						if RAGDOLLMOVER[pl].GizmoParentID ~= -1 then
-							local physobj = ent:GetPhysicsObjectNum(RAGDOLLMOVER[pl].GizmoParentID)
+						if plTable.GizmoParentID ~= -1 then
+							local physobj = ent:GetPhysicsObjectNum(plTable.GizmoParentID)
 							boneang = physobj:GetAngles()
 						else
 							boneang = ent:GetAngles()
@@ -337,7 +337,8 @@ do
 			local intersect = self:GetGrabPos(eyepos, eyeang, ppos, pnorm)
 			local axis = self.Parent
 			local parent = ent:GetParent()
-			local offset = RAGDOLLMOVER[axis.Owner].GizmoOffset
+			local plTable = RAGDOLLMOVER[axis.Owner]
+			local offset = plTable.GizmoOffset
 			local entoffset = vector_origin
 			if axis.localoffset then
 				offset = LocalToWorld(offset, angle_zero, axis:GetPos(), axis.LocalAngles)
@@ -363,10 +364,9 @@ do
 
 				if axis.EntAdvMerged then
 					if parent.AttachedEntity then parent = parent.AttachedEntity end
-					local pl = axis.Owner
 					local funang
-					if RAGDOLLMOVER[pl].GizmoParentID ~= -1 then
-						local physobj = parent:GetPhysicsObjectNum(RAGDOLLMOVER[pl].GizmoParentID)
+					if plTable.GizmoParentID ~= -1 then
+						local physobj = parent:GetPhysicsObjectNum(plTable.GizmoParentID)
 						_, funang = LocalToWorld(vector_origin, axis.GizmoAng, physobj:GetPos(), physobj:GetAngles())
 					else
 						_, funang = LocalToWorld(vector_origin, axis.GizmoAng, parent:GetPos(), parent:GetAngles())
@@ -393,9 +393,8 @@ do
 					if ent:GetClass() == "ent_advbonemerge" and parent:GetClass() == "prop_ragdoll" then
 						boneang = angle_zero -- bone has no parent and isn't physical
 					else
-						local pl = axis.Owner
-						if RAGDOLLMOVER[pl].GizmoParentID ~= -1 then
-							local physobj = ent:GetPhysicsObjectNum(RAGDOLLMOVER[pl].GizmoParentID)
+						if plTable.GizmoParentID ~= -1 then
+							local physobj = ent:GetPhysicsObjectNum(plTable.GizmoParentID)
 							boneang = physobj:GetAngles()
 						else
 							boneang = ent:GetAngles()
@@ -511,7 +510,8 @@ do
 
 			local axis = self.Parent
 			local parent = ent:GetParent()
-			local offset = RAGDOLLMOVER[axis.Owner].GizmoOffset
+			local plTable = RAGDOLLMOVER[axis.Owner]
+			local offset = plTable.GizmoOffset
 			local entoffset = vector_origin
 			if axis.localoffset then
 				offset = LocalToWorld(offset, angle_zero, axis:GetPos(), axis.LocalAngles)
@@ -537,10 +537,9 @@ do
 
 				if axis.EntAdvMerged then
 					if parent.AttachedEntity then parent = parent.AttachedEntity end
-					local pl = axis.Owner
 					local funang
-					if RAGDOLLMOVER[pl].GizmoParentID ~= -1 then
-						local physobj = parent:GetPhysicsObjectNum(RAGDOLLMOVER[pl].GizmoParentID)
+					if plTable.GizmoParentID ~= -1 then
+						local physobj = parent:GetPhysicsObjectNum(plTable.GizmoParentID)
 						_, funang = LocalToWorld(vector_origin, axis.GizmoAng, physobj:GetPos(), physobj:GetAngles())
 					else
 						_, funang = LocalToWorld(vector_origin, axis.GizmoAng, parent:GetPos(), parent:GetAngles())
@@ -567,9 +566,8 @@ do
 					if ent:GetClass() == "ent_advbonemerge" and parent:GetClass() == "prop_ragdoll" then
 						boneang = angle_zero -- bone has no parent and isn't physical
 					else
-						local pl = axis.Owner
-						if RAGDOLLMOVER[pl].GizmoParentID ~= -1 then
-							local physobj = ent:GetPhysicsObjectNum(RAGDOLLMOVER[pl].GizmoParentID)
+						if plTable.GizmoParentID ~= -1 then
+							local physobj = ent:GetPhysicsObjectNum(plTable.GizmoParentID)
 							boneang = physobj:GetAngles()
 						else
 							boneang = ent:GetAngles()
@@ -711,6 +709,7 @@ do
 			local _p, _a
 			local axis = self.Parent
 			local pl = axis.Owner
+			local plTable = RAGDOLLMOVER[pl]
 
 			local axistable = {
 				(axis:LocalToWorld(VECTOR_SIDE) - self:GetPos()):Angle(),
@@ -724,7 +723,7 @@ do
 			axistable[4]:Normalize()
 
 			if movetype == 1 then
-				local offset = RAGDOLLMOVER[axis.Owner].GizmoOffset
+				local offset = plTable.GizmoOffset
 				local entoffset = vector_origin
 				if axis.localoffset and not axis.relativerotate then
 					offset = LocalToWorld(offset, angle_zero, axis:GetPos(), axis.LocalAngles)
@@ -762,8 +761,8 @@ do
 				local _, boneang = ent:GetBonePosition(bone)
 				if axis.EntAdvMerged then
 					if parent.AttachedEntity then parent = parent.AttachedEntity end
-					if RAGDOLLMOVER[pl].GizmoParentID ~= -1 then
-						local physobj = parent:GetPhysicsObjectNum(RAGDOLLMOVER[pl].GizmoParentID)
+					if plTable.GizmoParentID ~= -1 then
+						local physobj = parent:GetPhysicsObjectNum(plTable.GizmoParentID)
 						_, boneang = LocalToWorld(vector_origin, axis.GizmoAng, physobj:GetPos(), physobj:GetAngles())
 					else
 						_, boneang = LocalToWorld(vector_origin, axis.GizmoAng, parent:GetPos(), parent:GetAngles())
@@ -817,7 +816,7 @@ do
 					local worldang
 					_p, worldang = LocalToWorld(vector_origin, _a, pos, boneang)
 					if axis.localoffset then
-						offset = -RAGDOLLMOVER[pl].GizmoOffset
+						offset = -plTable.GizmoOffset
 						_p = LocalToWorld(offset, axis.LocalAngles, _p, worldang)
 					else
 						local _, oldang = LocalToWorld(vector_origin, nphysangle, vector_origin, axis.LocalAngles)
@@ -832,7 +831,7 @@ do
 				end
 
 			elseif movetype == 0 then
-				local offset = RAGDOLLMOVER[axis.Owner].GizmoOffset
+				local offset = plTable.GizmoOffset
 				local entoffset = vector_origin
 				if axis.localoffset and not axis.relativerotate then
 					offset = LocalToWorld(offset, angle_zero, axis:GetPos(), axis.LocalAngles)
@@ -1093,15 +1092,15 @@ do
 			local intersect = self:GetGrabPos(eyepos, eyeang, ppos, pnorm)
 			local pos, ang
 			local axis = self.Parent
-			local pl = axis.Owner
+			local plTable = RAGDOLLMOVER[axis.Owner]
 
 			local localized, finalpos, boneang
 			if axis.EntAdvMerged then
 				local parent = ent:GetParent()
 				if parent.AttachedEntity then parent = parent.AttachedEntity end
 				local funang
-				if RAGDOLLMOVER[pl].GizmoParentID ~= -1 then
-					local physobj = parent:GetPhysicsObjectNum(RAGDOLLMOVER[pl].GizmoParentID)
+				if plTable.GizmoParentID ~= -1 then
+					local physobj = parent:GetPhysicsObjectNum(plTable.GizmoParentID)
 					_, boneang = LocalToWorld(vector_origin, axis.GizmoAng, physobj:GetPos(), physobj:GetAngles())
 				else
 					_, boneang = LocalToWorld(vector_origin, axis.GizmoAng, parent:GetPos(), parent:GetAngles())
@@ -1111,8 +1110,8 @@ do
 				end
 			elseif ent:GetBoneCount() ~= 0 then
 				if axis.GizmoAng then
-					if RAGDOLLMOVER[pl].GizmoParentID ~= -1 then
-						local physobj = ent:GetPhysicsObjectNum(RAGDOLLMOVER[pl].GizmoParentID)
+					if plTable.GizmoParentID ~= -1 then
+						local physobj = ent:GetPhysicsObjectNum(plTable.GizmoParentID)
 						_, boneang = LocalToWorld(vector_origin, axis.GizmoAng, physobj:GetPos(), physobj:GetAngles())
 					else
 						_, boneang = LocalToWorld(vector_origin, axis.GizmoAng, ent:GetPos(), ent:GetAngles())
