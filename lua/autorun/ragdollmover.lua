@@ -60,6 +60,9 @@ function EyePosAng(pl)
 	local viewent = pl:GetViewEntity()
 	if IsValid(viewent) and viewent ~= pl then
 		eyepos = viewent:GetPos()
+		if viewent:GetClass() == "hl_camera" then -- adding support for Advanced Camera's view offset https://steamcommunity.com/sharedfiles/filedetails/?id=881605937&searchtext=advanced+camera
+			eyepos = viewent:LocalToWorld(viewent:GetViewOffset())
+		end
 	end
 	local cursorvec = pl:GetAimVector()
 	--local cursorvec = pl:EyeAngles()
