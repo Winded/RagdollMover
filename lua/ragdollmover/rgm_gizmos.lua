@@ -151,7 +151,9 @@ do
 	end
 
 	function posarrow:TestCollision(pl, scale)
-		local eyepos, eyeang = rgm.EyePosAng(pl)
+		local plTable = RAGDOLLMOVER[pl]
+		local plviewent = plTable.always_use_pl_view == 1 and pl or (plTable.PlViewEnt ~= 0 and Entity(plTable.PlViewEnt) or nil)
+		local eyepos, eyeang = rgm.EyePosAng(pl, plviewent)
 		local intersect = self:GetGrabPos(eyepos, eyeang)
 		local localized = self:WorldToLocal(intersect)
 		local distmin, distmax
@@ -301,7 +303,9 @@ local posside = table.Copy(basepart)
 do
 
 	function posside:TestCollision(pl, scale)
-		local eyepos, eyeang = rgm.EyePosAng(pl)
+		local plTable = RAGDOLLMOVER[pl]
+		local plviewent = plTable.always_use_pl_view == 1 and pl or (plTable.PlViewEnt ~= 0 and Entity(plTable.PlViewEnt) or nil)
+		local eyepos, eyeang = rgm.EyePosAng(pl, plviewent)
 		local intersect = self:GetGrabPos(eyepos, eyeang)
 		local localized = self:WorldToLocal(intersect)
 		local distmin1, distmax1, distmin2, distmax2
@@ -477,7 +481,9 @@ local omnipos = table.Copy(posside)
 do
 
 	function omnipos:TestCollision(pl, scale)
-		local eyepos, eyeang = rgm.EyePosAng(pl)
+		local plTable = RAGDOLLMOVER[pl]
+		local plviewent = plTable.always_use_pl_view == 1 and pl or (plTable.PlViewEnt ~= 0 and Entity(plTable.PlViewEnt) or nil)
+		local eyepos, eyeang = rgm.EyePosAng(pl, plviewent)
 		local intersect = self:GetGrabPos(eyepos, eyeang)
 		local localized = self:WorldToLocal(intersect)
 		local distmin1, distmax1
@@ -623,7 +629,9 @@ do
 	disc.IsDisc = true
 
 	function disc:TestCollision(pl, scale)
-		local eyepos, eyeang = rgm.EyePosAng(pl)
+		local plTable = RAGDOLLMOVER[pl]
+		local plviewent = plTable.always_use_pl_view == 1 and pl or (plTable.PlViewEnt ~= 0 and Entity(plTable.PlViewEnt) or nil)
+		local eyepos, eyeang = rgm.EyePosAng(pl, plviewent)
 		local intersect = self:GetGrabPos(eyepos, eyeang)
 		local distmin = 0.9 * scale
 		local distmax = 1.1 * scale
@@ -957,7 +965,9 @@ local disclarge = table.Copy(disc)
 do
 
 	function disclarge:TestCollision(pl, scale)
-		local eyepos, eyeang = rgm.EyePosAng(pl)
+		local plTable = RAGDOLLMOVER[pl]
+		local plviewent = plTable.always_use_pl_view == 1 and pl or (plTable.PlViewEnt ~= 0 and Entity(plTable.PlViewEnt) or nil)
+		local eyepos, eyeang = rgm.EyePosAng(pl, plviewent)
 		local intersect = self:GetGrabPos(eyepos, eyeang)
 		local distmin = 1.15 * scale
 		local distmax = 1.35 * scale
@@ -1014,7 +1024,9 @@ do
 	end
 
 	function scalearrow:TestCollision(pl, scale)
-		local eyepos, eyeang = rgm.EyePosAng(pl)
+		local plTable = RAGDOLLMOVER[pl]
+		local plviewent = plTable.always_use_pl_view == 1 and pl or (plTable.PlViewEnt ~= 0 and Entity(plTable.PlViewEnt) or nil)
+		local eyepos, eyeang = rgm.EyePosAng(pl, plviewent)
 		local intersect = self:GetGrabPos(eyepos, eyeang)
 		local localized = self:WorldToLocal(intersect)
 		local distmin, distmax

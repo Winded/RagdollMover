@@ -55,9 +55,10 @@ local VECTOR_ONE = RGM_Constants.VECTOR_ONE
 
 --Receives player eye position and eye angles.
 --If cursor is visible, eye angles are based on cursor position.
-function EyePosAng(pl)
+function EyePosAng(pl, viewent)
 	local eyepos = pl:EyePos()
-	local viewent = pl:GetViewEntity()
+	if not viewent then viewent = pl:GetViewEntity() end
+
 	if IsValid(viewent) and viewent ~= pl then
 		eyepos = viewent:GetPos()
 		if viewent:GetClass() == "hl_camera" then -- adding support for Advanced Camera's view offset https://steamcommunity.com/sharedfiles/filedetails/?id=881605937&searchtext=advanced+camera

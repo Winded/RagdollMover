@@ -31,10 +31,9 @@ TOOL.ClientConVar["ik_chain_3"] = 0
 TOOL.ClientConVar["ik_chain_4"] = 0
 TOOL.ClientConVar["ik_chain_5"] = 0
 TOOL.ClientConVar["ik_chain_6"] = 0
-TOOL.ClientConVar["hipkneeroll"] = 3
-TOOL.ClientConVar["ignoredaxis"] = 3
 
 TOOL.ClientConVar["unfreeze"] = 0
+TOOL.ClientConVar["always_use_pl_view"] = 0
 TOOL.ClientConVar["updaterate"] = 0.01
 
 TOOL.ClientConVar["rotatebutton"] = MOUSE_MIDDLE
@@ -1702,25 +1701,26 @@ local NETFUNC = {
 
 		local axis = plTable.Axis
 		local vars = {
-			"localpos",
+			"localpos", -- Axis related
 			"localang",
 			"localoffset",
 			"relativerotate",
 			"scalechildren",
 			"smovechildren",
 			"scalerelativemove",
-			"updaterate",
+			"updaterate", -- RGM Table related
 			"unfreeze",
 			"snapenable",
 			"snapamount",
-			"physmove"
+			"physmove",
+			"always_use_pl_view"
 		}
 
 		if var < 8 and IsValid(axis) then
 			axis[vars[var]] = (tool:GetClientNumber(vars[var], 1) ~= 0)
 		else
 			plTable[vars[var]] = tool:GetClientNumber(vars[var], 1)
-			if var == 11 then
+			if var == 11 then -- if snapamount, do not accept 0 or negatives
 				plTable.snapamount = plTable.snapamount < 1 and 1 or plTable.snapamount
 			end
 		end
@@ -1788,8 +1788,9 @@ function TOOL:Deploy()
 			plTable.snapenable = self:GetClientNumber("snapenable", 0)
 			plTable.snapamount = self:GetClientNumber("snapamount", 30)
 			plTable.physmove = self:GetClientNumber("physmove", 0)
+			plTable.always_use_pl_view = self:GetClientNumber("always_use_pl_view", 0)
 
-			RAGDOLLMOVER.Sync(pl, "Axis")
+			RAGDOLLMOVER.Sync(pl, "Axis", "always_use_pl_view")
 		end
 	end
 end
@@ -1801,7 +1802,8 @@ end
 function TOOL:LeftClick()
 	local pl = self:GetOwner()
 	local plTable = RAGDOLLMOVER[pl]
-	local eyepos, eyeang = rgm.EyePosAng(pl)
+	local plviewent = plTable.always_use_pl_view == 1 and pl or nil
+	local eyepos, eyeang = rgm.EyePosAng(pl, plviewent)
 	local op = self:GetOperation()
 	local tr = util.TraceLine({
 		start = eyepos,
@@ -1876,15 +1878,16 @@ function TOOL:LeftClick()
 		axis.scalerelativemove = self:GetClientNumber("scalerelativemove", 0) ~= 0
 		plTable.Axis = axis
 
-		RAGDOLLMOVER[pl].updaterate = self:GetClientNumber("updaterate", 0.01)
-		RAGDOLLMOVER[pl].unfreeze = self:GetClientNumber("unfreeze", 0)
-		RAGDOLLMOVER[pl].snapenable = self:GetClientNumber("snapenable", 0)
-		RAGDOLLMOVER[pl].snapamount = self:GetClientNumber("snapamount", 30)
-		RAGDOLLMOVER[pl].physmove = self:GetClientNumber("physmove", 0)
+		plTable.updaterate = self:GetClientNumber("updaterate", 0.01)
+		plTable.unfreeze = self:GetClientNumber("unfreeze", 0)
+		plTable.snapenable = self:GetClientNumber("snapenable", 0)
+		plTable.snapamount = self:GetClientNumber("snapamount", 30)
+		plTable.physmove = self:GetClientNumber("physmove", 0)
+		plTable.always_use_pl_view = self:GetClientNumber("always_use_pl_view", 0)
 
-		RAGDOLLMOVER[pl].Axis = axis
+		plTable.Axis = axis
 
-		RAGDOLLMOVER.Sync(pl, "Axis")
+		RAGDOLLMOVER.Sync(pl, "Axis", "always_use_pl_view")
 		return false
 	end
 
@@ -1972,8 +1975,9 @@ function TOOL:LeftClick()
 		dirnorm:Normalize()
 		plTable.DirNorm = dirnorm
 		plTable.MoveAxis = apart.id
+		plTable.PlViewEnt = IsValid(plviewent) and plviewent:EntIndex() or (IsValid(pl:GetViewEntity()) and pl:GetViewEntity():EntIndex() or 0)
 		plTable.Moving = true
-		RAGDOLLMOVER.Sync(pl, "DirNorm", "MoveAxis", "Moving", "StartAngle")
+		RAGDOLLMOVER.Sync(pl, "DirNorm", "MoveAxis", "Moving", "StartAngle", "PlViewEnt")
 		return false
 
 	elseif IsValid(tr.Entity) and EntityFilter(tr.Entity, self) and rgmCanTool(tr.Entity, pl) then
@@ -2189,8 +2193,9 @@ if SERVER then
 	local rotate = plTable.Rotate or false
 	local scale = plTable.Scale or false
 	local physmove = plTable.physmove ~= 0
+	local plviewent = plTable.always_use_pl_view == 1 and pl or (plTable.PlViewEnt ~= 0 and Entity(plTable.PlViewEnt) or nil)
 
-	local eyepos, eyeang = rgm.EyePosAng(pl)
+	local eyepos, eyeang = rgm.EyePosAng(pl, plviewent)
 
 	if moving then
 		if not pl:KeyDown(IN_ATTACK) or not rgmCanTool(ent, pl) then
@@ -2221,7 +2226,8 @@ if SERVER then
 			rgmCalcGizmoPos(pl)
 
 			plTable.Moving = false
-			RAGDOLLMOVER.Sync(pl, "Moving")
+			plTable.PlViewEnt = 0
+			RAGDOLLMOVER.Sync(pl, "Moving", "PlViewEnt")
 			net.Start("RAGDOLLMOVER")
 				net.WriteUInt(1, 4)
 			net.Send(pl)
@@ -2434,17 +2440,19 @@ end
 
 if CLIENT then
 
-	TOOL.Information = {
-		{ name = "left_advselect", op = 2 },
-		{ name = "info_advselect", op = 2 },
-		{ name = "left_gizmomode", op = 1 },
-		{ name = "right_gizmomode", op = 1 },
-		{ name = "reload_gizmomode", op = 1 },
-		{ name = "left_default", op = 0 },
-		{ name = "info_default", op = 0 },
-		{ name = "info_defadvselect", op = 0 },
-		{ name = "reload_default", op = 0 },
-	}
+local PlViewVar = GetConVar("ragdollmover_always_use_pl_view")
+
+TOOL.Information = {
+	{ name = "left_advselect", op = 2 },
+	{ name = "info_advselect", op = 2 },
+	{ name = "left_gizmomode", op = 1 },
+	{ name = "right_gizmomode", op = 1 },
+	{ name = "reload_gizmomode", op = 1 },
+	{ name = "left_default", op = 0 },
+	{ name = "info_default", op = 0 },
+	{ name = "info_defadvselect", op = 0 },
+	{ name = "reload_default", op = 0 },
+}
 
 local RGM_NOTIFY = { -- table with info for messages, true for errors
 	[BONELOCK_FAILED] = true,
@@ -2461,9 +2469,13 @@ local RGM_NOTIFY = { -- table with info for messages, true for errors
 
 -- If we hotload this file, pl gets set to nil, which causes issues when tables attempt to index with this variable; initialize it here 
 local pl = LocalPlayer()
+if not RAGDOLLMOVER[pl] then RAGDOLLMOVER[pl] = {} end
+RAGDOLLMOVER[pl].PlViewEnt = 0
 
 hook.Add("InitPostEntity", "rgmSetPlayer", function()
 	pl = LocalPlayer()
+	if not RAGDOLLMOVER[pl] then RAGDOLLMOVER[pl] = {} end
+	RAGDOLLMOVER[pl].PlViewEnt = 0
 end)
 
 hook.Add("KeyPress", "rgmSwitchSelectionMode", function(pl, key)
@@ -2485,89 +2497,39 @@ hook.Add("KeyPress", "rgmSwitchSelectionMode", function(pl, key)
 	end
 end)
 
-cvars.AddChangeCallback("ragdollmover_localpos", function()
-	net.Start("RAGDOLLMOVER")
-		net.WriteUInt(26, 5)
-		net.WriteUInt(1, 4)
-	net.SendToServer()
-end)
+do
 
-cvars.AddChangeCallback("ragdollmover_localang", function()
-	net.Start("RAGDOLLMOVER")
-		net.WriteUInt(26, 5)
-		net.WriteUInt(2, 4)
-	net.SendToServer()
-end)
+	local ConVars = {
+		"ragdollmover_localpos", -- Axis
+		"ragdollmover_localang",
+		"ragdollmover_localoffset",
+		"ragdollmover_relativerotate",
+		"ragdollmover_scalechildren",
+		"ragdollmover_smovechildren",
+		"ragdollmover_scalerelativemove",
+		"ragdollmover_updaterate", -- RGM Table
+		"ragdollmover_unfreeze",
+		"ragdollmover_snapenable",
+		"ragdollmover_snapamount",
+		"ragdollmover_physmove",
+		"ragdollmover_always_use_pl_view"
+	}
 
-cvars.AddChangeCallback("ragdollmover_localoffset", function()
-	net.Start("RAGDOLLMOVER")
-		net.WriteUInt(26, 5)
-		net.WriteUInt(3, 4)
-	net.SendToServer()
-end)
+	for k, v in ipairs(ConVars) do
 
-cvars.AddChangeCallback("ragdollmover_relativerotate", function()
-	net.Start("RAGDOLLMOVER")
-		net.WriteUInt(26, 5)
-		net.WriteUInt(4, 4)
-	net.SendToServer()
-end)
+		cvars.AddChangeCallback(v, function(convar, old, new)
+			net.Start("RAGDOLLMOVER")
+				net.WriteUInt(26, 5)
+				net.WriteUInt(k, 4)
+			net.SendToServer()
+			if k == 13 then
+				RAGDOLLMOVER[pl].always_use_pl_view = tonumber(new)
+			end
+		end)
 
-cvars.AddChangeCallback("ragdollmover_scalechildren", function()
-	net.Start("RAGDOLLMOVER")
-		net.WriteUInt(26, 5)
-		net.WriteUInt(5, 4)
-	net.SendToServer()
-end)
+	end
 
-cvars.AddChangeCallback("ragdollmover_smovechildren", function()
-	net.Start("RAGDOLLMOVER")
-		net.WriteUInt(26, 5)
-		net.WriteUInt(6, 4)
-	net.SendToServer()
-end)
-
-cvars.AddChangeCallback("ragdollmover_scalerelativemove", function(convar, old, new)
-	net.Start("RAGDOLLMOVER")
-		net.WriteUInt(26, 5)
-		net.WriteUInt(7, 4)
-	net.SendToServer()
-end)
-
-cvars.AddChangeCallback("ragdollmover_updaterate", function()
-	net.Start("RAGDOLLMOVER")
-		net.WriteUInt(26, 5)
-		net.WriteUInt(8, 4)
-	net.SendToServer()
-end)
-
-cvars.AddChangeCallback("ragdollmover_unfreeze", function()
-	net.Start("RAGDOLLMOVER")
-		net.WriteUInt(26, 5)
-		net.WriteUInt(9, 4)
-	net.SendToServer()
-end)
-
-cvars.AddChangeCallback("ragdollmover_snapenable", function()
-	net.Start("RAGDOLLMOVER")
-		net.WriteUInt(26, 5)
-		net.WriteUInt(10, 4)
-	net.SendToServer()
-end)
-
-cvars.AddChangeCallback("ragdollmover_snapamount", function()
-	net.Start("RAGDOLLMOVER")
-		net.WriteUInt(26, 5)
-		net.WriteUInt(11, 4)
-	net.SendToServer()
-end)
-
-cvars.AddChangeCallback("ragdollmover_physmove", function()
-	net.Start("RAGDOLLMOVER")
-		net.WriteUInt(26, 5)
-		net.WriteUInt(12, 4)
-	net.SendToServer()
-end)
+end
 
 local GizmoScale, GizmoWidth, SkeletonDraw
 
@@ -4553,6 +4515,9 @@ function TOOL:DrawHUD()
 	--We don't draw the axis if we don't have the axis entity or the target entity,
 	--or if we're not allowed to draw it.
 
+	local plviewent = plTable.always_use_pl_view == 1 and pl or (plTable.PlViewEnt ~= 0 and Entity(plTable.PlViewEnt) or nil)
+	local eyepos, eyeang = rgm.EyePosAng(pl, plviewent)
+
 	if not (self:GetOperation() == 2) and IsValid(ent) and IsValid(axis) and bone then
 		local scale = GizmoScale or 10
 		local width = GizmoWidth or 0.5
@@ -4565,7 +4530,7 @@ function TOOL:DrawHUD()
 
 			cam.End()
 			if moveaxis.IsDisc then
-				local intersect = moveaxis:GetGrabPos(rgm.EyePosAng(pl))
+				local intersect = moveaxis:GetGrabPos(eyepos, eyeang)
 				local fwd = (intersect - axis:GetPos())
 				fwd:Normalize()
 				axis:DrawDirectionLine(fwd, scale, false)
@@ -4582,7 +4547,6 @@ function TOOL:DrawHUD()
 		end
 	end
 
-	local eyepos, eyeang = rgm.EyePosAng(pl)
 	local tr = util.TraceLine({
 		start = eyepos,
 		endpos = eyepos + pl:GetAimVector() * 16384,
