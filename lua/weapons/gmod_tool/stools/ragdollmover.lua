@@ -2440,8 +2440,6 @@ end
 
 if CLIENT then
 
-local PlViewVar = GetConVar("ragdollmover_always_use_pl_view")
-
 TOOL.Information = {
 	{ name = "left_advselect", op = 2 },
 	{ name = "info_advselect", op = 2 },
