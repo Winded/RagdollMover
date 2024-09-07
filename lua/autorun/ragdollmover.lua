@@ -1045,7 +1045,7 @@ function AdvBoneSelectRender(ent, bonenodes)
 	local mx, my = input.GetCursorPos() -- possible bug on mac https://wiki.facepunch.com/gmod/input.GetCursorPos
 
 	local selectedBones = {}
-	for i = 0, ent:GetBoneCount() do
+	for i = 0, ent:GetBoneCount() - 1 do
 		local name = ent:GetBoneName(i)
 		if name == "__INVALIDBONE__" then continue end
 		local pos = ent:GetBonePosition(i)
@@ -1116,7 +1116,7 @@ function AdvBoneSelectPick(ent)
 	local mx, my = input.GetCursorPos()
 
 	cam.Start3D()
-	for i = 0, ent:GetBoneCount() do
+	for i = 0, ent:GetBoneCount() - 1 do
 		if ent:GetBoneName(i) == "__INVALIDBONE__" then continue end
 
 		local pos = ent:GetBonePosition(i)
