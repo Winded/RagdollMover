@@ -1043,11 +1043,13 @@ end)
 
 function AdvBoneSelectRender(ent, bonenodes)
 	local mx, my = input.GetCursorPos() -- possible bug on mac https://wiki.facepunch.com/gmod/input.GetCursorPos
+	local nodesExist = bonenodes and bonenodes[ent] and true
 
 	local selectedBones = {}
-	for i = 0, ent:GetBoneCount() do
+	for i = 0, ent:GetBoneCount() - 1 do
 		local name = ent:GetBoneName(i)
 		if name == "__INVALIDBONE__" then continue end
+		if nodesExist and (not bonenodes[ent][i]) or false then continue end
 		local pos = ent:GetBonePosition(i)
 		pos = pos:ToScreen()
 
@@ -1063,7 +1065,7 @@ function AdvBoneSelectRender(ent, bonenodes)
 			surface.SetDrawColor(COLOR_BRIGHT_YELLOW:Unpack())
 			table.insert(selectedBones, {name, i})
 		else
-			if bonenodes and bonenodes[ent] and bonenodes[ent][i] and bonenodes[ent][i].Type then
+			if nodesExist and bonenodes[ent][i] and bonenodes[ent][i].Type then
 				surface.SetDrawColor(BONETYPE_COLORS[bonenodes[ent][i].Type]:Unpack())
 			else
 				surface.SetDrawColor(COLOR_RGMGREEN:Unpack())
@@ -1101,7 +1103,7 @@ function AdvBoneSelectRender(ent, bonenodes)
 		end
 
 		local color
-		if bonenodes then
+		if nodesExist then
 			color = BONETYPE_COLORS[bonenodes[ent][selectedBones[i + 1][2]].Type]
 		else
 			color = COLOR_RGMGREEN
@@ -1111,13 +1113,15 @@ function AdvBoneSelectRender(ent, bonenodes)
 	end
 end
 
-function AdvBoneSelectPick(ent)
+function AdvBoneSelectPick(ent, bonenodes)
 	local selected = {}
 	local mx, my = input.GetCursorPos()
+	local nodesExist = bonenodes and bonenodes[ent] and true
 
 	cam.Start3D()
-	for i = 0, ent:GetBoneCount() do
+	for i = 0, ent:GetBoneCount() - 1 do
 		if ent:GetBoneName(i) == "__INVALIDBONE__" then continue end
+		if nodesExist and (not bonenodes[ent][i]) or false then continue end
 
 		local pos = ent:GetBonePosition(i)
 		pos = pos:ToScreen()

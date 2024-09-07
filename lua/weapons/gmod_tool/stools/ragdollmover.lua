@@ -4451,7 +4451,7 @@ function TOOL:Think()
 
 			if IsValid(ent) then
 				if self:GetStage() ~= 1 then
-					local selbones = rgm.AdvBoneSelectPick(ent)
+					local selbones = rgm.AdvBoneSelectPick(ent, nodes)
 					if next(selbones) then
 						if #selbones == 1 then
 							net.Start("RAGDOLLMOVER")
