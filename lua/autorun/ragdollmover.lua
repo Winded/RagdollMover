@@ -62,11 +62,15 @@ local VECTOR_ONE = RGM_Constants.VECTOR_ONE
 
 --Receives player eye position and eye angles.
 --If cursor is visible, eye angles are based on cursor position.
-function EyePosAng(pl)
+function EyePosAng(pl, viewent)
 	local eyepos = pl:EyePos()
-	local viewent = pl:GetViewEntity()
+	if not viewent then viewent = pl:GetViewEntity() end
+
 	if IsValid(viewent) and viewent ~= pl then
 		eyepos = viewent:GetPos()
+		if viewent:GetClass() == "hl_camera" then -- adding support for Advanced Camera's view offset https://steamcommunity.com/sharedfiles/filedetails/?id=881605937&searchtext=advanced+camera
+			eyepos = viewent:LocalToWorld(viewent:GetViewOffset())
+		end
 	end
 	local cursorvec = pl:GetAimVector()
 	--local cursorvec = pl:EyeAngles()
@@ -983,7 +987,12 @@ if CLIENT then
 
 local COLOR_RGMGREEN = RGM_Constants.COLOR_GREEN
 local COLOR_RGMBLACK = RGM_Constants.COLOR_BLACK
+local COLOR_WHITE = RGM_Constants.COLOR_WHITE
+local COLOR_BLUE = RGM_Constants.COLOR_BLUE
+local COLOR_BRIGHT_YELLOW = RGM_Constants.COLOR_BRIGHT_YELLOW
 local OUTLINE_WIDTH = RGM_Constants.OUTLINE_WIDTH
+
+local BONETYPE_COLORS = {RGM_Constants.COLOR_GREEN, RGM_Constants.COLOR_CYAN, RGM_Constants.COLOR_YELLOW, RGM_Constants.COLOR_RED}
 
 function DrawBoneName(ent, bone, name)
 	if not name then
@@ -1078,13 +1087,15 @@ concommand.Add("ragdollmover_changelog", function()
 	showChangelog()
 end)
 
-function AdvBoneSelectRender(ent)
+function AdvBoneSelectRender(ent, bonenodes)
 	local mx, my = input.GetCursorPos() -- possible bug on mac https://wiki.facepunch.com/gmod/input.GetCursorPos
+	local nodesExist = bonenodes and bonenodes[ent] and true
 
 	local selectedBones = {}
-	for i = 0, ent:GetBoneCount() do
+	for i = 0, ent:GetBoneCount() - 1 do
 		local name = ent:GetBoneName(i)
 		if name == "__INVALIDBONE__" then continue end
+		if nodesExist and (not bonenodes[ent][i]) or false then continue end
 		local pos = ent:GetBonePosition(i)
 		pos = pos:ToScreen()
 
@@ -1097,10 +1108,14 @@ function AdvBoneSelectRender(ent)
 		end
 
 		if dist < 576 then -- 24 pixels
-			surface.SetDrawColor(255, 255, 0, 255)
-			table.insert(selectedBones, name)
+			surface.SetDrawColor(COLOR_BRIGHT_YELLOW:Unpack())
+			table.insert(selectedBones, {name, i})
 		else
-			surface.SetDrawColor(0, 200, 0, 255)
+			if nodesExist and bonenodes[ent][i] and bonenodes[ent][i].Type then
+				surface.SetDrawColor(BONETYPE_COLORS[bonenodes[ent][i].Type]:Unpack())
+			else
+				surface.SetDrawColor(COLOR_RGMGREEN:Unpack())
+			end
 		end
 
 		draw.NoTexture()
@@ -1113,7 +1128,7 @@ function AdvBoneSelectRender(ent)
 	local fontWidth = 7.5 * divide540 * midh
 	if fontWidth < 6.5 then fontWidth = 6.5 end
 	for i = 1, #selectedBones do
-		meanNameLength = meanNameLength + #selectedBones[i] * fontWidth
+		meanNameLength = meanNameLength + #selectedBones[i][1] * fontWidth
 	end
 	meanNameLength = meanNameLength / #selectedBones
 
@@ -1132,17 +1147,27 @@ function AdvBoneSelectRender(ent)
 			columns = columns + 1
 			xPos = mx + 5 + meanNameLength * columns
 		end
-		draw.SimpleTextOutlined(selectedBones[i + 1], "RagdollMoverFont", xPos, yPos, COLOR_RGMGREEN, TEXT_ALIGN_LEFT, TEXT_ALIGN_BOTTOM, OUTLINE_WIDTH, COLOR_RGMBLACK)
+
+		local color
+		if nodesExist then
+			color = BONETYPE_COLORS[bonenodes[ent][selectedBones[i + 1][2]].Type]
+		else
+			color = COLOR_RGMGREEN
+		end
+
+		draw.SimpleTextOutlined(selectedBones[i + 1][1], "RagdollMoverFont", xPos, yPos, color, TEXT_ALIGN_LEFT, TEXT_ALIGN_BOTTOM, OUTLINE_WIDTH, COLOR_RGMBLACK)
 	end
 end
 
-function AdvBoneSelectPick(ent)
+function AdvBoneSelectPick(ent, bonenodes)
 	local selected = {}
 	local mx, my = input.GetCursorPos()
+	local nodesExist = bonenodes and bonenodes[ent] and true
 
 	cam.Start3D()
-	for i = 0, ent:GetBoneCount() do
+	for i = 0, ent:GetBoneCount() - 1 do
 		if ent:GetBoneName(i) == "__INVALIDBONE__" then continue end
+		if nodesExist and (not bonenodes[ent][i]) or false then continue end
 
 		local pos = ent:GetBonePosition(i)
 		pos = pos:ToScreen()
@@ -1156,11 +1181,9 @@ function AdvBoneSelectPick(ent)
 	return selected
 end
 
-local COLOR_WHITE = Color(255, 255, 255, 255)
-local COLOR_YELLOW = Color(255, 255, 0, 255)
 local SelectedBone = nil
 
-function AdvBoneSelectRadialRender(ent, bones)
+function AdvBoneSelectRadialRender(ent, bones, bonenodes)
 	local mx, my = input.GetCursorPos()
 	local count = #bones
 	local angborder = (360 / count) / 2
@@ -1172,6 +1195,9 @@ function AdvBoneSelectRadialRender(ent, bones)
 		local thisrad = thisang / 180 * math.pi
 		local uix, uiy = (math.sin(thisrad) * 250 * modifier), (math.cos(thisrad) * -250 * modifier)
 		local color = COLOR_WHITE
+		if bonenodes and bonenodes[ent] and bonenodes[ent][bone] and bonenodes[ent][bone].Type then
+			color = BONETYPE_COLORS[bonenodes[ent][bone].Type]
+		end
 		uix, uiy = uix + midw, uiy + midh
 
 		local selangle = 360 - (math.deg(math.atan2(mx - midw, my - midh)) + 180) -- took this one from overhauled radial menu, which took some of the inspiration from wiremod
@@ -1189,11 +1215,15 @@ function AdvBoneSelectRadialRender(ent, bones)
 		end
 
 		if isselected then
-			surface.SetDrawColor(255, 255, 0, 255)
-			color = COLOR_YELLOW
+			surface.SetDrawColor(COLOR_BRIGHT_YELLOW:Unpack())
+			color = COLOR_BRIGHT_YELLOW
 			SelectedBone = bone
 		else
-			surface.SetDrawColor(0, 200, 0, 255)
+			if bonenodes and bonenodes[ent] and bonenodes[ent][bone] and bonenodes[ent][bone].Type then
+				surface.SetDrawColor(BONETYPE_COLORS[bonenodes[ent][bone].Type]:Unpack())
+			else
+				surface.SetDrawColor(COLOR_RGMGREEN:Unpack())
+			end
 		end
 
 		draw.NoTexture()
@@ -1228,7 +1258,7 @@ function DrawBoneConnections(ent, bone)
 	end
 	mainpos = mainpos:ToScreen()
 
-	surface.SetDrawColor(0, 200, 0, 255)
+	surface.SetDrawColor(COLOR_RGMGREEN:Unpack())
 	for _, childbone in ipairs(ent:GetChildBones(bone) or {}) do
 		local pos = ent:GetBonePosition(childbone)
 		pos = pos:ToScreen()
@@ -1237,7 +1267,7 @@ function DrawBoneConnections(ent, bone)
 	end
 
 	if ent:GetBoneParent(bone) ~= -1 then
-		surface.SetDrawColor(0, 0, 200, 255)
+		surface.SetDrawColor(COLOR_BLUE:Unpack())
 		local pos = ent:GetBonePosition(ent:GetBoneParent(bone))
 		pos = pos:ToScreen()
 
@@ -1247,7 +1277,7 @@ end
 
 local SkeletonData = {}
 
-local function DrawRecursiveBones(ent, bone)
+local function DrawRecursiveBones(ent, bone, bonenodes)
 	local mainpos = ent:GetBonePosition(bone)
 	mainpos = mainpos:ToScreen()
 
@@ -1256,14 +1286,20 @@ local function DrawRecursiveBones(ent, bone)
 		local pos = ent:GetBonePosition(boneid)
 		pos = pos:ToScreen()
 
-		surface.SetDrawColor(255, 255, 255, 255)
+		surface.SetDrawColor(COLOR_WHITE:Unpack())
 		surface.DrawLine(mainpos.x, mainpos.y, pos.x, pos.y)
-		DrawRecursiveBones(ent, boneid)
-		surface.DrawCircle(pos.x, pos.y, 2.5, COLOR_RGMGREEN)
+		DrawRecursiveBones(ent, boneid, bonenodes)
+		local color
+		if bonenodes then
+			color = BONETYPE_COLORS[bonenodes[ent][boneid].Type]
+		else
+			color = COLOR_RGMGREEN
+		end
+		surface.DrawCircle(pos.x, pos.y, 2.5, color)
 	end
 end
 
-function DrawSkeleton(ent)
+function DrawSkeleton(ent, bonenodes)
 	if SkeletonData.ent ~= ent then
 		SkeletonData = {}
 
@@ -1278,10 +1314,16 @@ function DrawSkeleton(ent)
 					pos = ent:GetPos()
 				end
 
-				DrawRecursiveBones(ent, v)
+				DrawRecursiveBones(ent, v, bonenodes)
 
 				pos = pos:ToScreen()
-				surface.DrawCircle(pos.x, pos.y, 2.5, COLOR_RGMGREEN)
+				local color
+				if bonenodes then
+					color = BONETYPE_COLORS[bonenodes[ent][v].Type]
+				else
+					color = COLOR_RGMGREEN
+				end
+				surface.DrawCircle(pos.x, pos.y, 2.5, color)
 			end
 		end
 
@@ -1294,7 +1336,7 @@ function DrawSkeleton(ent)
 
 			local parentpos = ent:GetBonePosition(parent)
 			parentpos = parentpos:ToScreen()
-			surface.SetDrawColor(255, 255, 255, 255)
+			surface.SetDrawColor(COLOR_WHITE:Unpack())
 			surface.DrawLine(parentpos.x, parentpos.y, pos.x, pos.y)
 		end
 
@@ -1303,7 +1345,14 @@ function DrawSkeleton(ent)
 			local pos = ent:GetBonePosition(bone)
 			pos = pos:ToScreen()
 
-			surface.DrawCircle(pos.x, pos.y, 2.5, COLOR_RGMGREEN)
+			local color
+			if bonenodes and bonenodes[ent] and bonenodes[ent][bone] and bonenodes[ent][bone].Type then
+				color = BONETYPE_COLORS[bonenodes[ent][bone].Type]
+			else
+				color = COLOR_RGMGREEN
+			end
+
+			surface.DrawCircle(pos.x, pos.y, 2.5, color)
 		end
 	end
 
