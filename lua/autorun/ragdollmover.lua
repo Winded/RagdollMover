@@ -1043,6 +1043,10 @@ local VERSION_PATH = "rgm/version.txt"
 local RGM_VERSION = "3.0.0"
 
 local function versionMatches(currentVersion, versionPath)
+	if not file.Exists("rgm", "DATA") then
+		file.CreateDir("rgm")
+	end
+
 	local readVersion = file.Read(versionPath)
 	local matches = readVersion and readVersion == currentVersion
 	if matches then
