@@ -15,6 +15,13 @@ RGMFontSize = math.Round(12 * ScrH()/1080)
 
 if RGMFontSize < 10 then RGMFontSize = 10 end
 
+surface.CreateFont("RagdollMoverChangelogFont", {
+	font = "Roboto",
+	size = 2 * RGMFontSize,
+	weight = 300,
+	antialias = true
+})
+
 surface.CreateFont("RagdollMoverFont", {
 	font = "Verdana",
 	size = RGMFontSize,
@@ -1030,6 +1037,47 @@ local divide540 = RGM_Constants.FLOAT_1DIVIDE540 -- aggressive microoptimization
 
 hook.Add("OnScreenSizeChanged", "RagdollMoverHUDUpdate", function(_, _, newWidth, newHeight)
 	midw, midh = newWidth/2, newHeight/2
+end)
+
+local VERSION_PATH = "rgm/version.txt"
+local RGM_VERSION = "3.0.0"
+
+local function versionMatches(currentVersion, versionPath)
+	local readVersion = file.Read(versionPath)
+	local matches = readVersion and readVersion == currentVersion
+	if matches then
+		return true
+	else
+		file.Write(versionPath, currentVersion)
+		return false
+	end
+end
+
+-- Show the changelog if the stored version on this computer is different from RGM_VERSION
+local function notifyOnStart(doVersionCheck)
+	if doVersionCheck and versionMatches(RGM_VERSION, VERSION_PATH) then return end
+
+	if doVersionCheck then
+		print("Ragdoll Mover may have recently updated. Read the change notes for more information.")
+	end
+	-- Notify the player of a new version
+	local changelog = vgui.Create("rgm_changelog")
+	local windowSizeRatio = midh * divide540
+	local padding = 20 * windowSizeRatio
+	local x, y = 500 * windowSizeRatio, 500 * windowSizeRatio
+	changelog:SetSize(x, y)
+	changelog:SetPos(midw - x * 0.5, midh - y * 0.5)
+	changelog:DockPadding(0, 2 * padding, 0, 0)
+end
+
+-- When localplayer is valid, check if we should notify the user
+hook.Add("InitPostEntity", "RagdollMoverNotifyOnStart", function()
+	notifyOnStart(true)
+end)
+
+-- Allow the user to see the changelog from GMod
+concommand.Add("ragdollmover_changelog", function()
+	notifyOnStart(false)
 end)
 
 function AdvBoneSelectRender(ent)
