@@ -1708,6 +1708,7 @@ local NETFUNC = {
 			"scalechildren",
 			"smovechildren",
 			"scalerelativemove",
+			"scale",
 			"updaterate", -- RGM Table related
 			"unfreeze",
 			"snapenable",
@@ -1718,9 +1719,12 @@ local NETFUNC = {
 
 		if var < 8 and IsValid(axis) then
 			axis[vars[var]] = (tool:GetClientNumber(vars[var], 1) ~= 0)
+		elseif var == 8 and IsValid(axis) then
+			axis[vars[var]] = tool:GetClientNumber(vars[var], 10)
+			axis:CalculateGizmo()
 		else
 			plTable[vars[var]] = tool:GetClientNumber(vars[var], 1)
-			if var == 11 then -- if snapamount, do not accept 0 or negatives
+			if var == 12 then -- if snapamount, do not accept 0 or negatives
 				plTable.snapamount = plTable.snapamount < 1 and 1 or plTable.snapamount
 			end
 		end
@@ -1892,7 +1896,7 @@ function TOOL:LeftClick()
 	end
 
 	local ent = plTable.Entity
-	local collision = axis:TestCollision(pl, self:GetClientNumber("scale", 10))
+	local collision = axis:TestCollision(pl)
 
 	if collision and IsValid(ent) and rgmCanTool(ent, pl) then
 
@@ -2495,6 +2499,8 @@ hook.Add("KeyPress", "rgmSwitchSelectionMode", function(pl, key)
 	end
 end)
 
+local GizmoWidth, SkeletonDraw
+
 do
 
 	local ConVars = {
@@ -2505,6 +2511,7 @@ do
 		"ragdollmover_scalechildren",
 		"ragdollmover_smovechildren",
 		"ragdollmover_scalerelativemove",
+		"ragdollmover_scale",
 		"ragdollmover_updaterate", -- RGM Table
 		"ragdollmover_unfreeze",
 		"ragdollmover_snapenable",
@@ -2520,7 +2527,11 @@ do
 				net.WriteUInt(26, 5)
 				net.WriteUInt(k, 4)
 			net.SendToServer()
-			if k == 13 then
+			if k == 8 then
+				if not pl or not RAGDOLLMOVER[pl] or not IsValid(RAGDOLLMOVER[pl].Axis) then return end
+				RAGDOLLMOVER[pl].Axis.scale = new
+				RAGDOLLMOVER[pl].Axis:CalculateGizmo()
+			elseif k == 14 then
 				RAGDOLLMOVER[pl].always_use_pl_view = tonumber(new)
 			end
 		end)
@@ -2528,12 +2539,6 @@ do
 	end
 
 end
-
-local GizmoScale, GizmoWidth, SkeletonDraw
-
-cvars.AddChangeCallback("ragdollmover_scale", function(convar, old, new)
-	GizmoScale = tonumber(new)
-end)
 
 cvars.AddChangeCallback("ragdollmover_width", function(convar, old, new)
 	GizmoWidth = tonumber(new)
@@ -4517,30 +4522,29 @@ function TOOL:DrawHUD()
 	local eyepos, eyeang = rgm.EyePosAng(pl, plviewent)
 
 	if not (self:GetOperation() == 2) and IsValid(ent) and IsValid(axis) and bone then
-		local scale = GizmoScale or 10
 		local width = GizmoWidth or 0.5
 		local moveaxis = axis[RGMGIZMOS.GizmoTable[plTable.MoveAxis]]
 		if moving and moveaxis then
 			cam.Start({type = "3D"})
 			render.SetMaterial(material)
 
-			moveaxis:DrawLines(true, scale, width)
+			moveaxis:DrawLines(true, axis.scale, width)
 
 			cam.End()
 			if moveaxis.IsDisc then
 				local intersect = moveaxis:GetGrabPos(eyepos, eyeang)
 				local fwd = (intersect - axis:GetPos())
 				fwd:Normalize()
-				axis:DrawDirectionLine(fwd, scale, false)
+				axis:DrawDirectionLine(fwd, false)
 				local dirnorm = plTable.DirNorm or VECTOR_FRONT
-				axis:DrawDirectionLine(dirnorm, scale, true)
+				axis:DrawDirectionLine(dirnorm, true)
 				axis:DrawAngleText(moveaxis, intersect, plTable.StartAngle)
 			end
 		else
 			cam.Start({type = "3D"})
 			render.SetMaterial(material)
 
-			axis:DrawLines(scale, width)
+			axis:DrawLines(width)
 			cam.End()
 		end
 	end

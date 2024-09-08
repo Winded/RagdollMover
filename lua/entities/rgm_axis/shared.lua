@@ -3,10 +3,7 @@ ENT.Type = "anim"
 ENT.Base = "base_entity"
 
 function ENT:Initialize()
-	if CLIENT then
-		self:SetNoDraw(true)
-		self.fulldisc = GetConVar("ragdollmover_fulldisc"):GetInt() ~= 0 -- last time i used GetBool, it was breaking for 64 bit branch
-	end
+
 	self:DrawShadow(false)
 	self:SetCollisionBounds(Vector(-0.1, -0.1, -0.1), Vector(0.1, 0.1, 0.1))
 	self:SetSolid(SOLID_VPHYSICS)
@@ -63,11 +60,17 @@ function ENT:Initialize()
 		self.ScaleYZ
 	}
 
-	self.scale = 0
-	self.width = 0
+	self.width = GetConVar("ragdollmover_width"):GetInt() or 0.5
+	self.scale = GetConVar("ragdollmover_scale"):GetInt() or 10
+	self:CalculateGizmo()
+
+	if CLIENT then
+		self:SetNoDraw(true)
+		self.fulldisc = GetConVar("ragdollmover_fulldisc"):GetInt() ~= 0 -- last time i used GetBool, it was breaking for 64 bit branch
+	end
 end
 
-function ENT:TestCollision(pl, scale)
+function ENT:TestCollision(pl)
 	-- PrintTable(self:GetTable())
 	local rotate = RAGDOLLMOVER[pl].Rotate or false
 	local modescale = RAGDOLLMOVER[pl].Scale or false
@@ -80,9 +83,17 @@ function ENT:TestCollision(pl, scale)
 	for i = start, last do
 		local e = self.Axises[i]
 		-- print(e)
-		local intersect = e:TestCollision(pl, scale)
+		local intersect = e:TestCollision(pl)
 		if intersect then return intersect end
 	end
-	self.scale = scale
+
 	return false
+end
+
+function ENT:CalculateGizmo()
+	local scale = self.scale
+
+	for i, axis in ipairs(self.Axises) do
+		axis:CalculateGizmo(scale)
+	end
 end
