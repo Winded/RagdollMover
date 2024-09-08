@@ -554,7 +554,7 @@ function TOOL.BuildCPanel(CPanel)
 end
 
 local PrevEnt = nil
-local COLOR_GREEN = Color(0, 200, 0, 255)
+local COLOR_GREEN = RGM_Constants.COLOR_GREEN
 local AIMED_SKELETON, AIMED_BONE = nil, nil
 local CHOSEN_HIP, CHOSEN_KNEE = nil, nil
 

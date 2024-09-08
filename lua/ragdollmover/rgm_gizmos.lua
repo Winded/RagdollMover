@@ -2,7 +2,7 @@ RGMGIZMOS = {}
 
 local VECTOR_FRONT = RGM_Constants.VECTOR_FRONT
 local VECTOR_SIDE = RGM_Constants.VECTOR_LEFT
-local COLOR_YELLOW = RGM_Constants.COLOR_YELLOW
+local COLOR_BRIGHT_YELLOW = RGM_Constants.COLOR_BRIGHT_YELLOW
 
 ----------------
 -- BASE GIZMO --
@@ -115,7 +115,7 @@ do
 				local points = self:PointsToWorld(v, scale)
 				local col = color
 				if yellow then
-					col = COLOR_YELLOW
+					col = COLOR_BRIGHT_YELLOW
 				end
 				table.insert(toscreen, {points, col})
 			end
@@ -151,7 +151,9 @@ do
 	end
 
 	function posarrow:TestCollision(pl, scale)
-		local eyepos, eyeang = rgm.EyePosAng(pl)
+		local plTable = RAGDOLLMOVER[pl]
+		local plviewent = plTable.always_use_pl_view == 1 and pl or (plTable.PlViewEnt ~= 0 and Entity(plTable.PlViewEnt) or nil)
+		local eyepos, eyeang = rgm.EyePosAng(pl, plviewent)
 		local intersect = self:GetGrabPos(eyepos, eyeang)
 		local localized = self:WorldToLocal(intersect)
 		local distmin, distmax
@@ -301,7 +303,9 @@ local posside = table.Copy(basepart)
 do
 
 	function posside:TestCollision(pl, scale)
-		local eyepos, eyeang = rgm.EyePosAng(pl)
+		local plTable = RAGDOLLMOVER[pl]
+		local plviewent = plTable.always_use_pl_view == 1 and pl or (plTable.PlViewEnt ~= 0 and Entity(plTable.PlViewEnt) or nil)
+		local eyepos, eyeang = rgm.EyePosAng(pl, plviewent)
 		local intersect = self:GetGrabPos(eyepos, eyeang)
 		local localized = self:WorldToLocal(intersect)
 		local distmin1, distmax1, distmin2, distmax2
@@ -453,7 +457,7 @@ do
 				local points = self:PointsToWorld(v, scale)
 				local col = color
 				if yellow then
-					col = COLOR_YELLOW
+					col = COLOR_BRIGHT_YELLOW
 				elseif i == 2 then
 					col = color2
 				end
@@ -477,7 +481,9 @@ local omnipos = table.Copy(posside)
 do
 
 	function omnipos:TestCollision(pl, scale)
-		local eyepos, eyeang = rgm.EyePosAng(pl)
+		local plTable = RAGDOLLMOVER[pl]
+		local plviewent = plTable.always_use_pl_view == 1 and pl or (plTable.PlViewEnt ~= 0 and Entity(plTable.PlViewEnt) or nil)
+		local eyepos, eyeang = rgm.EyePosAng(pl, plviewent)
 		local intersect = self:GetGrabPos(eyepos, eyeang)
 		local localized = self:WorldToLocal(intersect)
 		local distmin1, distmax1
@@ -623,7 +629,9 @@ do
 	disc.IsDisc = true
 
 	function disc:TestCollision(pl, scale)
-		local eyepos, eyeang = rgm.EyePosAng(pl)
+		local plTable = RAGDOLLMOVER[pl]
+		local plviewent = plTable.always_use_pl_view == 1 and pl or (plTable.PlViewEnt ~= 0 and Entity(plTable.PlViewEnt) or nil)
+		local eyepos, eyeang = rgm.EyePosAng(pl, plviewent)
 		local intersect = self:GetGrabPos(eyepos, eyeang)
 		local distmin = 0.9 * scale
 		local distmax = 1.1 * scale
@@ -931,7 +939,7 @@ do
 				local points = self:PointsToWorld(v, scale)
 				local col = color
 				if yellow then
-					col = COLOR_YELLOW
+					col = COLOR_BRIGHT_YELLOW
 				end
 				if parent.fulldisc or (moving or
 				(points[1]:DistToSqr(eyepos) <= borderpos:DistToSqr(eyepos) and points[2]:DistToSqr(eyepos) <= borderpos:DistToSqr(eyepos) and 
@@ -957,7 +965,9 @@ local disclarge = table.Copy(disc)
 do
 
 	function disclarge:TestCollision(pl, scale)
-		local eyepos, eyeang = rgm.EyePosAng(pl)
+		local plTable = RAGDOLLMOVER[pl]
+		local plviewent = plTable.always_use_pl_view == 1 and pl or (plTable.PlViewEnt ~= 0 and Entity(plTable.PlViewEnt) or nil)
+		local eyepos, eyeang = rgm.EyePosAng(pl, plviewent)
 		local intersect = self:GetGrabPos(eyepos, eyeang)
 		local distmin = 1.15 * scale
 		local distmax = 1.35 * scale
@@ -979,7 +989,7 @@ do
 			for i, v in ipairs(linetable) do
 				local col = color
 				if yellow then
-					col = COLOR_YELLOW
+					col = COLOR_BRIGHT_YELLOW
 				end
 				local points = self:PointsToWorld(v, scale * 1.25)
 				table.insert(toscreen, {points, col})
@@ -1014,7 +1024,9 @@ do
 	end
 
 	function scalearrow:TestCollision(pl, scale)
-		local eyepos, eyeang = rgm.EyePosAng(pl)
+		local plTable = RAGDOLLMOVER[pl]
+		local plviewent = plTable.always_use_pl_view == 1 and pl or (plTable.PlViewEnt ~= 0 and Entity(plTable.PlViewEnt) or nil)
+		local eyepos, eyeang = rgm.EyePosAng(pl, plviewent)
 		local intersect = self:GetGrabPos(eyepos, eyeang)
 		local localized = self:WorldToLocal(intersect)
 		local distmin, distmax
