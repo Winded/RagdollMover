@@ -1054,12 +1054,7 @@ local function versionMatches(currentVersion, versionPath)
 end
 
 -- Show the changelog if the stored version on this computer is different from RGM_VERSION
-local function notifyOnStart(doVersionCheck)
-	if doVersionCheck and versionMatches(RGM_VERSION, VERSION_PATH) then return end
-
-	if doVersionCheck then
-		print("Ragdoll Mover may have recently updated. Read the change notes for more information.")
-	end
+local function showChangelog()
 	-- Notify the player of a new version
 	local changelog = vgui.Create("rgm_changelog")
 	local windowSizeRatio = midh * divide540
@@ -1072,12 +1067,15 @@ end
 
 -- When localplayer is valid, check if we should notify the user
 hook.Add("InitPostEntity", "RagdollMoverNotifyOnStart", function()
-	notifyOnStart(true)
+	if not versionMatches(RGM_VERSION, VERSION_PATH) then
+		chat.AddText("Ragdoll Mover may have recently updated. Read the patch notes under Utilities -> Ragdoll Mover for more information.")
+		print("\nRagdoll Mover may have recently updated. Read the patch notes under Utilities -> Ragdoll Mover for more information.\n")
+	end
 end)
 
 -- Allow the user to see the changelog from GMod
 concommand.Add("ragdollmover_changelog", function()
-	notifyOnStart(false)
+	showChangelog()
 end)
 
 function AdvBoneSelectRender(ent)
@@ -1310,5 +1308,14 @@ function DrawSkeleton(ent)
 	end
 
 end
+
+hook.Add("PopulateToolMenu", "RagdollMoverUtilities", function(form)
+	-- TODO: Translate "Ragdoll Mover", "Patch Notes", and "View Patch Notes"
+	spawnmenu.AddToolMenuOption("Utilities", "Ragdoll Mover", "RGM_PatchNotes", "Patch Notes", "", "", function(form)
+		form:SetName("Patch Notes")
+
+		form:Button("View Patch Notes", "ragdollmover_changelog")
+	end)
+end)
 
 end
