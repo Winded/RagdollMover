@@ -31,6 +31,7 @@ hook.Add("PlayerSpawn", "rgmSpawn", function(pl) --PlayerSpawn is a hook that ru
 		RAGDOLLMOVER[pl].Scale = false
 		RAGDOLLMOVER[pl].GizmoOffset = Vector(0, 0, 0)
 		RAGDOLLMOVER[pl].PropRagdoll = false
+		RAGDOLLMOVER[pl].PlViewEnt = 0
 	end
 end)
 
