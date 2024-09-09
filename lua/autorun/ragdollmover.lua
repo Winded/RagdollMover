@@ -15,11 +15,18 @@ RGMFontSize = math.Round(12 * ScrH()/1080)
 
 if RGMFontSize < 10 then RGMFontSize = 10 end
 
+surface.CreateFont("RagdollMoverChangelogTitleFont", {
+	font = "Roboto",
+	size = 3 * RGMFontSize,
+	weight = 300,
+	antialias = true,
+})
+
 surface.CreateFont("RagdollMoverChangelogFont", {
 	font = "Roboto",
-	size = 2 * RGMFontSize,
+	size = 1.5 * RGMFontSize,
 	weight = 300,
-	antialias = true
+	antialias = true,
 })
 
 surface.CreateFont("RagdollMoverFont", {
@@ -1051,6 +1058,7 @@ end)
 local VERSION_PATH = "rgm/version.txt"
 local RGM_VERSION = "3.0.0"
 
+-- TODO: Do further testing in multiplayer for cases where the server has a different version of RGM compared to the client
 local function versionMatches(currentVersion, versionPath)
 	if not file.Exists("rgm", "DATA") then
 		file.CreateDir("rgm")
@@ -1075,7 +1083,7 @@ local function showChangelog()
 	local x, y = 500 * windowSizeRatio, 500 * windowSizeRatio
 	changelog:SetSize(x, y)
 	changelog:SetPos(midw - x * 0.5, midh - y * 0.5)
-	changelog:DockPadding(0, 2 * padding, 0, 0)
+	changelog:DockPadding(2 * padding, 6 * padding, 2 * padding, 2 * padding)
 end
 
 -- When localplayer is valid, check if we should notify the user
