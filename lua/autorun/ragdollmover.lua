@@ -1089,12 +1089,13 @@ end
 -- When localplayer is valid, check if we should notify the user
 hook.Add("InitPostEntity", "RagdollMoverNotifyOnStart", function()
 	if not versionMatches(RGM_VERSION, VERSION_PATH) then
-		chat.AddText("Ragdoll Mover may have recently updated. Read the patch notes under Utilities -> Ragdoll Mover for more information.")
-		print("\nRagdoll Mover may have recently updated. Read the patch notes under Utilities -> Ragdoll Mover for more information.\n")
+		local notice = language.GetPhrase("ui.ragdollmover.notice")
+		chat.AddText(notice)
+		print("\n" .. notice .."\n")
 	end
 end)
 
--- Allow the user to see the changelog from GMod
+-- Allow the user to see the changelog from GMod workshop
 concommand.Add("ragdollmover_changelog", function()
 	showChangelog()
 end)
@@ -1371,11 +1372,11 @@ function DrawSkeleton(ent, bonenodes)
 end
 
 hook.Add("PopulateToolMenu", "RagdollMoverUtilities", function(form)
-	-- TODO: Translate "Ragdoll Mover", "Patch Notes", and "View Patch Notes"
-	spawnmenu.AddToolMenuOption("Utilities", "Ragdoll Mover", "RGM_PatchNotes", "Patch Notes", "", "", function(form)
-		form:SetName("Patch Notes")
+	spawnmenu.AddToolMenuOption("Utilities", "Ragdoll Mover", "RGM_PatchNotes", "#ui.ragdollmover.notes", "", "", function(form)
+		---@cast form DForm
 
-		form:Button("View Patch Notes", "ragdollmover_changelog")
+		form:SetLabel("#ui.ragdollmover.notes")
+		form:Button("#ui.ragdollmover.notes.view", "ragdollmover_changelog")
 	end)
 end)
 

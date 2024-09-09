@@ -1,22 +1,34 @@
 -- Inherits DFrame to provide a minimal changelog interface
+
+---@class RGMChangelog: DFrame
+---@field btnClose DButton
+---@field lblTitle DLabel
+---@field btnMaxim DButton
+---@field btnMinim DButton
+---@field m_bBackgroundBlur boolean
+---@field m_fCreateTime number
+---@field changelogText RichText
 local PANEL = {}
 
-local changelogURL = "https://steamcommunity.com/sharedfiles/filedetails/changelog/104575630"
-local changelogId = "RGMChangelog"
+local CHANGELOG_URL = "https://steamcommunity.com/sharedfiles/filedetails/changelog/104575630"
+local CHANGELOG_ID = "RGMChangelog"
 
 local COLOR_WHITE = Color(255, 255, 255, 255)
 local COLOR_BG = Color(16, 19, 27, 255)
 local COLOR_FG = Color(23, 26, 33, 255)
 
-local titleBarSize = 40
-local discussFilter = "Discuss this update in the"
+local TITLE_BAR_SIZE = 40
 
-local generatedChangelog
+-- TODO: Add support for different langauges
+local DISCUSS_FILTER = "Discuss this update in the"
 
 local conversions = {
     ["&quot;"] = '"'
 }
 
+local generatedChangelog
+
+-- TODO: Add support for different languages
 ---Obtain formatted change notes from html
 ---@param htmlBody string
 ---@return string
@@ -28,7 +40,7 @@ local function parseHTMLForChangelog(htmlBody)
     local endPosition = string.find(htmlBody, 'style="clear: both;"', startPosition, true)
 
     if not startPosition and not endPosition then
-        return "Failed to scrape HTML for change notes"
+        return "#ui.ragdollmover.notes.error2"
     end
 
     ---@cast startPosition integer
@@ -40,7 +52,7 @@ local function parseHTMLForChangelog(htmlBody)
     for i = 2, #changelogBounds - 1 do
         -- Trim trailing lines and remove html tags
         local line = changelogBounds[i]:Trim():gsub("%b<>", "")
-        if string.find(line, discussFilter, 1, true) then
+        if string.find(line, DISCUSS_FILTER, 1, true) then
             continue
         end
 
@@ -57,7 +69,7 @@ end
 
 function PANEL:Init()
     self:MakePopup()
-    self:SetTitle("Ragdoll Mover Changelog")
+    self:SetTitle("#tool.ragdollmover.name")
     self:SetBackgroundBlur(true)
 
     self.btnClose.Paint = function( panel, w, h ) end
@@ -65,26 +77,30 @@ function PANEL:Init()
     self.changelogText = vgui.Create("RichText", self)
     self.changelogText:Dock(FILL)
     self.changelogText:InsertColorChange(COLOR_WHITE:Unpack())
-    self.changelogText:InsertClickableTextStart(changelogId)
-    self.changelogText:AppendText("Full Changelog\n\n")
+    self.changelogText:InsertClickableTextStart(CHANGELOG_ID)
+    self.changelogText:AppendText(language.GetPhrase("#ui.ragdollmover.notes.link"))
     self.changelogText:InsertClickableTextEnd()
+    self.changelogText:AppendText("\n\n")
     
     -- Fetch the changelog once on panel initialization
     if generatedChangelog and type(generatedChangelog) == "string" then
         self.changelogText:AppendText(generatedChangelog)
     else
-        http.Fetch(changelogURL, function(body, _, _, _)
+        http.Fetch(CHANGELOG_URL, function(body, _, _, _)
             generatedChangelog = parseHTMLForChangelog(body)
             self.changelogText:AppendText(generatedChangelog)
+            self.changelogText:GotoTextStart()
         end, function(err) 
-            self.changelogText:AppendText("Failed to fetch changelog\n\n")
+            self.changelogText:AppendText(language.GetPhrase("#ui.ragdollmover.notes.error1\n\n"))
             self.changelogText:AppendText(err)
-        end)    
+        end)
     end
 
+    self.changelogText:GotoTextStart()
+
     function self.changelogText:OnTextClicked(id)
-        if id == changelogId then
-            gui.OpenURL(changelogURL)
+        if id == CHANGELOG_ID then
+            gui.OpenURL(CHANGELOG_URL)
         end
     end
 end
@@ -96,7 +112,7 @@ function PANEL:Paint( w, h )
     end
 
     -- Draw title bar
-    draw.RoundedBox(8, 0, titleBarSize, self:GetWide(), self:GetTall() - titleBarSize, COLOR_FG)
+    draw.RoundedBox(8, 0, TITLE_BAR_SIZE, self:GetWide(), self:GetTall() - TITLE_BAR_SIZE, COLOR_FG)
 
     -- Draw frame
     draw.RoundedBox(8, 0, 0, self:GetWide(), 80, COLOR_BG)
@@ -110,7 +126,7 @@ function PANEL:PerformLayout()
     self.btnClose:SetTextColor(COLOR_WHITE)
     self.btnClose:SetFontInternal("RagdollMoverChangelogTitleFont")
 
-    self.lblTitle:SetPos( self:GetWide() / 8, 20 )
+    self.lblTitle:SetPos( self:GetWide() / 4, 20 )
     self.lblTitle:SetSize( self:GetWide(), 40 )
     self.lblTitle:SetFontInternal("RagdollMoverChangelogTitleFont")
 
