@@ -1089,9 +1089,12 @@ end
 -- When localplayer is valid, check if we should notify the user
 hook.Add("InitPostEntity", "RagdollMoverNotifyOnStart", function()
 	if not versionMatches(RGM_VERSION, VERSION_PATH) then
-		local notice = language.GetPhrase("ui.ragdollmover.notice")
-		chat.AddText(notice)
-		print("\n" .. notice .."\n")
+		local notice1 = language.GetPhrase("ui.ragdollmover.notice1")
+		local notice2 = language.GetPhrase("ui.ragdollmover.notice2")
+		chat.AddText(notice1)
+		chat.AddText(notice2)
+		print("\n" .. notice1 .."\n")
+		print(notice2 .."\n")
 	end
 end)
 
