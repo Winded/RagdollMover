@@ -15,6 +15,20 @@ RGMFontSize = math.Round(12 * ScrH()/1080)
 
 if RGMFontSize < 10 then RGMFontSize = 10 end
 
+surface.CreateFont("RagdollMoverChangelogTitleFont", {
+	font = "Roboto",
+	size = 3 * RGMFontSize,
+	weight = 300,
+	antialias = true,
+})
+
+surface.CreateFont("RagdollMoverChangelogFont", {
+	font = "Roboto",
+	size = 1.5 * RGMFontSize,
+	weight = 300,
+	antialias = true,
+})
+
 surface.CreateFont("RagdollMoverFont", {
 	font = "Verdana",
 	size = RGMFontSize,
@@ -1041,6 +1055,54 @@ hook.Add("OnScreenSizeChanged", "RagdollMoverHUDUpdate", function(_, _, newWidth
 	midw, midh = newWidth/2, newHeight/2
 end)
 
+local VERSION_PATH = "rgm/version.txt"
+local RGM_VERSION = "3.0.0"
+
+-- TODO: Do further testing in multiplayer for cases where the server has a different version of RGM compared to the client
+local function versionMatches(currentVersion, versionPath)
+	if not file.Exists("rgm", "DATA") then
+		file.CreateDir("rgm")
+	end
+
+	local readVersion = file.Read(versionPath)
+	local matches = readVersion and readVersion == currentVersion
+	if matches then
+		return true
+	else
+		file.Write(versionPath, currentVersion)
+		return false
+	end
+end
+
+-- Show the changelog if the stored version on this computer is different from RGM_VERSION
+local function showChangelog()
+	-- Notify the player of a new version
+	local changelog = vgui.Create("rgm_changelog")
+	local windowSizeRatio = midh * divide540
+	local padding = 20 * windowSizeRatio
+	local x, y = 500 * windowSizeRatio, 500 * windowSizeRatio
+	changelog:SetSize(x, y)
+	changelog:SetPos(midw - x * 0.5, midh - y * 0.5)
+	changelog:DockPadding(2 * padding, 6 * padding, 2 * padding, 2 * padding)
+end
+
+-- When localplayer is valid, check if we should notify the user
+hook.Add("InitPostEntity", "RagdollMoverNotifyOnStart", function()
+	if not versionMatches(RGM_VERSION, VERSION_PATH) then
+		local notice1 = language.GetPhrase("ui.ragdollmover.notice1")
+		local notice2 = language.GetPhrase("ui.ragdollmover.notice2")
+		chat.AddText(notice1)
+		chat.AddText(notice2)
+		print("\n" .. notice1 .."\n")
+		print(notice2 .."\n")
+	end
+end)
+
+-- Allow the user to see the changelog from GMod workshop
+concommand.Add("ragdollmover_changelog", function()
+	showChangelog()
+end)
+
 function AdvBoneSelectRender(ent, bonenodes)
 	local mx, my = input.GetCursorPos() -- possible bug on mac https://wiki.facepunch.com/gmod/input.GetCursorPos
 	local nodesExist = bonenodes and bonenodes[ent] and true
@@ -1311,5 +1373,14 @@ function DrawSkeleton(ent, bonenodes)
 	end
 
 end
+
+hook.Add("PopulateToolMenu", "RagdollMoverUtilities", function(form)
+	spawnmenu.AddToolMenuOption("Utilities", "Ragdoll Mover", "RGM_PatchNotes", "#ui.ragdollmover.notes", "", "", function(form)
+		---@cast form DForm
+
+		form:SetLabel("#ui.ragdollmover.notes")
+		form:Button("#ui.ragdollmover.notes.view", "ragdollmover_changelog")
+	end)
+end)
 
 end
