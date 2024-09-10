@@ -2480,25 +2480,6 @@ hook.Add("InitPostEntity", "rgmSetPlayer", function()
 	RAGDOLLMOVER[pl].PlViewEnt = 0
 end)
 
-hook.Add("KeyPress", "rgmSwitchSelectionMode", function(pl, key)
-	local tool = pl:GetTool()
-	if RAGDOLLMOVER[pl] and IsValid(pl:GetActiveWeapon()) and  pl:GetActiveWeapon():GetClass() == "gmod_tool" and tool and tool.Mode == "ragdollmover" then
-		local op = tool:GetOperation()
-		local opset = 0
-
-		if key == IN_WALK then
-			if op ~= 2 and IsValid(RAGDOLLMOVER[pl].Entity) then opset = 2 end
-
-			net.Start("RAGDOLLMOVER")
-				net.WriteUInt(14, 5)
-				net.WriteUInt(opset, 2)
-			net.SendToServer()
-
-			if tool:GetStage() == 1 then gui.EnableScreenClicker(false) end
-		end
-	end
-end)
-
 local GizmoWidth, SkeletonDraw
 
 do
@@ -3319,6 +3300,13 @@ local function SetBoneNodes(bonepanel, sortedbones)
 
 					LockMode = false
 					LockTo = { id = nil, ent = nil }
+
+					net.Start("RAGDOLLMOVER")
+						net.WriteUInt(14, 5)
+						net.WriteUInt(0, 2)
+					net.SendToServer()
+
+					gui.EnableScreenClicker(false)
 				end
 
 			end
@@ -3481,8 +3469,16 @@ local function SetBoneNodes(bonepanel, sortedbones)
 						if not IsValid(ent) then return end
 
 						if LockMode == 1 then
-							nodes[LockTo.ent][LockTo.id]:SetIcon(BoneTypeSort[nodes[LockTo.ent][LockTo.id].Type].Icon)
-							nodes[LockTo.ent][LockTo.id].Label:SetToolTip(BoneTypeSort[nodes[LockTo.ent][LockTo.id].Type].ToolTip)
+							if nodes[LockTo.ent][LockTo.id].poslock or nodes[LockTo.ent][LockTo.id].anglock then
+								nodes[LockTo.ent][LockTo.id]:SetIcon("icon16/lock.png")
+								nodes[LockTo.ent][LockTo.id].Label:SetToolTip("#tool.ragdollmover.lockedbone")
+							elseif nodes[LockTo.ent][LockTo.id].scllock then
+								nodes[LockTo.ent][LockTo.id]:SetIcon("icon16/lightbulb.png")
+								nodes[LockTo.ent][LockTo.id].Label:SetToolTip("#tool.ragdollmover.lockedscale")
+							else
+								nodes[LockTo.ent][LockTo.id]:SetIcon(BoneTypeSort[nodes[LockTo.ent][LockTo.id].Type].Icon)
+								nodes[LockTo.ent][LockTo.id].Label:SetToolTip(BoneTypeSort[nodes[LockTo.ent][LockTo.id].Type].ToolTip)
+							end
 						elseif LockMode == 2 then
 							conentnodes[LockTo.id]:SetIcon("icon16/brick_link.png")
 							conentnodes[LockTo.id].Label:SetToolTip(false)
@@ -3494,6 +3490,13 @@ local function SetBoneNodes(bonepanel, sortedbones)
 						surface.PlaySound("buttons/button9.wav")
 						nodes[ent][v.id]:SetIcon("icon16/brick_add.png")
 						nodes[ent][v.id].Label:SetToolTip("#tool.ragdollmover.bonetolock")
+
+						net.Start("RAGDOLLMOVER")
+							net.WriteUInt(14, 5)
+							net.WriteUInt(2, 2)
+						net.SendToServer()
+
+						gui.EnableScreenClicker(false)
 					end)
 					option:SetIcon("icon16/lock.png")
 
@@ -3857,8 +3860,16 @@ local function RGMBuildConstrainedEnts(parent, children, entpanel)
 				else
 
 					if LockMode == 1 then
-						nodes[LockTo.ent][LockTo.id]:SetIcon(BoneTypeSort[nodes[LockTo.ent][LockTo.id].Type].Icon)
-						nodes[LockTo.ent][LockTo.id].Label:SetToolTip(BoneTypeSort[nodes[LockTo.ent][LockTo.id].Type].ToolTip)
+						if nodes[LockTo.ent][LockTo.id].poslock or nodes[LockTo.ent][LockTo.id].anglock then
+							nodes[LockTo.ent][LockTo.id]:SetIcon("icon16/lock.png")
+							nodes[LockTo.ent][LockTo.id].Label:SetToolTip("#tool.ragdollmover.lockedbone")
+						elseif nodes[LockTo.ent][LockTo.id].scllock then
+							nodes[LockTo.ent][LockTo.id]:SetIcon("icon16/lightbulb.png")
+							nodes[LockTo.ent][LockTo.id].Label:SetToolTip("#tool.ragdollmover.lockedscale")
+						else
+							nodes[LockTo.ent][LockTo.id]:SetIcon(BoneTypeSort[nodes[LockTo.ent][LockTo.id].Type].Icon)
+							nodes[LockTo.ent][LockTo.id].Label:SetToolTip(BoneTypeSort[nodes[LockTo.ent][LockTo.id].Type].ToolTip)
+						end
 					elseif LockMode == 2 then
 						conentnodes[LockTo.id]:SetIcon("icon16/brick_link.png")
 						conentnodes[LockTo.id].Label:SetToolTip(false)
@@ -3870,6 +3881,13 @@ local function RGMBuildConstrainedEnts(parent, children, entpanel)
 					surface.PlaySound("buttons/button9.wav")
 					conentnodes[ent]:SetIcon("icon16/brick_edit.png")
 					conentnodes[ent].Label:SetToolTip("#tool.ragdollmover.entlock")
+
+					net.Start("RAGDOLLMOVER")
+						net.WriteUInt(14, 5)
+						net.WriteUInt(2, 2)
+					net.SendToServer()
+
+					gui.EnableScreenClicker(false)
 				end
 			end
 		end
@@ -4459,11 +4477,48 @@ function TOOL:Think()
 					local selbones = rgm.AdvBoneSelectPick(ent, nodes)
 					if next(selbones) then
 						if #selbones == 1 then
-							net.Start("RAGDOLLMOVER")
-								net.WriteUInt(4, 5)
-								net.WriteEntity(ent)
-								net.WriteUInt(selbones[1], 10)
-							net.SendToServer()
+							if LockMode == false then
+								net.Start("RAGDOLLMOVER")
+									net.WriteUInt(4, 5)
+									net.WriteEntity(ent)
+									net.WriteUInt(selbones[1], 10)
+								net.SendToServer()
+							else
+								if LockMode == 1 then
+									net.Start("RAGDOLLMOVER")
+										net.WriteUInt(7, 5)
+										net.WriteEntity(ent)
+										net.WriteUInt(selbones[1], 10)
+										net.WriteEntity(LockTo.ent)
+										net.WriteUInt(LockTo.id, 10)
+									net.SendToServer()
+
+									if nodes[LockTo.ent][LockTo.id].poslock or nodes[LockTo.ent][LockTo.id].anglock then
+										nodes[LockTo.ent][LockTo.id]:SetIcon("icon16/lock.png")
+										nodes[LockTo.ent][LockTo.id].Label:SetToolTip("#tool.ragdollmover.lockedbone")
+									elseif nodes[LockTo.ent][LockTo.id].scllock then
+										nodes[LockTo.ent][LockTo.id]:SetIcon("icon16/lightbulb.png")
+										nodes[LockTo.ent][LockTo.id].Label:SetToolTip("#tool.ragdollmover.lockedscale")
+									else
+										nodes[LockTo.ent][LockTo.id]:SetIcon(BoneTypeSort[nodes[LockTo.ent][LockTo.id].Type].Icon)
+										nodes[LockTo.ent][LockTo.id].Label:SetToolTip(BoneTypeSort[nodes[LockTo.ent][LockTo.id].Type].ToolTip)
+									end
+								elseif LockMode == 2 then
+									net.Start("RAGDOLLMOVER")
+										net.WriteUInt(9, 5)
+										net.WriteEntity(ent)
+										net.WriteEntity(LockTo.id)
+										net.WriteBool(true)
+										net.WriteUInt(selbones[1], 8)
+									net.SendToServer()
+
+									conentnodes[LockTo.id]:SetIcon("icon16/brick_link.png")
+									conentnodes[LockTo.id].Label:SetToolTip(false)
+								end
+
+								LockMode = false
+								LockTo = { id = nil, ent = nil }
+							end
 
 							timer.Simple(0.1, function()
 								net.Start("RAGDOLLMOVER")
@@ -4483,11 +4538,48 @@ function TOOL:Think()
 						end
 					end
 				else
-					net.Start("RAGDOLLMOVER")
-						net.WriteUInt(4, 5)
-						net.WriteEntity(ent)
-						net.WriteUInt(rgm.AdvBoneSelectRadialPick(), 10)
-					net.SendToServer()
+					if LockMode == false then
+						net.Start("RAGDOLLMOVER")
+							net.WriteUInt(4, 5)
+							net.WriteEntity(ent)
+							net.WriteUInt(rgm.AdvBoneSelectRadialPick(), 10)
+						net.SendToServer()
+					else
+						if LockMode == 1 then
+							net.Start("RAGDOLLMOVER")
+								net.WriteUInt(7, 5)
+								net.WriteEntity(ent)
+								net.WriteUInt(rgm.AdvBoneSelectRadialPick(), 10)
+								net.WriteEntity(LockTo.ent)
+								net.WriteUInt(LockTo.id, 10)
+							net.SendToServer()
+
+							if nodes[LockTo.ent][LockTo.id].poslock or nodes[LockTo.ent][LockTo.id].anglock then
+								nodes[LockTo.ent][LockTo.id]:SetIcon("icon16/lock.png")
+								nodes[LockTo.ent][LockTo.id].Label:SetToolTip("#tool.ragdollmover.lockedbone")
+							elseif nodes[LockTo.ent][LockTo.id].scllock then
+								nodes[LockTo.ent][LockTo.id]:SetIcon("icon16/lightbulb.png")
+								nodes[LockTo.ent][LockTo.id].Label:SetToolTip("#tool.ragdollmover.lockedscale")
+							else
+								nodes[LockTo.ent][LockTo.id]:SetIcon(BoneTypeSort[nodes[LockTo.ent][LockTo.id].Type].Icon)
+								nodes[LockTo.ent][LockTo.id].Label:SetToolTip(BoneTypeSort[nodes[LockTo.ent][LockTo.id].Type].ToolTip)
+							end
+						elseif LockMode == 2 then
+							net.Start("RAGDOLLMOVER")
+								net.WriteUInt(9, 5)
+								net.WriteEntity(ent)
+								net.WriteEntity(LockTo.id)
+								net.WriteBool(true)
+								net.WriteUInt(rgm.AdvBoneSelectRadialPick(), 8)
+							net.SendToServer()
+
+							conentnodes[LockTo.id]:SetIcon("icon16/brick_link.png")
+							conentnodes[LockTo.id].Label:SetToolTip(false)
+						end
+
+						LockMode = false
+						LockTo = { id = nil, ent = nil }
+					end
 
 					timer.Simple(0.1, function()
 						net.Start("RAGDOLLMOVER")
@@ -4504,6 +4596,46 @@ function TOOL:Think()
 	end
 
 end
+
+hook.Add("KeyPress", "rgmSwitchSelectionMode", function(pl, key)
+	local tool = pl:GetTool()
+	if RAGDOLLMOVER[pl] and IsValid(pl:GetActiveWeapon()) and  pl:GetActiveWeapon():GetClass() == "gmod_tool" and tool and tool.Mode == "ragdollmover" then
+		local op = tool:GetOperation()
+		local opset = 0
+
+		if key == IN_WALK then
+			if op ~= 2 and IsValid(RAGDOLLMOVER[pl].Entity) then opset = 2 end
+
+			net.Start("RAGDOLLMOVER")
+				net.WriteUInt(14, 5)
+				net.WriteUInt(opset, 2)
+			net.SendToServer()
+
+			if LockMode ~= false then
+				if LockMode == 1 then
+					if nodes[LockTo.ent][LockTo.id].poslock or nodes[LockTo.ent][LockTo.id].anglock then
+							nodes[LockTo.ent][LockTo.id]:SetIcon("icon16/lock.png")
+							nodes[LockTo.ent][LockTo.id].Label:SetToolTip("#tool.ragdollmover.lockedbone")
+						elseif nodes[LockTo.ent][LockTo.id].scllock then
+							nodes[LockTo.ent][LockTo.id]:SetIcon("icon16/lightbulb.png")
+							nodes[LockTo.ent][LockTo.id].Label:SetToolTip("#tool.ragdollmover.lockedscale")
+						else
+							nodes[LockTo.ent][LockTo.id]:SetIcon(BoneTypeSort[nodes[LockTo.ent][LockTo.id].Type].Icon)
+							nodes[LockTo.ent][LockTo.id].Label:SetToolTip(BoneTypeSort[nodes[LockTo.ent][LockTo.id].Type].ToolTip)
+						end
+				elseif LockMode == 2 then
+					conentnodes[LockTo.id]:SetIcon("icon16/brick_link.png")
+					conentnodes[LockTo.id].Label:SetToolTip(false)
+				end
+
+				LockMode = false
+				LockTo = { id = nil, ent = nil }
+			end
+
+			if tool:GetStage() == 1 then gui.EnableScreenClicker(false) end
+		end
+	end
+end)
 
 function TOOL:DrawHUD()
 
@@ -4565,14 +4697,16 @@ function TOOL:DrawHUD()
 		else
 			rgm.AdvBoneSelectRadialRender(ent, plTable.SelectedBones, nodes)
 		end
-	elseif IsValid(HoveredEntBone) and EntityFilter(HoveredEntBone, self) and HoveredBone then
+	elseif IsValid(tr.Entity) and EntityFilter(tr.Entity, self) and (not bone or aimedbone ~= bone or tr.Entity ~= ent) and not moving then
+		rgm.DrawBoneConnections(tr.Entity, aimedbone)
+		rgm.DrawBoneName(tr.Entity, aimedbone)
+	end
+
+	if IsValid(HoveredEntBone) and EntityFilter(HoveredEntBone, self) and HoveredBone then
 		rgm.DrawBoneConnections(HoveredEntBone, HoveredBone)
 		rgm.DrawBoneName(HoveredEntBone, HoveredBone)
 	elseif IsValid(HoveredEnt) and EntityFilter(HoveredEnt, self) then
 		rgm.DrawEntName(HoveredEnt)
-	elseif IsValid(tr.Entity) and EntityFilter(tr.Entity, self) and (not bone or aimedbone ~= bone or tr.Entity ~= ent) and not moving then
-		rgm.DrawBoneConnections(tr.Entity, aimedbone)
-		rgm.DrawBoneName(tr.Entity, aimedbone)
 	end
 
 end
