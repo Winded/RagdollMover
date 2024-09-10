@@ -3,6 +3,7 @@ RGMGIZMOS = {}
 local VECTOR_FRONT = RGM_Constants.VECTOR_FRONT
 local VECTOR_SIDE = RGM_Constants.VECTOR_LEFT
 local COLOR_BRIGHT_YELLOW = RGM_Constants.COLOR_BRIGHT_YELLOW
+local COLOR_BRIGHT_YELLOW2 = ColorAlpha(COLOR_BRIGHT_YELLOW, 100)
 
 ----------------
 -- BASE GIZMO --
@@ -1003,6 +1004,58 @@ do
 
 end
 
+-------------------
+-- ROTATION BALL --
+-------------------
+local ball = table.Copy(basepart)
+
+do
+	function ball:TestCollision(pl, scale)
+		local plTable = RAGDOLLMOVER[pl]
+		local plviewent = plTable.always_use_pl_view == 1 and pl or (plTable.PlViewEnt ~= 0 and Entity(plTable.PlViewEnt) or nil)
+		local eyepos, eyeang = rgm.EyePosAng(pl, plviewent)
+		local intersect = self:GetGrabPos(eyepos, eyeang, self:GetPos(), -eyeang:Forward())
+		local distmin = 0
+		local distmax = scale
+		local dist = intersect:Distance(self:GetPos())
+		if dist >= distmin and dist <= distmax then
+			return {axis = self, hitpos = intersect}
+		end
+		return false
+	end
+
+	if SERVER then
+		function ball:ProcessMovement(_, offang, eyepos, eyeang, ent, bone, ppos, pnorm, movetype, snapamount, startangle, _, nphysangle)
+			local intersect = self:GetGrabPos(eyepos, eyeang, ppos, pnorm)
+			local localized = self:WorldToLocal(intersect)
+			local _p, _a
+			local axis = self.Parent
+			local pl = axis.Owner
+			local plTable = RAGDOLLMOVER[pl]
+			local offset = plTable.GizmoOffset
+
+			print(startangle)
+			print(localized)
+
+			_p, _a = self:GetPos(), angle_zero
+
+			return _p, _a
+		end
+	end
+
+	if CLIENT then
+		function ball:DrawLines(yellow, scale)
+			local color = self:GetColor()
+			color = Color(color[1], color[2], color[3], color[4])
+			if yellow then
+				color = COLOR_BRIGHT_YELLOW2
+			end
+
+			render.DrawSphere(self:GetPos(), scale, 50, 50, color)
+		end
+	end
+end
+
 
 -----------------
 -- SCALE ARROW --
@@ -1154,6 +1207,16 @@ do
 
 end
 
+local GIZMO_TYPES = {
+	omnipos, -- POS OMNI [0]
+	posarrow, -- POS ARROW [1]
+	posside, -- POS SIDE [2]
+	disc, -- ROT DISC [3]
+	disclarge, -- ROT DISC BIG [4]
+	ball, -- ROT BALL [5]
+	scalearrow, -- SCALE ARROW [6]
+	scaleside, -- SCALE SIDE [7]
+}
 
 ---------------
 -- FUNCTIONS --
@@ -1162,22 +1225,7 @@ RGMGIZMOS.CreateGizmo = function(gizmotype, id, parent, color, offset, color2)
 	local gizmo
 	if not offset then offset = Angle(0, 0, 0) end
 
-	if gizmotype == 0 then -- POS OMNI
-		gizmo = table.Copy(omnipos)
-	elseif gizmotype == 1 then -- POS ARROW
-		gizmo = table.Copy(posarrow)
-	elseif gizmotype == 2 then -- POS SIDE
-		gizmo = table.Copy(posside)
-	elseif gizmotype == 3 then -- ROT DISC
-		gizmo = table.Copy(disc)
-	elseif gizmotype == 4 then -- ROT DISC BIG
-		gizmo = table.Copy(disclarge)
-	elseif gizmotype == 5 then -- SCALE ARROW
-		gizmo = table.Copy(scalearrow)
-	elseif gizmotype == 6 then -- SCALE SIDE
-		gizmo = table.Copy(scaleside)
-	end
-
+	gizmo = table.Copy(GIZMO_TYPES[gizmotype+1])
 	gizmo.id = id
 	gizmo.Parent = parent
 	gizmo.AngOffset = offset
@@ -1195,6 +1243,7 @@ RGMGIZMOS.GizmoTable = {
 	"ArrowX", "ArrowY", "ArrowZ",
 	"ArrowXY", "ArrowXZ", "ArrowYZ",
 	"DiscP", "DiscY", "DiscR", "DiscLarge",
+	"Ball",
 	"ScaleX", "ScaleY", "ScaleZ",
-	"ScaleXY", "ScaleXZ", "ScaleYZ"
+	"ScaleXY", "ScaleXZ", "ScaleYZ",
 }

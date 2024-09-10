@@ -4430,7 +4430,7 @@ end)
 local material = CreateMaterial("rgmGizmoMaterial", "UnlitGeneric", {
 	["$basetexture"] = 	"color/white",
   	["$model"] = 		1,
- 	["$alphatest"] = 	1,
+ 	["$translucent"] = 	1,
  	["$vertexalpha"] = 	1,
  	["$vertexcolor"] = 	1,
  	["$ignorez"] = 		1,

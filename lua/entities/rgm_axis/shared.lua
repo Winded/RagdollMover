@@ -11,6 +11,7 @@ function ENT:Initialize()
 	self:SetCollisionBounds(Vector(-0.1, -0.1, -0.1), Vector(0.1, 0.1, 0.1))
 	self:SetSolid(SOLID_VPHYSICS)
 	self:SetNotSolid(true)
+	self:SetRenderMode(RENDERMODE_TRANSCOLOR)
 
 	self.ArrowOmni = RGMGIZMOS.CreateGizmo(0, 1, self, Color(255, 165, 0, 255), Vector(1, 0, 0):Angle())
 
@@ -32,16 +33,18 @@ function ENT:Initialize()
 	self.DiscLarge = RGMGIZMOS.CreateGizmo(4, 11, self, Color(175, 175, 175, 255), Vector(1, 0, 0):Angle())
 	self.DiscLarge.axistype = 4
 
-	self.ScaleX = RGMGIZMOS.CreateGizmo(5, 12, self, Color(255, 0, 0, 255), Vector(1, 0, 0):Angle())
+	self.Ball = RGMGIZMOS.CreateGizmo(5, 12, self, Color(175, 175, 175, 75), Vector(0, 0, 0):Angle())
+
+	self.ScaleX = RGMGIZMOS.CreateGizmo(6, 13, self, Color(255, 0, 0, 255), Vector(1, 0, 0):Angle())
 	self.ScaleX.axistype = 1
-	self.ScaleY = RGMGIZMOS.CreateGizmo(5, 13, self, Color(0, 255, 0, 255), Vector(0, 1, 0):Angle())
+	self.ScaleY = RGMGIZMOS.CreateGizmo(6, 14, self, Color(0, 255, 0, 255), Vector(0, 1, 0):Angle())
 	self.ScaleY.axistype = 2
-	self.ScaleZ = RGMGIZMOS.CreateGizmo(5, 14, self, Color(0, 0, 255, 255), Vector(0, 0, 1):Angle())
+	self.ScaleZ = RGMGIZMOS.CreateGizmo(6, 15, self, Color(0, 0, 255, 255), Vector(0, 0, 1):Angle())
 	self.ScaleZ.axistype = 3
 
-	self.ScaleXY = RGMGIZMOS.CreateGizmo(6, 15, self, Color(0, 255, 0, 255), Vector(0, 0, -1):Angle(), Color(255, 0, 0, 255))
-	self.ScaleXZ = RGMGIZMOS.CreateGizmo(6, 16, self, Color(255, 0, 0, 255), Vector(0, -1, 0):Angle(), Color(0, 0, 255, 255))
-	self.ScaleYZ = RGMGIZMOS.CreateGizmo(6, 17, self, Color(0, 255, 0, 255), Vector(1, 0, 0):Angle(), Color(0, 0, 255, 255))
+	self.ScaleXY = RGMGIZMOS.CreateGizmo(7, 16, self, Color(0, 255, 0, 255), Vector(0, 0, -1):Angle(), Color(255, 0, 0, 255))
+	self.ScaleXZ = RGMGIZMOS.CreateGizmo(7, 17, self, Color(255, 0, 0, 255), Vector(0, -1, 0):Angle(), Color(0, 0, 255, 255))
+	self.ScaleYZ = RGMGIZMOS.CreateGizmo(7, 18, self, Color(0, 255, 0, 255), Vector(1, 0, 0):Angle(), Color(0, 0, 255, 255))
 
 	self.Axises = {
 		self.ArrowOmni,
@@ -55,12 +58,13 @@ function ENT:Initialize()
 		self.DiscY,
 		self.DiscR,
 		self.DiscLarge,
+		self.Ball,
 		self.ScaleX,
 		self.ScaleY,
 		self.ScaleZ,
 		self.ScaleXY,
 		self.ScaleXZ,
-		self.ScaleYZ
+		self.ScaleYZ,
 	}
 
 	self.scale = 0
@@ -73,8 +77,8 @@ function ENT:TestCollision(pl, scale)
 	local modescale = RAGDOLLMOVER[pl].Scale or false
 	local start, last = 1, 7
 
-	if rotate then start, last = 8, 11 end
-	if modescale then start, last = 12, 17 end
+	if rotate then start, last = 8, 12 end
+	if modescale then start, last = 13, 18 end
 
 	if not self.Axises then return false end
 	for i = start, last do

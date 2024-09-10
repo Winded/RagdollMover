@@ -18,8 +18,8 @@ function ENT:DrawLines(scale, width)
 	local rotate = RAGDOLLMOVER[pl].Rotate or false
 	local modescale = RAGDOLLMOVER[pl].Scale or false
 	local start, last = 1, 7
-	if rotate then start, last = 8, 11 end
-	if modescale then start, last = 12, 17 end
+	if rotate then start, last = 8, 12 end
+	if modescale then start, last = 13, 18 end
 	-- print(self.Axises)
 
 	local gotselected = false
