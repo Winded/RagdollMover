@@ -3,7 +3,7 @@ TOOL.Category = "Poser"
 TOOL.Command = nil
 TOOL.ConfigName = ""
 
-CVMaxPRBones = CreateConVar("sv_ragdollmover_max_prop_ragdoll_bones", 32, FCVAR_ARCHIVE + FCVAR_NOTIFY, "Maximum amount of bones that can be used in single Prop Ragdoll", 0, 4096)
+CVMaxPRBones = CreateConVar("sv_ragdollmover_max_prop_ragdoll_bones", 32, FCVAR_ARCHIVE + FCVAR_NOTIFY + FCVAR_REPLICATED, "Maximum amount of bones that can be used in single Prop Ragdoll", 0, 4096)
 
 local APPLIED = 2
 local APPLY_FAILED = 3
