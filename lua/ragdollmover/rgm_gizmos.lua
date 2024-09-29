@@ -80,7 +80,10 @@ do
 	end
 
 	--To be overwritten
-	function basepart:TestCollision(pl, scale)
+	function basepart:TestCollision(pl)
+	end
+
+	function basepart:CalculateGizmo(scale)
 	end
 
 	if SERVER then
@@ -150,7 +153,7 @@ do
 		return intersect
 	end
 
-	function posarrow:TestCollision(pl, scale)
+	function posarrow:TestCollision(pl)
 		local plTable = RAGDOLLMOVER[pl]
 		local plviewent = plTable.always_use_pl_view == 1 and pl or (plTable.PlViewEnt ~= 0 and Entity(plTable.PlViewEnt) or nil)
 		local eyepos, eyeang = rgm.EyePosAng(pl, plviewent)
@@ -158,15 +161,8 @@ do
 		local localized = self:WorldToLocal(intersect)
 		local distmin, distmax
 
-		if self.Parent.scale ~= scale or not self.collpositions then
-			distmin	= Vector(0.1 * scale, -0.075 * scale, -0.075 * scale)
-			distmax = Vector(1 * scale, 0.075 * scale, 0.075 * scale)
-
-			self.collpositions = {distmin, distmax}
-		else
-			distmin = self.collpositions[1]
-			distmax = self.collpositions[2]
-		end
+		distmin = self.collpositions[1]
+		distmax = self.collpositions[2]
 
 		if localized.x >= distmin.x and localized.x <= distmax.x
 		and localized.y >= distmin.y and localized.y <= distmax.y
@@ -174,6 +170,15 @@ do
 			return {axis = self, hitpos = intersect}
 		end
 		return false
+	end
+
+	function posarrow:CalculateGizmo(scale)
+		local distmin, distmax
+
+		distmin	= Vector(0.1 * scale, -0.075 * scale, -0.075 * scale)
+		distmax = Vector(1 * scale, 0.075 * scale, 0.075 * scale)
+
+		self.collpositions = {distmin, distmax}
 	end
 
 	if SERVER then
@@ -302,7 +307,7 @@ local posside = table.Copy(basepart)
 
 do
 
-	function posside:TestCollision(pl, scale)
+	function posside:TestCollision(pl)
 		local plTable = RAGDOLLMOVER[pl]
 		local plviewent = plTable.always_use_pl_view == 1 and pl or (plTable.PlViewEnt ~= 0 and Entity(plTable.PlViewEnt) or nil)
 		local eyepos, eyeang = rgm.EyePosAng(pl, plviewent)
@@ -310,19 +315,10 @@ do
 		local localized = self:WorldToLocal(intersect)
 		local distmin1, distmax1, distmin2, distmax2
 
-		if self.Parent.scale ~= scale or not self.collpositions then
-			distmin1 = Vector(-0.15 * scale, scale * 0.2, 0)
-			distmax1 = Vector(0.15 * scale, scale * 0.3, scale * 0.3)
-			distmin2 = Vector(-0.15 * scale, 0, scale * 0.2)
-			distmax2 = Vector(0.15 * scale, scale * 0.3, scale * 0.3)
-
-			self.collpositions = {distmin1, distmax1, distmin2, distmax2}
-		else
-			distmin1 = self.collpositions[1]
-			distmax1 = self.collpositions[2]
-			distmin2 = self.collpositions[3]
-			distmax2 = self.collpositions[4]
-		end
+		distmin1 = self.collpositions[1]
+		distmax1 = self.collpositions[2]
+		distmin2 = self.collpositions[3]
+		distmax2 = self.collpositions[4]
 
 		if (localized.x >= distmin1.x and localized.x <= distmax1.x
 		and localized.y >= distmin1.y and localized.y <= distmax1.y
@@ -333,6 +329,17 @@ do
 			return {axis = self, hitpos = intersect}
 		end
 		return false
+	end
+
+	function posside:CalculateGizmo(scale)
+		local distmin1, distmax1, distmin2, distmax2
+
+		distmin1 = Vector(-0.15 * scale, scale * 0.2, 0)
+		distmax1 = Vector(0.15 * scale, scale * 0.3, scale * 0.3)
+		distmin2 = Vector(-0.15 * scale, 0, scale * 0.2)
+		distmax2 = Vector(0.15 * scale, scale * 0.3, scale * 0.3)
+
+		self.collpositions = {distmin1, distmax1, distmin2, distmax2}
 	end
 
 	if SERVER then
@@ -480,7 +487,7 @@ local omnipos = table.Copy(posside)
 
 do
 
-	function omnipos:TestCollision(pl, scale)
+	function omnipos:TestCollision(pl)
 		local plTable = RAGDOLLMOVER[pl]
 		local plviewent = plTable.always_use_pl_view == 1 and pl or (plTable.PlViewEnt ~= 0 and Entity(plTable.PlViewEnt) or nil)
 		local eyepos, eyeang = rgm.EyePosAng(pl, plviewent)
@@ -488,15 +495,8 @@ do
 		local localized = self:WorldToLocal(intersect)
 		local distmin1, distmax1
 
-		if self.Parent.scale ~= scale or not self.collpositions then
-			distmin1 = Vector(-0.075 * scale, scale * (-0.08), scale * (-0.08))
-			distmax1 = Vector(0.075 * scale, scale * 0.08, scale * 0.08)
-
-			self.collpositions = {distmin1, distmax1}
-		else
-			distmin1 = self.collpositions[1]
-			distmax1 = self.collpositions[2]
-		end
+		distmin1 = self.collpositions[1]
+		distmax1 = self.collpositions[2]
 
 		if (localized.x >= distmin1.x and localized.x <= distmax1.x
 		and localized.y >= distmin1.y and localized.y <= distmax1.y
@@ -504,6 +504,15 @@ do
 			return {axis = self, hitpos = intersect}
 		end
 		return false
+	end
+
+	function omnipos:CalculateGizmo(scale)
+		local distmin1, distmax1
+
+		distmin1 = Vector(-0.075 * scale, scale * (-0.08), scale * (-0.08))
+		distmax1 = Vector(0.075 * scale, scale * 0.08, scale * 0.08)
+
+		self.collpositions = {distmin1, distmax1}
 	end
 
 	if SERVER then
@@ -628,18 +637,22 @@ do
 
 	disc.IsDisc = true
 
-	function disc:TestCollision(pl, scale)
+	function disc:TestCollision(pl)
 		local plTable = RAGDOLLMOVER[pl]
 		local plviewent = plTable.always_use_pl_view == 1 and pl or (plTable.PlViewEnt ~= 0 and Entity(plTable.PlViewEnt) or nil)
 		local eyepos, eyeang = rgm.EyePosAng(pl, plviewent)
 		local intersect = self:GetGrabPos(eyepos, eyeang)
-		local distmin = 0.9 * scale
-		local distmax = 1.1 * scale
+		local distmin = self.collpositions[1]
+		local distmax = self.collpositions[2]
 		local dist = intersect:Distance(self:GetPos())
 		if dist >= distmin and dist <= distmax then
 			return {axis = self, hitpos = intersect}
 		end
 		return false
+	end
+
+	function disc:CalculateGizmo(scale)
+		self.collpositions = { 0.9 * scale, 1.1 * scale }
 	end
 
 	if SERVER then
@@ -964,18 +977,22 @@ local disclarge = table.Copy(disc)
 
 do
 
-	function disclarge:TestCollision(pl, scale)
+	function disclarge:TestCollision(pl)
 		local plTable = RAGDOLLMOVER[pl]
 		local plviewent = plTable.always_use_pl_view == 1 and pl or (plTable.PlViewEnt ~= 0 and Entity(plTable.PlViewEnt) or nil)
 		local eyepos, eyeang = rgm.EyePosAng(pl, plviewent)
 		local intersect = self:GetGrabPos(eyepos, eyeang)
-		local distmin = 1.15 * scale
-		local distmax = 1.35 * scale
+		local distmin = self.collpositions[1]
+		local distmax = self.collpositions[2]
 		local dist = intersect:Distance(self:GetPos())
 		if dist >= distmin and dist <= distmax then
 			return {axis = self, hitpos = intersect}
 		end
 		return false
+	end
+
+	function disclarge:CalculateGizmo(scale)
+		self.collpositions = { 1.15 * scale, 1.35 * scale }
 	end
 
 	if CLIENT then
@@ -1023,7 +1040,7 @@ do
 		return intersect
 	end
 
-	function scalearrow:TestCollision(pl, scale)
+	function scalearrow:TestCollision(pl)
 		local plTable = RAGDOLLMOVER[pl]
 		local plviewent = plTable.always_use_pl_view == 1 and pl or (plTable.PlViewEnt ~= 0 and Entity(plTable.PlViewEnt) or nil)
 		local eyepos, eyeang = rgm.EyePosAng(pl, plviewent)
@@ -1031,15 +1048,8 @@ do
 		local localized = self:WorldToLocal(intersect)
 		local distmin, distmax
 
-		if self.Parent.scale ~= scale or not self.collpositions then
-			distmin = Vector(0, -0.075 * scale, -0.075 * scale)
-			distmax = Vector(1 * scale, 0.075 * scale, 0.075 * scale)
-
-			self.collpositions = {distmin, distmax}
-		else
-			distmin = self.collpositions[1]
-			distmax = self.collpositions[2]
-		end
+		distmin = self.collpositions[1]
+		distmax = self.collpositions[2]
 
 		if localized.x >= distmin.x and localized.x <= distmax.x
 		and localized.y >= distmin.y and localized.y <= distmax.y
@@ -1047,6 +1057,15 @@ do
 			return {axis = self, hitpos = intersect}
 		end
 		return false
+	end
+
+	function scalearrow:CalculateGizmo(scale)
+		local distmin, distmax
+
+		distmin = Vector(0, -0.075 * scale, -0.075 * scale)
+		distmax = Vector(1 * scale, 0.075 * scale, 0.075 * scale)
+
+		self.collpositions = {distmin, distmax}
 	end
 
 	if SERVER then
