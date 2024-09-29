@@ -1198,67 +1198,179 @@ function AdvBoneSelectPick(ent, bonenodes)
 end
 
 local SelectedBone = nil
+local FeaturesNPhys = {
+	{ 1, (language.GetPhrase("tool.ragdollmover.resetmenu") .. " " .. language.GetPhrase("tool.ragdollmover.reset")) }, -- 1
+	{ 5, (language.GetPhrase("tool.ragdollmover.resetmenu") .. " " .. language.GetPhrase("tool.ragdollmover.resetchildren")) }, -- 5
+	{ 2, (language.GetPhrase("tool.ragdollmover.resetmenu") .. " " .. language.GetPhrase("tool.ragdollmover.resetpos")) }, -- 2
+	{ 6, (language.GetPhrase("tool.ragdollmover.resetmenu") .. " " .. language.GetPhrase("tool.ragdollmover.resetposchildren")) }, -- 6
+	{ 3, (language.GetPhrase("tool.ragdollmover.resetmenu") .. " " .. language.GetPhrase("tool.ragdollmover.resetrot")) }, -- 3
+	{ 7, (language.GetPhrase("tool.ragdollmover.resetmenu") .. " " .. language.GetPhrase("tool.ragdollmover.resetrotchildren")) }, -- 7
+	{ 4, (language.GetPhrase("tool.ragdollmover.resetmenu") .. " " .. language.GetPhrase("tool.ragdollmover.resetscale")) }, -- 4
+	{ 8, (language.GetPhrase("tool.ragdollmover.resetmenu") .. " " .. language.GetPhrase("tool.ragdollmover.resetscalechildren")) }, -- 8
+	{ 9, (language.GetPhrase("tool.ragdollmover.scalezero") .. " " .. language.GetPhrase("tool.ragdollmover.bone")) }, -- 9
+	{ 10, (language.GetPhrase("tool.ragdollmover.scalezero") .. " " .. language.GetPhrase("tool.ragdollmover.bonechildren")) }, -- 10
+	{ 15, { "#tool.ragdollmover.unlockscale", "#tool.ragdollmover.lockscale" } }, --15
+	{ 17, "#tool.ragdollmover.putgizmopos" } -- 17
+}
 
-function AdvBoneSelectRadialRender(ent, bones, bonenodes)
+local FeaturesPhys = {
+	{ 1, (language.GetPhrase("tool.ragdollmover.resetmenu") .. " " .. language.GetPhrase("tool.ragdollmover.reset")) }, -- 1
+	{ 5, (language.GetPhrase("tool.ragdollmover.resetmenu") .. " " .. language.GetPhrase("tool.ragdollmover.resetchildren")) }, -- 5
+	{ 6, (language.GetPhrase("tool.ragdollmover.resetmenu") .. " " .. language.GetPhrase("tool.ragdollmover.resetposchildren")) }, -- 6
+	{ 7, (language.GetPhrase("tool.ragdollmover.resetmenu") .. " " .. language.GetPhrase("tool.ragdollmover.resetrotchildren")) }, -- 7
+	{ 8, (language.GetPhrase("tool.ragdollmover.resetmenu") .. " " .. language.GetPhrase("tool.ragdollmover.resetscalechildren")) }, -- 8
+	{ 9, (language.GetPhrase("tool.ragdollmover.scalezero") .. " " .. language.GetPhrase("tool.ragdollmover.bone")) }, -- 9
+	{ 10, (language.GetPhrase("tool.ragdollmover.scalezero") .. " " .. language.GetPhrase("tool.ragdollmover.bonechildren")) }, -- 10
+	{ 12, { "#tool.ragdollmover.unlockpos", "#tool.ragdollmover.lockpos" } }, -- 12
+	{ 13, { "#tool.ragdollmover.unlockang", "#tool.ragdollmover.lockang" } }, -- 13
+	{ 15, { "#tool.ragdollmover.unlockscale", "#tool.ragdollmover.lockscale" } }, --15
+	{ 14, "#tool.ragdollmover.lockbone" }, -- 14
+	{ 11, "#tool.ragdollmover.unlockbone" }, -- 11
+	{ 16, "#tool.ragdollmover.freezebone" }, -- 16
+	{ 17, "#tool.ragdollmover.putgizmopos" } -- 17
+}
+
+function AdvBoneSelectRadialRender(ent, bones, bonenodes, isresetmode)
 	local mx, my = input.GetCursorPos()
-	local count = #bones
-	local angborder = (360 / count) / 2
 	local modifier = divide540 * midh
 
-	for k, bone in ipairs(bones) do
-		local name = ent:GetBoneName(bone)
-		local thisang = (360 / count * (k - 1))
-		local thisrad = thisang / 180 * math.pi
-		local uix, uiy = (math.sin(thisrad) * 250 * modifier), (math.cos(thisrad) * -250 * modifier)
-		local color = COLOR_WHITE
-		if bonenodes and bonenodes[ent] and bonenodes[ent][bone] and bonenodes[ent][bone].Type then
-			color = BONETYPE_COLORS[bonenodes[ent][bone].Type]
-		end
-		uix, uiy = uix + midw, uiy + midh
+	if not isresetmode then
+		local count = #bones
+		local angborder = (360 / count) / 2
 
-		local selangle = 360 - (math.deg(math.atan2(mx - midw, my - midh)) + 180) -- took this one from overhauled radial menu, which took some of the inspiration from wiremod
-
-		local diff = math.abs((thisang - selangle + 180) % 360 - 180)
-		local isselected = diff < angborder and true or false
-
-		local pos = ent:GetBonePosition(bone)
-		pos = pos:ToScreen()
-
-		local circ = table.Copy(RGM_CIRCLE)
-		for k, v in ipairs(circ) do
-			v.x = v.x + pos.x
-			v.y = v.y + pos.y
-		end
-
-		if isselected then
-			surface.SetDrawColor(COLOR_BRIGHT_YELLOW:Unpack())
-			color = COLOR_BRIGHT_YELLOW
-			SelectedBone = bone
-		else
+		for k, bone in ipairs(bones) do
+			local name = ent:GetBoneName(bone)
+			local thisang = (360 / count * (k - 1))
+			local thisrad = thisang / 180 * math.pi
+			local uix, uiy = (math.sin(thisrad) * 250 * modifier), (math.cos(thisrad) * -250 * modifier)
+			local color = COLOR_WHITE
 			if bonenodes and bonenodes[ent] and bonenodes[ent][bone] and bonenodes[ent][bone].Type then
-				surface.SetDrawColor(BONETYPE_COLORS[bonenodes[ent][bone].Type]:Unpack())
-			else
-				surface.SetDrawColor(COLOR_RGMGREEN:Unpack())
+				color = BONETYPE_COLORS[bonenodes[ent][bone].Type]
 			end
+			uix, uiy = uix + midw, uiy + midh
+
+			local selangle = 360 - (math.deg(math.atan2(mx - midw, my - midh)) + 180) -- took this one from overhauled radial menu, which took some of the inspiration from wiremod
+
+			local diff = math.abs((thisang - selangle + 180) % 360 - 180)
+			local isselected = diff < angborder and true or false
+
+			local pos = ent:GetBonePosition(bone)
+			pos = pos:ToScreen()
+
+			local circ = table.Copy(RGM_CIRCLE)
+			for k, v in ipairs(circ) do
+				v.x = v.x + pos.x
+				v.y = v.y + pos.y
+			end
+
+			if isselected then
+				surface.SetDrawColor(COLOR_BRIGHT_YELLOW:Unpack())
+				color = COLOR_BRIGHT_YELLOW
+				SelectedBone = bone
+			else
+				if bonenodes and bonenodes[ent] and bonenodes[ent][bone] and bonenodes[ent][bone].Type then
+					surface.SetDrawColor(BONETYPE_COLORS[bonenodes[ent][bone].Type]:Unpack())
+				else
+					surface.SetDrawColor(COLOR_RGMGREEN:Unpack())
+				end
+			end
+
+			draw.NoTexture()
+			surface.DrawPoly(circ)
+
+			local ytextoffset = -14
+			if uiy > (midh + 30) then ytextoffset = RGMFontSize + 14 end
+
+			local xtextoffset = 0
+			if uix > (midw + 5) then
+				xtextoffset = 20
+			elseif uix < (midw - 5) then
+				xtextoffset = -20
+			else
+				ytextoffset = ytextoffset*1.5
+			end
+
+			surface.DrawCircle(uix, uiy, 3.5, color)
+			draw.SimpleTextOutlined(name, "RagdollMoverFont", uix + xtextoffset, uiy + ytextoffset, color, TEXT_ALIGN_CENTER, TEXT_ALIGN_BOTTOM, OUTLINE_WIDTH, COLOR_RGMBLACK)
 		end
 
-		draw.NoTexture()
-		surface.DrawPoly(circ)
-
-		local ytextoffset = -14
-		if uiy > (midh + 30) then ytextoffset = RGMFontSize + 14 end
-
-		local xtextoffset = 0
-		if uix > (midw + 5) then
-			xtextoffset = 20
-		elseif uix < (midw - 5) then
-			xtextoffset = -20
-		else
-			ytextoffset = ytextoffset*1.5
+	else
+		local bone = bones[1]
+		local btype = 2
+		if bonenodes and bonenodes[ent] and bonenodes[ent][bone] and bonenodes[ent][bone].Type then
+			btype = bonenodes[ent][bone].Type
 		end
 
-		surface.DrawCircle(uix, uiy, 3.5, color)
-		draw.SimpleTextOutlined(name, "RagdollMoverFont", uix + xtextoffset, uiy + ytextoffset, color, TEXT_ALIGN_CENTER, TEXT_ALIGN_BOTTOM, OUTLINE_WIDTH, COLOR_RGMBLACK)
+		local boneoptions = btype == 1 and FeaturesPhys or FeaturesNPhys
+		local count = btype == 1 and 14 or 12
+		local angborder = (360 / count) / 2
+		local k = 1
+
+		for i, option in pairs(boneoptions) do
+			local id  = option[1]
+			if id == 11 and not bonenodes[ent][bone].bonelock then continue end
+
+			local name = option[2]
+			if not isstring(option) then
+				if id == 12 then
+					name = bonenodes[ent][bone].poslock and name[1] or name[2]
+				elseif id == 13 then
+					name = bonenodes[ent][bone].anglock and name[1] or name[2]
+				elseif id == 15 then
+					name = bonenodes[ent][bone].scllock and name[1] or name[2]
+				end
+			end
+
+			local thisang = (360 / count * (k - 1))
+			local thisrad = thisang / 180 * math.pi
+			local uix, uiy = (math.sin(thisrad) * 250 * modifier), (math.cos(thisrad) * -250 * modifier)
+			local color = COLOR_WHITE
+
+			uix, uiy = uix + midw, uiy + midh
+
+			local selangle = 360 - (math.deg(math.atan2(mx - midw, my - midh)) + 180) -- took this one from overhauled radial menu, which took some of the inspiration from wiremod
+
+			local diff = math.abs((thisang - selangle + 180) % 360 - 180)
+			local isselected = diff < angborder and true or false
+
+			local pos = ent:GetBonePosition(bone)
+			pos = pos:ToScreen()
+
+			local circ = table.Copy(RGM_CIRCLE)
+			for k, v in ipairs(circ) do
+				v.x = v.x + pos.x
+				v.y = v.y + pos.y
+			end
+
+			if isselected then
+				surface.SetDrawColor(COLOR_BRIGHT_YELLOW:Unpack())
+				color = COLOR_BRIGHT_YELLOW
+				SelectedBone = id
+			else
+				surface.SetDrawColor(color:Unpack())
+			end
+
+			draw.NoTexture()
+			surface.DrawPoly(circ)
+
+			local ytextoffset = -14
+			if uiy > (midh + 30) then ytextoffset = RGMFontSize + 14 end
+
+			local xtextoffset = 0
+			if uix > (midw + 5) then
+				xtextoffset = 20
+			elseif uix < (midw - 5) then
+				xtextoffset = -20
+			else
+				ytextoffset = ytextoffset*1.5
+			end
+
+			surface.DrawCircle(uix, uiy, 3.5, color)
+			draw.SimpleTextOutlined(name, "RagdollMoverFont", uix + xtextoffset, uiy + ytextoffset, color, TEXT_ALIGN_CENTER, TEXT_ALIGN_BOTTOM, OUTLINE_WIDTH, COLOR_RGMBLACK)
+
+			k = k + 1
+		end
+
 	end
 end
 
