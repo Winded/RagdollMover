@@ -1048,6 +1048,9 @@ local RGM_CIRCLE = {
 	{ x = -4, y = 0 }
 }
 
+local LockGo = Material("icon16/lock_go.png", "alphatest")
+local Lock = Material("icon16/lock.png", "alphatest")
+
 local midw, midh = ScrW()/2, ScrH()/2
 local divide540 = RGM_Constants.FLOAT_1DIVIDE540 -- aggressive microoptimizations
 
@@ -1114,13 +1117,14 @@ function AdvBoneSelectRender(ent, bonenodes)
 		if nodesExist and (not bonenodes[ent][i]) or false then continue end
 		local pos = ent:GetBonePosition(i)
 		pos = pos:ToScreen()
+		local x, y = pos.x, pos.y
 
-		local dist = math.abs((mx - pos.x)^2 + (my - pos.y)^2)
+		local dist = math.abs((mx - x)^2 + (my - y)^2)
 
 		local circ = table.Copy(RGM_CIRCLE)
 		for k, v in ipairs(circ) do
-			v.x = v.x + pos.x
-			v.y = v.y + pos.y
+			v.x = v.x + x
+			v.y = v.y + y
 		end
 
 		if dist < 576 then -- 24 pixels
@@ -1136,6 +1140,16 @@ function AdvBoneSelectRender(ent, bonenodes)
 
 		draw.NoTexture()
 		surface.DrawPoly(circ)
+
+		if bonenodes[ent][i].bonelock then
+			surface.SetMaterial(LockGo)
+			surface.SetDrawColor(COLOR_WHITE:Unpack())
+			surface.DrawTexturedRect(x - 12, y - 12, 24, 24)
+		elseif bonenodes[ent][i].poslock or bonenodes[ent][i].anglock then
+			surface.SetMaterial(Lock)
+			surface.SetDrawColor(COLOR_WHITE:Unpack())
+			surface.DrawTexturedRect(x - 12, y - 12, 24, 24)
+		end
 	end
 
 	-- We use the average length of all bone names to ensure some names don't overlap each other
@@ -1198,36 +1212,44 @@ function AdvBoneSelectPick(ent, bonenodes)
 end
 
 local SelectedBone = nil
+
+local Colors = {
+	Color(255, 140, 105), -- Orange, for Resets
+	Color(100, 255, 255), -- Cyan (Blue is too dark), for Zeroing scale
+	Color(100, 255, 0), -- Green, for Locks
+	Color(255, 255, 255) -- White, for whatever
+}
+
 local FeaturesNPhys = {
-	{ 1, (language.GetPhrase("tool.ragdollmover.resetmenu") .. " " .. language.GetPhrase("tool.ragdollmover.reset")) }, -- 1
-	{ 5, (language.GetPhrase("tool.ragdollmover.resetmenu") .. " " .. language.GetPhrase("tool.ragdollmover.resetchildren")) }, -- 5
-	{ 2, (language.GetPhrase("tool.ragdollmover.resetmenu") .. " " .. language.GetPhrase("tool.ragdollmover.resetpos")) }, -- 2
-	{ 6, (language.GetPhrase("tool.ragdollmover.resetmenu") .. " " .. language.GetPhrase("tool.ragdollmover.resetposchildren")) }, -- 6
-	{ 3, (language.GetPhrase("tool.ragdollmover.resetmenu") .. " " .. language.GetPhrase("tool.ragdollmover.resetrot")) }, -- 3
-	{ 7, (language.GetPhrase("tool.ragdollmover.resetmenu") .. " " .. language.GetPhrase("tool.ragdollmover.resetrotchildren")) }, -- 7
-	{ 4, (language.GetPhrase("tool.ragdollmover.resetmenu") .. " " .. language.GetPhrase("tool.ragdollmover.resetscale")) }, -- 4
-	{ 8, (language.GetPhrase("tool.ragdollmover.resetmenu") .. " " .. language.GetPhrase("tool.ragdollmover.resetscalechildren")) }, -- 8
-	{ 9, (language.GetPhrase("tool.ragdollmover.scalezero") .. " " .. language.GetPhrase("tool.ragdollmover.bone")) }, -- 9
-	{ 10, (language.GetPhrase("tool.ragdollmover.scalezero") .. " " .. language.GetPhrase("tool.ragdollmover.bonechildren")) }, -- 10
-	{ 15, { "#tool.ragdollmover.unlockscale", "#tool.ragdollmover.lockscale" } }, --15
-	{ 17, "#tool.ragdollmover.putgizmopos" } -- 17
+	{ 1, (language.GetPhrase("tool.ragdollmover.resetmenu") .. " " .. language.GetPhrase("tool.ragdollmover.reset")), 1 }, -- 1
+	{ 5, (language.GetPhrase("tool.ragdollmover.resetmenu") .. " " .. language.GetPhrase("tool.ragdollmover.resetchildren")), 1 }, -- 5
+	{ 2, (language.GetPhrase("tool.ragdollmover.resetmenu") .. " " .. language.GetPhrase("tool.ragdollmover.resetpos")), 1 }, -- 2
+	{ 6, (language.GetPhrase("tool.ragdollmover.resetmenu") .. " " .. language.GetPhrase("tool.ragdollmover.resetposchildren")), 1 }, -- 6
+	{ 3, (language.GetPhrase("tool.ragdollmover.resetmenu") .. " " .. language.GetPhrase("tool.ragdollmover.resetrot")), 1 }, -- 3
+	{ 7, (language.GetPhrase("tool.ragdollmover.resetmenu") .. " " .. language.GetPhrase("tool.ragdollmover.resetrotchildren")), 1 }, -- 7
+	{ 4, (language.GetPhrase("tool.ragdollmover.resetmenu") .. " " .. language.GetPhrase("tool.ragdollmover.resetscale")), 1 }, -- 4
+	{ 8, (language.GetPhrase("tool.ragdollmover.resetmenu") .. " " .. language.GetPhrase("tool.ragdollmover.resetscalechildren")), 1 }, -- 8
+	{ 9, (language.GetPhrase("tool.ragdollmover.scalezero") .. " " .. language.GetPhrase("tool.ragdollmover.bone")), 2 }, -- 9
+	{ 10, (language.GetPhrase("tool.ragdollmover.scalezero") .. " " .. language.GetPhrase("tool.ragdollmover.bonechildren")), 2 }, -- 10
+	{ 15, { "#tool.ragdollmover.unlockscale", "#tool.ragdollmover.lockscale" }, 3 }, --15
+	{ 17, "#tool.ragdollmover.putgizmopos", 4 } -- 17
 }
 
 local FeaturesPhys = {
-	{ 1, (language.GetPhrase("tool.ragdollmover.resetmenu") .. " " .. language.GetPhrase("tool.ragdollmover.reset")) }, -- 1
-	{ 5, (language.GetPhrase("tool.ragdollmover.resetmenu") .. " " .. language.GetPhrase("tool.ragdollmover.resetchildren")) }, -- 5
-	{ 6, (language.GetPhrase("tool.ragdollmover.resetmenu") .. " " .. language.GetPhrase("tool.ragdollmover.resetposchildren")) }, -- 6
-	{ 7, (language.GetPhrase("tool.ragdollmover.resetmenu") .. " " .. language.GetPhrase("tool.ragdollmover.resetrotchildren")) }, -- 7
-	{ 8, (language.GetPhrase("tool.ragdollmover.resetmenu") .. " " .. language.GetPhrase("tool.ragdollmover.resetscalechildren")) }, -- 8
-	{ 9, (language.GetPhrase("tool.ragdollmover.scalezero") .. " " .. language.GetPhrase("tool.ragdollmover.bone")) }, -- 9
-	{ 10, (language.GetPhrase("tool.ragdollmover.scalezero") .. " " .. language.GetPhrase("tool.ragdollmover.bonechildren")) }, -- 10
-	{ 12, { "#tool.ragdollmover.unlockpos", "#tool.ragdollmover.lockpos" } }, -- 12
-	{ 13, { "#tool.ragdollmover.unlockang", "#tool.ragdollmover.lockang" } }, -- 13
-	{ 15, { "#tool.ragdollmover.unlockscale", "#tool.ragdollmover.lockscale" } }, --15
-	{ 14, "#tool.ragdollmover.lockbone" }, -- 14
-	{ 11, "#tool.ragdollmover.unlockbone" }, -- 11
-	{ 16, "#tool.ragdollmover.freezebone" }, -- 16
-	{ 17, "#tool.ragdollmover.putgizmopos" } -- 17
+	{ 1, (language.GetPhrase("tool.ragdollmover.resetmenu") .. " " .. language.GetPhrase("tool.ragdollmover.reset")), 1 }, -- 1
+	{ 5, (language.GetPhrase("tool.ragdollmover.resetmenu") .. " " .. language.GetPhrase("tool.ragdollmover.resetchildren")), 1 }, -- 5
+	{ 6, (language.GetPhrase("tool.ragdollmover.resetmenu") .. " " .. language.GetPhrase("tool.ragdollmover.resetposchildren")), 1 }, -- 6
+	{ 7, (language.GetPhrase("tool.ragdollmover.resetmenu") .. " " .. language.GetPhrase("tool.ragdollmover.resetrotchildren")), 1 }, -- 7
+	{ 8, (language.GetPhrase("tool.ragdollmover.resetmenu") .. " " .. language.GetPhrase("tool.ragdollmover.resetscalechildren")), 1 }, -- 8
+	{ 9, (language.GetPhrase("tool.ragdollmover.scalezero") .. " " .. language.GetPhrase("tool.ragdollmover.bone")), 2 }, -- 9
+	{ 10, (language.GetPhrase("tool.ragdollmover.scalezero") .. " " .. language.GetPhrase("tool.ragdollmover.bonechildren")), 2 }, -- 10
+	{ 12, { "#tool.ragdollmover.unlockpos", "#tool.ragdollmover.lockpos" }, 3 }, -- 12
+	{ 13, { "#tool.ragdollmover.unlockang", "#tool.ragdollmover.lockang" }, 3}, -- 13
+	{ 15, { "#tool.ragdollmover.unlockscale", "#tool.ragdollmover.lockscale" }, 3 }, --15
+	{ 14, "#tool.ragdollmover.lockbone", 3 }, -- 14
+	{ 11, "#tool.ragdollmover.unlockbone", 3 }, -- 11
+	{ 16, "#tool.ragdollmover.freezebone", 4 }, -- 16
+	{ 17, "#tool.ragdollmover.putgizmopos", 4 } -- 17
 }
 
 function AdvBoneSelectRadialRender(ent, bones, bonenodes, isresetmode)
@@ -1301,6 +1323,20 @@ function AdvBoneSelectRadialRender(ent, bones, bonenodes, isresetmode)
 			btype = bonenodes[ent][bone].Type
 		end
 
+		local pos = ent:GetBonePosition(bone)
+		pos = pos:ToScreen()
+
+		local circ = table.Copy(RGM_CIRCLE)
+		for k, v in ipairs(circ) do
+			v.x = v.x + pos.x
+			v.y = v.y + pos.y
+		end
+
+		surface.SetDrawColor(COLOR_WHITE:Unpack())
+
+		draw.NoTexture()
+		surface.DrawPoly(circ)
+
 		local boneoptions = btype == 1 and FeaturesPhys or FeaturesNPhys
 		local count = btype == 1 and 14 or 12
 		local angborder = (360 / count) / 2
@@ -1324,7 +1360,7 @@ function AdvBoneSelectRadialRender(ent, bones, bonenodes, isresetmode)
 			local thisang = (360 / count * (k - 1))
 			local thisrad = thisang / 180 * math.pi
 			local uix, uiy = (math.sin(thisrad) * 250 * modifier), (math.cos(thisrad) * -250 * modifier)
-			local color = COLOR_WHITE
+			local color = Colors[option[3]]
 
 			uix, uiy = uix + midw, uiy + midh
 
@@ -1333,25 +1369,10 @@ function AdvBoneSelectRadialRender(ent, bones, bonenodes, isresetmode)
 			local diff = math.abs((thisang - selangle + 180) % 360 - 180)
 			local isselected = diff < angborder and true or false
 
-			local pos = ent:GetBonePosition(bone)
-			pos = pos:ToScreen()
-
-			local circ = table.Copy(RGM_CIRCLE)
-			for k, v in ipairs(circ) do
-				v.x = v.x + pos.x
-				v.y = v.y + pos.y
-			end
-
 			if isselected then
-				surface.SetDrawColor(COLOR_BRIGHT_YELLOW:Unpack())
 				color = COLOR_BRIGHT_YELLOW
 				SelectedBone = id
-			else
-				surface.SetDrawColor(color:Unpack())
 			end
-
-			draw.NoTexture()
-			surface.DrawPoly(circ)
 
 			local ytextoffset = -14
 			if uiy > (midh + 30) then ytextoffset = RGMFontSize + 14 end
