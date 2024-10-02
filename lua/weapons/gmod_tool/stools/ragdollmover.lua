@@ -3408,6 +3408,10 @@ local NodeFunctions = {
 			net.WriteUInt(15, 5)
 			net.WriteVector(pos)
 		net.SendToServer()
+	end,
+
+	function() -- 18 nodeResetGizmo
+		RGMResetGizmo()
 	end
 
 }

@@ -1232,7 +1232,8 @@ local FeaturesNPhys = {
 	{ 9, (language.GetPhrase("tool.ragdollmover.scalezero") .. " " .. language.GetPhrase("tool.ragdollmover.bone")), 2 }, -- 9
 	{ 10, (language.GetPhrase("tool.ragdollmover.scalezero") .. " " .. language.GetPhrase("tool.ragdollmover.bonechildren")), 2 }, -- 10
 	{ 15, { "#tool.ragdollmover.unlockscale", "#tool.ragdollmover.lockscale" }, 3 }, --15
-	{ 17, "#tool.ragdollmover.putgizmopos", 4 } -- 17
+	{ 17, "#tool.ragdollmover.putgizmopos", 4 }, -- 17
+	{ 18, "#tool.ragdollmover.resetoffset", 4 } -- 18
 }
 
 local FeaturesPhys = {
@@ -1249,7 +1250,8 @@ local FeaturesPhys = {
 	{ 14, "#tool.ragdollmover.lockbone", 3 }, -- 14
 	{ 11, "#tool.ragdollmover.unlockbone", 3 }, -- 11
 	{ 16, "#tool.ragdollmover.freezebone", 4 }, -- 16
-	{ 17, "#tool.ragdollmover.putgizmopos", 4 } -- 17
+	{ 17, "#tool.ragdollmover.putgizmopos", 4 }, -- 17
+	{ 18, "#tool.ragdollmover.resetoffset", 4 } -- 18
 }
 
 function AdvBoneSelectRadialRender(ent, bones, bonenodes, isresetmode)
@@ -1338,13 +1340,22 @@ function AdvBoneSelectRadialRender(ent, bones, bonenodes, isresetmode)
 		surface.DrawPoly(circ)
 
 		local boneoptions = btype == 1 and FeaturesPhys or FeaturesNPhys
-		local count = btype == 1 and 14 or 12
+		local count = #boneoptions
+		if btype == 1 then
+			if not bonenodes[ent][bone].bonelock then
+				count = count - 1
+			else
+				count = count - 2
+			end
+		end
+
 		local angborder = (360 / count) / 2
 		local k = 1
+		local skipped = 0
 
 		for i, option in pairs(boneoptions) do
 			local id  = option[1]
-			if id == 11 and not bonenodes[ent][bone].bonelock then continue end
+			if ( id == 11 and not bonenodes[ent][bone].bonelock ) or ( (id == 12 or id == 13) and bonenodes[ent][bone].bonelock ) then continue end
 
 			local name = option[2]
 			if not isstring(option) then
