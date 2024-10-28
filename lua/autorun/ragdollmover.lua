@@ -1440,6 +1440,8 @@ local SkeletonData = {}
 local function DrawRecursiveBones(ent, bone, bonenodes)
 	local mainpos = ent:GetBonePosition(bone)
 	mainpos = mainpos:ToScreen()
+	local nodecache = bonenodes[ent]
+	local nodeexist = nodecache and true or false
 
 	for _, boneid in ipairs(ent:GetChildBones(bone)) do
 		SkeletonData[boneid] = bone
@@ -1450,8 +1452,8 @@ local function DrawRecursiveBones(ent, bone, bonenodes)
 		surface.DrawLine(mainpos.x, mainpos.y, pos.x, pos.y)
 		DrawRecursiveBones(ent, boneid, bonenodes)
 		local color
-		if bonenodes then
-			color = BONETYPE_COLORS[bonenodes[ent][boneid].Type]
+		if nodeexist and nodecache[boneid] then
+			color = BONETYPE_COLORS[nodecache[boneid].Type]
 		else
 			color = COLOR_RGMGREEN
 		end
