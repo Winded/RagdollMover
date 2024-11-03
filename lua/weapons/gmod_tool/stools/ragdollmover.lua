@@ -763,23 +763,31 @@ local NETFUNC = {
 		end
 
 		local plTable = RAGDOLLMOVER[pl]
-		if mode == 1 then
+		if mode == 0 then
 			if not plTable.rgmPosLocks[ent][boneid] then
 				plTable.rgmPosLocks[ent][boneid] = ent:GetPhysicsObjectNum(physbone)
 			else
 				plTable.rgmPosLocks[ent][boneid] = nil
 			end
-		elseif mode == 2 then
+		elseif mode == 1 then
 			if not plTable.rgmAngLocks[ent][boneid] then
 				plTable.rgmAngLocks[ent][boneid] = ent:GetPhysicsObjectNum(physbone)
 			else
 				plTable.rgmAngLocks[ent][boneid] = nil
 			end
-		elseif mode == 3 then
+		elseif mode == 2 then
 			if not plTable.rgmScaleLocks[ent][bone] then
 				plTable.rgmScaleLocks[ent][bone] = true
 			else
 				plTable.rgmScaleLocks[ent][bone] = false
+			end
+		elseif mode == 3 then
+			if not plTable.rgmPosLocks[ent][boneid] or not plTable.rgmAngLocks[ent][boneid] then
+				plTable.rgmPosLocks[ent][boneid] = ent:GetPhysicsObjectNum(physbone)
+				plTable.rgmAngLocks[ent][boneid] = ent:GetPhysicsObjectNum(physbone)
+			else
+				plTable.rgmPosLocks[ent][boneid] = nil
+				plTable.rgmAngLocks[ent][boneid] = nil
 			end
 		end
 
@@ -3332,7 +3340,7 @@ local NodeFunctions = {
 		net.Start("RAGDOLLMOVER")
 			net.WriteUInt(5, 5)
 			net.WriteEntity(ent)
-			net.WriteUInt(1, 2)
+			net.WriteUInt(0, 2)
 			net.WriteUInt(id, 10)
 		net.SendToServer()
 	end,
@@ -3341,7 +3349,7 @@ local NodeFunctions = {
 		net.Start("RAGDOLLMOVER")
 			net.WriteUInt(5, 5)
 			net.WriteEntity(ent)
-			net.WriteUInt(2, 2)
+			net.WriteUInt(1, 2)
 			net.WriteUInt(id, 10)
 		net.SendToServer()
 	end,
@@ -3384,7 +3392,7 @@ local NodeFunctions = {
 		net.Start("RAGDOLLMOVER")
 			net.WriteUInt(5, 5)
 			net.WriteEntity(ent)
-			net.WriteUInt(3, 2)
+			net.WriteUInt(2, 2)
 			net.WriteUInt(id, 10)
 		net.SendToServer()
 	end,
@@ -3412,6 +3420,15 @@ local NodeFunctions = {
 
 	function() -- 18 nodeResetGizmo
 		RGMResetGizmo()
+	end,
+
+	function(ent, id) -- 19 nodeAllPhysLock
+		net.Start("RAGDOLLMOVER")
+			net.WriteUInt(5, 5)
+			net.WriteEntity(ent)
+			net.WriteUInt(3, 2)
+			net.WriteUInt(id, 10)
+		net.SendToServer()
 	end
 
 }
@@ -3580,6 +3597,12 @@ local function SetBoneNodes(bonepanel, sortedbones)
 
 					bonemenu:AddSpacer()
 				elseif nodes[ent][v.id].Type == BONE_PHYSICAL and IsValid(ent) and ( ent:GetClass() == "prop_ragdoll" or IsPropRagdoll ) then
+
+					option = bonemenu:AddOption(( nodes[ent][v.id].poslock and nodes[ent][v.id].anglock ) and "#tool.ragdollmover.unlockall" or "#tool.ragdollmover.lockall", function()
+						if not IsValid(ent) then return end
+						NodeFunctions[19](ent, v.id)
+					end)
+					option:SetIcon(( nodes[ent][v.id].poslock and nodes[ent][v.id].anglock ) and "icon16/lock.png" or "icon16/brick.png")
 
 					option = bonemenu:AddOption(nodes[ent][v.id].poslock and "#tool.ragdollmover.unlockpos" or "#tool.ragdollmover.lockpos", function()
 						if not IsValid(ent) then return end

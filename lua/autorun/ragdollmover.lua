@@ -1244,6 +1244,7 @@ local FeaturesPhys = {
 	{ 8, (language.GetPhrase("tool.ragdollmover.resetmenu") .. " " .. language.GetPhrase("tool.ragdollmover.resetscalechildren")), 1 }, -- 8
 	{ 9, (language.GetPhrase("tool.ragdollmover.scalezero") .. " " .. language.GetPhrase("tool.ragdollmover.bone")), 2 }, -- 9
 	{ 10, (language.GetPhrase("tool.ragdollmover.scalezero") .. " " .. language.GetPhrase("tool.ragdollmover.bonechildren")), 2 }, -- 10
+	{ 19, { "#tool.ragdollmover.unlockall", "#tool.ragdollmover.lockall" }, 3 }, -- 19
 	{ 12, { "#tool.ragdollmover.unlockpos", "#tool.ragdollmover.lockpos" }, 3 }, -- 12
 	{ 13, { "#tool.ragdollmover.unlockang", "#tool.ragdollmover.lockang" }, 3}, -- 13
 	{ 15, { "#tool.ragdollmover.unlockscale", "#tool.ragdollmover.lockscale" }, 3 }, --15
@@ -1365,6 +1366,8 @@ function AdvBoneSelectRadialRender(ent, bones, bonenodes, isresetmode)
 					name = bonenodes[ent][bone].anglock and name[1] or name[2]
 				elseif id == 15 then
 					name = bonenodes[ent][bone].scllock and name[1] or name[2]
+				elseif id == 19 then
+					name = ( bonenodes[ent][bone].poslock and bonenodes[ent][bone].anglock ) and name[1] or name[2]
 				end
 			end
 
