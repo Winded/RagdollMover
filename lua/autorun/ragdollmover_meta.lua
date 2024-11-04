@@ -127,7 +127,7 @@ numpad.Register("rgmAxisChangeStateRot", function(pl)
 	if not RAGDOLLMOVER[pl] then RAGDOLLMOVER[pl] = {} end
 	if not rgmMode[pl] then rgmMode[pl] = 1 end
 
-	if not pl:GetTool() then return end
+	if not pl:GetTool() or RAGDOLLMOVER[pl].Moving then return end
 	if pl:GetTool().Mode ~= "ragdollmover" or pl:GetActiveWeapon():GetClass() ~= "gmod_tool" then return end
 	if RotKey[pl] == ScaleKey[pl] then
 		rgmMode[pl] = rgmMode[pl] + 1
@@ -147,7 +147,7 @@ end)
 numpad.Register("rgmAxisChangeStateScale", function(pl)
 	if not RAGDOLLMOVER[pl] then RAGDOLLMOVER[pl] = {} end
 
-	if not pl:GetTool() then return end
+	if not pl:GetTool() or RAGDOLLMOVER[pl].Moving then return end
 	if pl:GetTool().Mode ~= "ragdollmover" or pl:GetActiveWeapon():GetClass() ~= "gmod_tool" then return end
 	if RotKey[pl] == ScaleKey[pl] then return end
 	RAGDOLLMOVER[pl].Scale = not RAGDOLLMOVER[pl].Scale

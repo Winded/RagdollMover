@@ -1,6 +1,10 @@
 
 hook.Add("InitPostEntity", "rgmClientSetup", function()
 
+	if ConVarExists("ragdollmover_lockselected") then -- i should use some lua variable instead of console variable so it would reset properly
+		RunConsoleCommand("ragdollmover_lockselected", 0)
+	end
+
 	if ConVarExists("ragdollmover_rotatebutton") then
 		local BindRot = GetConVar("ragdollmover_rotatebutton"):GetInt()
 
