@@ -1011,6 +1011,8 @@ local ball = table.Copy(basepart)
 
 do
 	function ball:TestCollision(pl, scale)
+		if GetConVar("ragdollmover_drawsphere"):GetInt() <= 0 then return end 
+
 		local plTable = RAGDOLLMOVER[pl]
 		local plviewent = plTable.always_use_pl_view == 1 and pl or (plTable.PlViewEnt ~= 0 and Entity(plTable.PlViewEnt) or nil)
 		local eyepos, eyeang = rgm.EyePosAng(pl, plviewent)
@@ -1026,7 +1028,7 @@ do
 
 	if SERVER then
 		function ball:ProcessMovement(_, offang, eyepos, eyeang, ent, bone, ppos, pnorm, movetype, snapamount, startangle, _, nphysangle)
-			local intersect = self:GetGrabPos(eyepos, eyeang, ppos, pnorm)
+			local intersect = self:GetGrabPos(eyepos, eyeang, ppos, -eyeang:Forward())
 			local localized = self:WorldToLocal(intersect)
 			local _p, _a
 			local axis = self.Parent
@@ -1045,6 +1047,7 @@ do
 
 	if CLIENT then
 		function ball:DrawLines(yellow, scale)
+			if GetConVar("ragdollmover_drawsphere"):GetInt() <= 0 then return end 
 			local color = self:GetColor()
 			color = Color(color[1], color[2], color[3], color[4])
 			if yellow then
