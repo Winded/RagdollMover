@@ -12,6 +12,7 @@ local basepart = {}
 do
 
 	basepart.IsDisc = false
+	basepart.IsBall = false
 	basepart.Parent = nil
 	basepart.AngOffset = Angle(0, 0, 0)
 	basepart.LocalAng = Angle(0, 0, 0)
@@ -1010,38 +1011,84 @@ end
 local ball = table.Copy(basepart)
 
 do
+	ball.IsBall = true
+
+	function ball:GetGrabPos(eyepos, eyeang)
+		local pos = eyepos
+		local planepos = self:GetPos()
+		local norm = (eyepos - planepos):GetNormalized()
+		local intersect = rgm.IntersectRayWithPlane(planepos, -norm, pos, eyeang:Forward())
+		return intersect
+	end
+
 	function ball:TestCollision(pl, scale)
 		if GetConVar("ragdollmover_drawsphere"):GetInt() <= 0 then return end 
 
 		local plTable = RAGDOLLMOVER[pl]
 		local plviewent = plTable.always_use_pl_view == 1 and pl or (plTable.PlViewEnt ~= 0 and Entity(plTable.PlViewEnt) or nil)
 		local eyepos, eyeang = rgm.EyePosAng(pl, plviewent)
-		local intersect = self:GetGrabPos(eyepos, eyeang, self:GetPos(), -eyeang:Forward())
+		local intersect = self:GetGrabPos(eyepos, eyeang)
 		local distmin = 0
 		local distmax = scale
 		local dist = intersect:Distance(self:GetPos())
 		if dist >= distmin and dist <= distmax then
+			debugoverlay.Sphere(intersect, 1, 0.1, Color(0,0,255), true)
 			return {axis = self, hitpos = intersect}
 		end
 		return false
 	end
 
 	if SERVER then
-		function ball:ProcessMovement(_, offang, eyepos, eyeang, ent, bone, ppos, pnorm, movetype, snapamount, startangle, _, nphysangle)
-			local intersect = self:GetGrabPos(eyepos, eyeang, ppos, -eyeang:Forward())
-			local localized = self:WorldToLocal(intersect)
-			local _p, _a
-			local axis = self.Parent
-			local pl = axis.Owner
-			local plTable = RAGDOLLMOVER[pl]
-			local offset = plTable.GizmoOffset
 
-			print(startangle)
-			print(localized)
+		do
+			local deg = math.deg
+			local acos = math.acos
 
-			_p, _a = self:GetPos(), angle_zero
+			-- FIXME: Migrate to using mouse to obtain position or angle deltas
+			function ball:ProcessMovement(_, offang, eyepos, eyeang, ent, bone, ppos, pnorm, movetype, snapamount, startangle, _, nphysangle)
+				local intersect = self:GetGrabPos(eyepos, eyeang)
+				local localized = self:WorldToLocal(intersect)
+				local _p, _a
+				local axis = self.Parent
+				local pl = axis.Owner
+				local plTable = RAGDOLLMOVER[pl]
+				local offset = plTable.GizmoOffset
 
-			return _p, _a
+				local aim = eyeang:Forward()
+
+				local planeNormal = (eyepos - self:GetPos())
+
+				local delta = vector_origin
+				if axis.lastPoint  then
+					delta = localized - axis.lastPoint
+				end
+				if axis.LastStartAngle and axis.LastStartAngle ~= startangle then
+					
+				else
+					axis.LastStartAngle = startangle
+				end
+				axis.lastPoint = localized
+
+				-- The arcball method maps screen positions to positions on a sphere. 
+				-- Angles can be obtained from the sphere positions, allowing mouse movements
+				-- to correspond to angle changes.
+				-- Proper sphere rotation would happen when we rewrite the tool
+				local rotation = deg(acos(localized:Dot(axis.lastPoint) / localized:Length() / axis.lastPoint:Length()))
+				local rotationAxis = planeNormal:Cross(delta):GetNormalized()
+
+				-- debugoverlay.Sphere(intersect, 1, 0.1, Color(255, 0, 255), true)
+				-- debugoverlay.Sphere(self:LocalToWorld(startangle), 1, 0.1, Color(0, 0, 255), true)
+				-- debugoverlay.Line(self:GetPos(), self:GetPos() + rotationAxis * 40, 0.1, Color(255, 127, 0), true)
+
+				local pos = self:GetPos()
+				local ang = axis.lastAngle or angle_zero * 1
+				ang:RotateAroundAxis(rotationAxis, rotation)
+				ang = self:LocalToWorldAngles(ang)
+				_p, _a = LocalToWorld(vector_origin, offang, pos, ang)
+				_p, _a = self:GetPos(), angle_zero
+
+				return _p, _a
+			end
 		end
 	end
 
