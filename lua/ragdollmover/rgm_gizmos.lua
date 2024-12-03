@@ -821,8 +821,7 @@ do
 				end
 
 				if self.axistype == 4 then
-					rotateang = nphysangle + localized
-					_a = rotateang
+					_a = nphysangle
 				else
 					_a = ent:GetManipulateBoneAngles(bone)
 					_a = _a*1 -- do this to copy angle in case if we're rotating advanced bonemerged stuff
