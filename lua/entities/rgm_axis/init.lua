@@ -22,7 +22,7 @@ function ENT:Think()
 	-- Extend the collision bounds to include us, with some velocity tracking to ensure that the gizmo updates as much as possible outside of the world
 	if not util.IsInWorld(self:GetPos()) then
 		local velocity = (self:GetPos() - self.LastPos) / CurTime()
-		size = (pl:GetPos() - self:GetPos()) + (PLAYER_WEIGHT * pl:GetVelocity() + GIZMO_WEIGHT * velocity)
+		size = 2 * (pl:GetPos() - self:GetPos()) + (PLAYER_WEIGHT * pl:GetVelocity() + GIZMO_WEIGHT * velocity)
 	end
 	-- Only set the collision bounds if it differs from our last size.
 	if self.LastSize ~= size then
