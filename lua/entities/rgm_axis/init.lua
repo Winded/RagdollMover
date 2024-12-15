@@ -10,9 +10,24 @@ local VECTOR_ORIGIN = vector_origin
 local VECTOR_FRONT = RGM_Constants.VECTOR_FRONT
 local ANGLE_DISC = Angle(0, 90, 0)
 local ANGLE_ARROW_OFFSET = Angle(0, 90, 90)
+local COLOR_RED = Color(255, 0, 0)
 
 function ENT:Think()
 	local pl = self.Owner
+	local size = self.DefaultMinMax
+	-- Extend the collision bounds to include us, with some velocity tracking to ensure that the gizmo updates as much as possible outside of the world
+	if not util.IsInWorld(self:GetPos()) then
+		size = (pl:GetPos() - self:GetPos()) * (0.1 * pl:GetVelocity() + 2 * (self:GetPos() - self.LastPos) / CurTime()):Length()
+	end
+	-- Only set the collision bounds if it differs from our last size.
+	if self.LastSize ~= size then
+		self:SetCollisionBounds(-1 * size, size)
+		self.LastSize = size
+	end
+
+	local min, max = self:GetCollisionBounds()
+	debugoverlay.Box(self:GetPos(), min, max, 0, COLOR_RED)
+
 	if not IsValid(pl) then return end
 
 	local plTable = RAGDOLLMOVER[pl]

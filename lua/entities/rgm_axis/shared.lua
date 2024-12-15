@@ -4,8 +4,12 @@ ENT.Base = "base_entity"
 
 function ENT:Initialize()
 
+	self.DefaultMinMax = Vector(0.1, 0.1, 0.1)
+	self.LastSize = self.DefaultMinMax
+	self.LastPos = self:GetPos()
+
 	self:DrawShadow(false)
-	self:SetCollisionBounds(Vector(-0.1, -0.1, -0.1), Vector(0.1, 0.1, 0.1))
+	self:SetCollisionBounds(-self.DefaultMinMax, self.DefaultMinMax)
 	self:SetSolid(SOLID_VPHYSICS)
 	self:SetNotSolid(true)
 
