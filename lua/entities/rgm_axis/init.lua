@@ -16,13 +16,14 @@ function ENT:Think()
 	local size = self.DefaultMinMax
 	-- Extend the collision bounds to include us, with some velocity tracking to ensure that the gizmo updates as much as possible outside of the world
 	if not util.IsInWorld(self:GetPos()) then
-		size = (pl:GetPos() - self:GetPos()) * (0.1 * pl:GetVelocity() + 2 * (self:GetPos() - self.LastPos) / CurTime()):Length()
+		size = (pl:GetPos() - self:GetPos()) * (0.1 * pl:GetVelocity() + (self:GetPos() - self.LastPos) / CurTime()):Length()
 	end
 	-- Only set the collision bounds if it differs from our last size.
 	if self.LastSize ~= size then
 		self:SetCollisionBounds(-1 * size, size)
 		self.LastSize = size
 	end
+	self.LastPos = self:GetPos()
 
 	if not IsValid(pl) then return end
 
