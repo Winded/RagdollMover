@@ -10,7 +10,6 @@ local VECTOR_ORIGIN = vector_origin
 local VECTOR_FRONT = RGM_Constants.VECTOR_FRONT
 local ANGLE_DISC = Angle(0, 90, 0)
 local ANGLE_ARROW_OFFSET = Angle(0, 90, 90)
-local COLOR_RED = Color(255, 0, 0)
 
 function ENT:Think()
 	local pl = self.Owner
