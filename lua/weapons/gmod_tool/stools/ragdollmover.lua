@@ -2773,27 +2773,32 @@ local function CManipSlider(cpanel, text, mode, axis, min, max, dec, textentry)
 		slider:SetDefaultValue(0)
 	end
 
-	local scratchpressold, textareafocusold, sliderpressold = slider.Scratch.OnMousePressed, slider.TextArea.OnGetFocus, slider.Slider.OnMousePressed
+	local scratchpressold, textareafocusold, sliderpressold, knobpressold = slider.Scratch.OnMousePressed, slider.TextArea.OnGetFocus, slider.Slider.OnMousePressed, slider.Slider.Knob.OnMousePressed
 
 	slider.Scratch.OnMousePressed = function(self, mc)
-		scratchpressold(self, mc)
 		RGMPrepareOffsets()
+		scratchpressold(self, mc)
 	end
 
 	slider.TextArea.OnGetFocus = function(self)
-		textareafocusold(self)
 		RGMPrepareOffsets()
+		textareafocusold(self)
 	end
 
 	slider.Slider.OnMousePressed = function(self, mc)
-		sliderpressold(self, mc)
 		RGMPrepareOffsets()
+		sliderpressold(self, mc)
 	end
 
-	local scratchrelaseold, textarealosefocusold, sliderreleaseold = slider.Scratch.OnMouseReleased, slider.TextArea.OnLoseFocus, slider.Slider.OnMouseReleased
+	slider.Slider.Knob.OnMousePressed = function(self, mc)
+		RGMPrepareOffsets()
+		knobpressold(self, mc)
+	end
+
+	local scratchreleaseold, textarealosefocusold, sliderreleaseold, knobreleaseold = slider.Scratch.OnMouseReleased, slider.TextArea.OnLoseFocus, slider.Slider.OnMouseReleased, slider.Slider.Knob.OnMouseReleased
 
 	slider.Scratch.OnMouseReleased = function(self, mc)
-		scratchrelaseold(self, mc)
+		scratchreleaseold(self, mc)
 		RGMClearOffsets()
 	end
 
@@ -2804,6 +2809,11 @@ local function CManipSlider(cpanel, text, mode, axis, min, max, dec, textentry)
 
 	slider.Slider.OnMouseReleased = function(self, mc)
 		sliderreleaseold(self, mc)
+		RGMClearOffsets()
+	end
+
+	slider.Slider.Knob.OnMouseReleased = function(self, mc)
+		knobreleaseold(self, mc)
 		RGMClearOffsets()
 	end
 
