@@ -392,7 +392,7 @@ local function rgmDoScale(pl, ent, axis, childbones, bone, sc, prevscale, physmo
 
 							ent:ManipulateBoneScale(cbone, ent:GetManipulateBoneScale(cbone) + bscale)
 
-							newpos = WorldToLocal(nwpos, wang, nppos, pang)
+							local newpos = WorldToLocal(nwpos, wang, nppos, pang)
 							local bonepos = ent:GetManipulateBonePosition(cbone)
 							ent:ManipulateBonePosition(cbone, bonepos + (newpos - pos))
 							tab.pos = newpos
@@ -500,7 +500,7 @@ local function rgmDoScale(pl, ent, axis, childbones, bone, sc, prevscale, physmo
 		local npos, nang = LocalToWorld(axis.GizmoPos, axis.GizmoAng, p, a)
 		local diff = Vector(sc.x / prevscale.x, sc.y / prevscale.y, sc.z / prevscale.z)
 		local sbone = plTable.IsPhysBone and {b = pbone, p = p, a = a} or {}
-		local postable = rgm.SetScaleOffsets(self, ent, plTable.rgmOffsetTable, sbone, diff, plTable.rgmPosLocks, plTable.rgmScaleLocks, axis.scalechildren, {b = plTable.Bone, pos = npos, ang = nang}, childbones)
+		local postable = rgm.SetScaleOffsets(ent, plTable.rgmOffsetTable, sbone, diff, plTable.rgmPosLocks, plTable.rgmScaleLocks, axis.scalechildren, {b = plTable.Bone, pos = npos, ang = nang}, childbones)
 
 		for i = 0, ent:GetPhysicsObjectCount() - 1 do
 			if postable[i] and not postable[i].dontset then
@@ -1249,16 +1249,16 @@ local NETFUNC = {
 			plTable.GizmoAng = axis.GizmoAng
 		end
 
-		local function CalcSkeleton(parent, physbones, childbones, ent, ppos, pang)
+		local function CalcSkeleton(parent, childbones, ppos, pang)
 			if not childbones[parent] then return end
 			for bone, tab in pairs(childbones[parent]) do
 				local wpos, wang = tab.pos, tab.ang
 				tab.pos, tab.ang = WorldToLocal(tab.pos, tab.ang, ppos, pang)
-				CalcSkeleton(bone, physbones, childbones, ent, wpos, wang)
+				CalcSkeleton(bone, childbones, wpos, wang)
 			end
 		end
 
-		CalcSkeleton(boneog, physbones, childbones, ent, pos, ang)
+		CalcSkeleton(boneog, childbones, pos, ang)
 
 		RAGDOLLMOVER[pl].rgmBoneChildren = {}
 		if next(childbones) then
@@ -1332,7 +1332,9 @@ local NETFUNC = {
 	function(len, pl) --			16 - rgmResetAllBones
 		local ent = net.ReadEntity()
 
+		if not RAGDOLLMOVER[pl] then return end
 		if not rgmCanTool(ent, pl) then return end
+		local plTable = RAGDOLLMOVER[pl]
 
 		for i = 0, ent:GetBoneCount() - 1 do
 			local pos, ang, scale = ent:GetManipulateBonePosition(i), ent:GetManipulateBoneAngles(i), ent:GetManipulateBoneScale(i) -- Grabbing existing vectors as to not create new ones, in case ManipulateBone functions were overriden by something like Advanced Bonemerge

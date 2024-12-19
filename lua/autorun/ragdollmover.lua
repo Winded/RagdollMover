@@ -716,7 +716,7 @@ local function RecursiveSetScale(ostable, sbone, ent, plocks, slocks, RTable, bo
 	RTable[bone].sc = bsc
 end
 
-function SetScaleOffsets(tool, ent, ostable, sbone, scale, plocks, slocks, scalechildren, nphysinfo, childrenbones)
+function SetScaleOffsets(ent, ostable, sbone, scale, plocks, slocks, scalechildren, nphysinfo, childrenbones)
 	local RTable = {}
 
 	local physcount = ent:GetPhysicsObjectCount() - 1
@@ -761,7 +761,6 @@ function SetScaleOffsets(tool, ent, ostable, sbone, scale, plocks, slocks, scale
 
 	return RTable
 end
-
 
 -----
 --Inverse kinematics library
