@@ -12,7 +12,7 @@ local ANGLE_DISC = Angle(0, 90, 0)
 local ANGLE_ARROW_OFFSET = Angle(0, 90, 90)
 
 -- How much we should try to contain the player and the gizmo
-local DISTANCE_PADDING = 2
+local DISTANCE_PADDING = 10
 -- How much player's velocity should influence collision bound
 local PLAYER_WEIGHT = 0.9
 -- How much gizmo's own velocity should influence collision bound
