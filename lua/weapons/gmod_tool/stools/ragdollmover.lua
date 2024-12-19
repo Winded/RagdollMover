@@ -40,6 +40,7 @@ TOOL.ClientConVar["rotatebutton"] = MOUSE_MIDDLE
 TOOL.ClientConVar["scalebutton"] = MOUSE_RIGHT
 
 local ConstrainedAllowed
+local NetStarter = {}
 
 local BONELOCK_FAILED = 0
 local BONELOCK_SUCCESS = 1
@@ -391,7 +392,7 @@ local function rgmDoScale(pl, ent, axis, childbones, bone, sc, prevscale, physmo
 
 							ent:ManipulateBoneScale(cbone, ent:GetManipulateBoneScale(cbone) + bscale)
 
-							newpos = WorldToLocal(nwpos, wang, nppos, pang)
+							local newpos = WorldToLocal(nwpos, wang, nppos, pang)
 							local bonepos = ent:GetManipulateBonePosition(cbone)
 							ent:ManipulateBonePosition(cbone, bonepos + (newpos - pos))
 							tab.pos = newpos
@@ -499,7 +500,7 @@ local function rgmDoScale(pl, ent, axis, childbones, bone, sc, prevscale, physmo
 		local npos, nang = LocalToWorld(axis.GizmoPos, axis.GizmoAng, p, a)
 		local diff = Vector(sc.x / prevscale.x, sc.y / prevscale.y, sc.z / prevscale.z)
 		local sbone = plTable.IsPhysBone and {b = pbone, p = p, a = a} or {}
-		local postable = rgm.SetScaleOffsets(self, ent, plTable.rgmOffsetTable, sbone, diff, plTable.rgmPosLocks, plTable.rgmScaleLocks, axis.scalechildren, {b = plTable.Bone, pos = npos, ang = nang}, childbones)
+		local postable = rgm.SetScaleOffsets(ent, plTable.rgmOffsetTable, sbone, diff, plTable.rgmPosLocks, plTable.rgmScaleLocks, axis.scalechildren, {b = plTable.Bone, pos = npos, ang = nang}, childbones)
 
 		for i = 0, ent:GetPhysicsObjectCount() - 1 do
 			if postable[i] and not postable[i].dontset then
@@ -543,6 +544,85 @@ ConstrainedAllowed = CreateConVar("sv_ragdollmover_allow_constrained_locking", 1
 
 local VECTOR_NEARZERO = RGM_Constants.VECTOR_NEARZERO
 local VECTOR_ONE = RGM_Constants.VECTOR_ONE
+
+NetStarter = {
+
+	rgmDeselectEntity = function() -- 0
+		net.Start("RAGDOLLMOVER")
+		net.WriteUInt(0, 4)
+	end,
+
+	rgmUpdateSliders = function() -- 1
+		net.Start("RAGDOLLMOVER")
+		net.WriteUInt(1, 4)
+	end,
+
+	rgmUpdateLists = function() -- 2
+		net.Start("RAGDOLLMOVER")
+		net.WriteUInt(2, 4)
+	end,
+
+	rgmUpdateGizmo = function() -- 3
+		net.Start("RAGDOLLMOVER")
+		net.WriteUInt(3, 4)
+	end,
+
+	rgmUpdateEntInfo = function() -- 4
+		net.Start("RAGDOLLMOVER")
+		net.WriteUInt(4, 4)
+	end,
+
+	rgmAskForPhysbonesResponse = function() -- 5
+		net.Start("RAGDOLLMOVER")
+		net.WriteUInt(5, 4)
+	end,
+
+	rgmAskForParentedResponse = function() -- 6
+		net.Start("RAGDOLLMOVER")
+		net.WriteUInt(6, 4)
+	end,
+
+	rgmLockBoneResponse = function() -- 7
+		net.Start("RAGDOLLMOVER")
+		net.WriteUInt(7, 4)
+	end,
+
+	rgmLockToBoneResponse = function() -- 8
+		net.Start("RAGDOLLMOVER")
+		net.WriteUInt(8, 4)
+	end,
+
+	rgmUnlockToBoneResponse = function() -- 9
+		net.Start("RAGDOLLMOVER")
+		net.WriteUInt(9, 4)
+	end,
+
+	rgmLockConstrainedResponse = function() -- 10
+		net.Start("RAGDOLLMOVER")
+		net.WriteUInt(10, 4)
+	end,
+
+	rgmSelectBoneResponse = function() -- 11
+		net.Start("RAGDOLLMOVER")
+		net.WriteUInt(11, 4)
+	end,
+
+	rgmAskForNodeUpdatePhysicsResponse = function() -- 12
+		net.Start("RAGDOLLMOVER")
+		net.WriteUInt(12, 4)
+	end,
+
+	rgmRequestBonePos = function() -- 13
+		net.Start("RAGDOLLMOVER")
+		net.WriteUInt(13, 4)
+	end,
+
+	rgmNotification = function() -- 14
+		net.Start("RAGDOLLMOVER")
+		net.WriteUInt(14, 4)
+	end,
+
+}
 
 local function RecursiveFindIfParent(ent, lockbone, locktobone)
 	local parent = ent:GetBoneParent(locktobone)
@@ -602,8 +682,7 @@ local NETFUNC = {
 			end
 		end
 
-		net.Start("RAGDOLLMOVER")
-			net.WriteUInt(5, 4)
+		NetStarter.rgmAskForPhysbonesResponse()
 			net.WriteUInt(#sendents, 13)
 			for _, ent in ipairs(sendents) do
 				net.WriteEntity(ent)
@@ -648,8 +727,7 @@ local NETFUNC = {
 
 		if not next(ents) then return end
 
-		net.Start("RAGDOLLMOVER")
-			net.WriteUInt(12, 4)
+		NetStarter.rgmAskForNodeUpdatePhysicsResponse()
 			net.WriteBool(isphys)
 			net.WriteUInt(validcount, 13)
 			for i, ent in ipairs(ents) do
@@ -710,8 +788,7 @@ local NETFUNC = {
 		end
 
 		if next(parented) then
-			net.Start("RAGDOLLMOVER")
-				net.WriteUInt(6, 4)
+			NetStarter.rgmAskForParentedResponse()
 				net.WriteUInt(pcount, 13)
 				for ent, bones in pairs(parented) do
 					net.WriteEntity(ent)
@@ -736,8 +813,7 @@ local NETFUNC = {
 		rgmGetBone(pl, ent, bone)
 		RAGDOLLMOVER.Sync(pl, "Entity", "Bone", "IsPhysBone")
 
-		net.Start("RAGDOLLMOVER")
-			net.WriteUInt(11, 4)
+		NetStarter.rgmSelectBoneResponse()
 			net.WriteBool(RAGDOLLMOVER[pl].IsPhysBone)
 			net.WriteEntity(ent)
 			net.WriteUInt(RAGDOLLMOVER[pl].Bone, 10)
@@ -793,8 +869,7 @@ local NETFUNC = {
 
 		local poslock, anglock, scllock = IsValid(plTable.rgmPosLocks[ent][boneid]), IsValid(plTable.rgmAngLocks[ent][boneid]), plTable.rgmScaleLocks[ent][bone]
 
-		net.Start("RAGDOLLMOVER")
-			net.WriteUInt(7, 4)
+		NetStarter.rgmLockBoneResponse()
 			net.WriteEntity(ent)
 			net.WriteUInt(bone, 10)
 			net.WriteBool(poslock)
@@ -821,15 +896,13 @@ local NETFUNC = {
 		if physbone:IsMotionEnabled() then
 			physbone:EnableMotion(false)
 			physbone:Wake()
-			net.Start("RAGDOLLMOVER")
-				net.WriteUInt(14, 4)
+			NetStarter.rgmNotification()
 				net.WriteUInt(BONE_FROZEN, 5)
 			net.Send(pl)
 		else
 			physbone:EnableMotion(true)
 			physbone:Wake()
-			net.Start("RAGDOLLMOVER")
-				net.WriteUInt(14, 4)
+			NetStarter.rgmNotification()
 				net.WriteUInt(BONE_UNFROZEN, 5)
 			net.Send(pl)
 		end
@@ -857,8 +930,7 @@ local NETFUNC = {
 		if physcheck or samecheck then
 			local err = samecheck and BONELOCK_FAILED_SAME or BONELOCK_FAILED_NOTPHYS
 
-			net.Start("RAGDOLLMOVER")
-				net.WriteUInt(14, 4)
+			NetStarter.rgmNotification()
 				net.WriteUInt(err, 5)
 			net.Send(pl)
 			return
@@ -874,14 +946,12 @@ local NETFUNC = {
 				plTable.rgmPosLocks[lockent][bone] = nil
 				plTable.rgmAngLocks[lockent][bone] = nil
 
-				net.Start("RAGDOLLMOVER")
-					net.WriteUInt(8, 4)
+				NetStarter.rgmLockToBoneResponse()
 					net.WriteEntity(lockent)
 					net.WriteUInt(lockedbone, 10)
 				net.Send(pl)
 			else
-				net.Start("RAGDOLLMOVER")
-					net.WriteUInt(14, 4)
+				NetStarter.rgmNotification()
 					net.WriteUInt(BONELOCK_FAILED, 5)
 				net.Send(pl)
 			end
@@ -891,14 +961,12 @@ local NETFUNC = {
 				plTable.rgmPosLocks[lockent][lockedbone] = nil
 				plTable.rgmAngLocks[lockent][lockedbone] = nil
 
-				net.Start("RAGDOLLMOVER")
-					net.WriteUInt(8, 4)
+				NetStarter.rgmLockToBoneResponse()
 					net.WriteEntity(lockent)
 					net.WriteUInt(0, 10)
 				net.Send(pl)
 			else
-				net.Start("RAGDOLLMOVER")
-					net.WriteUInt(14, 4)
+				NetStarter.rgmNotification()
 					net.WriteUInt(BONELOCK_FAILED, 5)
 				net.Send(pl)
 			end
@@ -918,8 +986,7 @@ local NETFUNC = {
 
 		RAGDOLLMOVER[pl].rgmBoneLocks[ent][bone] = nil
 
-		net.Start("RAGDOLLMOVER")
-			net.WriteUInt(9, 4)
+		NetStarter.rgmUnlockToBoneResponse()
 			net.WriteEntity(ent)
 			net.WriteUInt(unlockbone, 10)
 		net.Send(pl)
@@ -934,8 +1001,7 @@ local NETFUNC = {
 
 		local convar = ConstrainedAllowed:GetBool()
 		if not convar then
-			net.Start("RAGDOLLMOVER")
-				net.WriteUInt(14, 4)
+			NetStarter.rgmNotification()
 				net.WriteUInt(ENTLOCK_FAILED_NOTALLOWED, 5)
 			net.Send(pl)
 			return
@@ -948,8 +1014,7 @@ local NETFUNC = {
 
 			if not ent.rgmPRenttoid then
 				if not rgm.BoneToPhysBone(ent, boneid) then
-					net.Start("RAGDOLLMOVER")
-						net.WriteUInt(14, 4)
+					NetStarter.rgmNotification()
 						net.WriteUInt(ENTLOCK_FAILED_NONPHYS, 5)
 					net.Send(pl)
 					return
@@ -963,8 +1028,7 @@ local NETFUNC = {
 
 		RAGDOLLMOVER[pl].rgmEntLocks[lockent] = {id = physbone, ent = ent}
 
-		net.Start("RAGDOLLMOVER")
-			net.WriteUInt(10, 4)
+		NetStarter.rgmLockConstrainedResponse()
 			net.WriteBool(true)
 			net.WriteEntity(lockent)
 		net.Send(pl)
@@ -978,8 +1042,7 @@ local NETFUNC = {
 
 		RAGDOLLMOVER[pl].rgmEntLocks[lockent] = nil
 
-		net.Start("RAGDOLLMOVER")
-			net.WriteUInt(10, 4)
+		NetStarter.rgmLockConstrainedResponse()
 			net.WriteBool(false)
 			net.WriteEntity(lockent)
 		net.Send(pl)
@@ -994,8 +1057,7 @@ local NETFUNC = {
 		if not rgmCanTool(ent, pl) then return end
 
 		if tool:GetClientNumber("lockselected") ~= 0 then
-			net.Start("RAGDOLLMOVER")
-				net.WriteUInt(14, 4)
+			NetStarter.rgmNotification()
 				net.WriteUInt(ENTSELECT_LOCKRESPONSE, 5)
 			net.Send(pl)
 			return
@@ -1042,8 +1104,7 @@ local NETFUNC = {
 		local physchildren = rgmGetConstrainedEntities(ent)
 
 		if not resetlists then
-			net.Start("RAGDOLLMOVER")
-				net.WriteUInt(4, 4)
+			NetStarter.rgmUpdateEntInfo()
 				net.WriteEntity(ent)
 
 				net.WriteUInt(#physchildren, 13)
@@ -1055,8 +1116,7 @@ local NETFUNC = {
 			local children = rgmFindEntityChildren(ent)
 			plTable.PropRagdoll = ent.rgmPRidtoent and true or false
 
-			net.Start("RAGDOLLMOVER")
-				net.WriteUInt(2, 4)
+			NetStarter.rgmUpdateLists()
 				net.WriteBool(plTable.PropRagdoll)
 				if plTable.PropRagdoll then
 					local rgment = plTable.Entity
@@ -1189,16 +1249,16 @@ local NETFUNC = {
 			plTable.GizmoAng = axis.GizmoAng
 		end
 
-		local function CalcSkeleton(parent, physbones, childbones, ent, ppos, pang)
+		local function CalcSkeleton(parent, childbones, ppos, pang)
 			if not childbones[parent] then return end
 			for bone, tab in pairs(childbones[parent]) do
 				local wpos, wang = tab.pos, tab.ang
 				tab.pos, tab.ang = WorldToLocal(tab.pos, tab.ang, ppos, pang)
-				CalcSkeleton(bone, physbones, childbones, ent, wpos, wang)
+				CalcSkeleton(bone, childbones, wpos, wang)
 			end
 		end
 
-		CalcSkeleton(boneog, physbones, childbones, ent, pos, ang)
+		CalcSkeleton(boneog, childbones, pos, ang)
 
 		RAGDOLLMOVER[pl].rgmBoneChildren = {}
 		if next(childbones) then
@@ -1211,8 +1271,7 @@ local NETFUNC = {
 		if not RAGDOLLMOVER[pl] then return end
 		RAGDOLLMOVER[pl].GizmoOffset:Set(vector_origin)
 
-		net.Start("RAGDOLLMOVER")
-			net.WriteUInt(3, 4)
+		NetStarter.rgmUpdateGizmo()
 			net.WriteVector(RAGDOLLMOVER[pl].GizmoOffset)
 		net.Send(pl)
 	end,
@@ -1265,8 +1324,7 @@ local NETFUNC = {
 
 		plTable.GizmoOffset = vector
 
-		net.Start("RAGDOLLMOVER")
-			net.WriteUInt(3, 4)
+		NetStarter.rgmUpdateGizmo()
 			net.WriteVector(plTable.GizmoOffset)
 		net.Send(pl)
 	end,
@@ -1287,13 +1345,11 @@ local NETFUNC = {
 			ent:ManipulateBoneScale(i, scale)
 		end
 
-		net.Start("RAGDOLLMOVER")
-			net.WriteUInt(1, 4)
+		NetStarter.rgmUpdateSliders()
 		net.Send(pl)
 
 		timer.Simple(0.1, function() -- ask client to get new bone position info in case if the parent bone was moved. put into timer as it takes a bit of time for position to update on client?
-			net.Start("RAGDOLLMOVER")
-				net.WriteUInt(13, 4)
+			NetStarter.rgmRequestBonePos()
 			net.Send(pl)
 		end)
 	end,
@@ -1328,13 +1384,11 @@ local NETFUNC = {
 			ent:ManipulateBoneScale(bone, scale)
 		end
 
-		net.Start("RAGDOLLMOVER")
-			net.WriteUInt(1, 4)
+		NetStarter.rgmUpdateSliders()
 		net.Send(pl)
 
 		timer.Simple(0.1, function() -- ask client to get new bone position info in case if the parent bone was moved. put into timer as it takes a bit of time for position to update on client?
-			net.Start("RAGDOLLMOVER")
-				net.WriteUInt(13, 4)
+			NetStarter.rgmRequestBonePos()
 			net.Send(pl)
 		end)
 	end,
@@ -1361,13 +1415,11 @@ local NETFUNC = {
 			ent:ManipulateBonePosition(bone, pos)
 		end
 
-		net.Start("RAGDOLLMOVER")
-			net.WriteUInt(1, 4)
+		NetStarter.rgmUpdateSliders()
 		net.Send(pl)
 
 		timer.Simple(0.1, function()
-			net.Start("RAGDOLLMOVER")
-				net.WriteUInt(13, 4)
+			NetStarter.rgmRequestBonePos()
 			net.Send(pl)
 		end)
 	end,
@@ -1393,13 +1445,11 @@ local NETFUNC = {
 			ent:ManipulateBoneAngles(bone, ang)
 		end
 
-		net.Start("RAGDOLLMOVER")
-			net.WriteUInt(1, 4)
+		NetStarter.rgmUpdateSliders()
 		net.Send(pl)
 
 		timer.Simple(0.1, function()
-			net.Start("RAGDOLLMOVER")
-				net.WriteUInt(13, 4)
+			NetStarter.rgmRequestBonePos()
 			net.Send(pl)
 		end)
 	end,
@@ -1425,13 +1475,11 @@ local NETFUNC = {
 			ent:ManipulateBoneScale(bone, scale)
 		end
 
-		net.Start("RAGDOLLMOVER")
-			net.WriteUInt(1, 4)
+		NetStarter.rgmUpdateSliders()
 		net.Send(pl)
 
 		timer.Simple(0.1, function()
-			net.Start("RAGDOLLMOVER")
-				net.WriteUInt(13, 4)
+			NetStarter.rgmRequestBonePos()
 			net.Send(pl)
 		end)
 	end,
@@ -1457,13 +1505,11 @@ local NETFUNC = {
 			ent:ManipulateBoneScale(bone, scale)
 		end
 
-		net.Start("RAGDOLLMOVER")
-			net.WriteUInt(1, 4)
+		NetStarter.rgmUpdateSliders()
 		net.Send(pl)
 
 		timer.Simple(0.1, function()
-			net.Start("RAGDOLLMOVER")
-				net.WriteUInt(13, 4)
+			NetStarter.rgmRequestBonePos()
 			net.Send(pl)
 		end)
 	end,
@@ -1545,8 +1591,7 @@ local NETFUNC = {
 			end
 		end
 
-		net.Start("RAGDOLLMOVER")
-			net.WriteUInt(3, 4)
+		NetStarter.rgmUpdateGizmo()
 			net.WriteVector(plTable.GizmoOffset)
 		net.Send(pl)
 
@@ -1749,8 +1794,7 @@ hook.Add("EntityRemoved", "RGMDeselectEntity", function(ent)
 		if plTable and plTable.Entity == ent  then
 			plTable.Entity = nil
 			plTable.Axis.EntAdvMerged = false
-			net.Start("RAGDOLLMOVER")
-				net.WriteUInt(0, 4)
+			NetStarter.rgmDeselectEntity()
 			net.Send(pl)
 		end
 	end
@@ -1768,8 +1812,7 @@ concommand.Add("ragdollmover_resetroot", function(pl)
 
 	RAGDOLLMOVER.Sync(pl, "Bone", "IsPhysBone")
 
-	net.Start("RAGDOLLMOVER")
-		net.WriteUInt(11, 4)
+	NetStarter.rgmSelectBoneResponse()
 		net.WriteBool(plTable.IsPhysBone)
 		net.WriteEntity(plTable.Entity)
 		net.WriteUInt(plTable.Bone, 10)
@@ -1859,8 +1902,7 @@ function TOOL:LeftClick()
 
 			plTable.GizmoOffset = offset
 
-			net.Start("RAGDOLLMOVER")
-				net.WriteUInt(3, 4)
+			NetStarter.rgmUpdateGizmo()
 				net.WriteVector(plTable.GizmoOffset)
 			net.Send(pl)
 		end
@@ -1997,8 +2039,7 @@ function TOOL:LeftClick()
 		local entity = tr.Entity
 
 		if entity ~= plTable.Entity and self:GetClientNumber("lockselected") ~= 0 then
-			net.Start("RAGDOLLMOVER")
-				net.WriteUInt(14, 4)
+			NetStarter.rgmNotification()
 				net.WriteUInt(ENTSELECT_LOCKRESPONSE, 5)
 			net.Send(pl)
 			return false
@@ -2023,8 +2064,7 @@ function TOOL:LeftClick()
 			local physchildren = rgmGetConstrainedEntities(entity)
 			plTable.PropRagdoll = entity.rgmPRidtoent and true or false
 
-			net.Start("RAGDOLLMOVER")
-				net.WriteUInt(2, 4)
+			NetStarter.rgmUpdateLists()
 				net.WriteBool(plTable.PropRagdoll)
 				if plTable.PropRagdoll then
 					local rgment = plTable.Entity
@@ -2092,8 +2132,7 @@ function TOOL:LeftClick()
 
 		RAGDOLLMOVER.Sync(pl, "Entity", "Bone", "IsPhysBone")
 
-		net.Start("RAGDOLLMOVER")
-			net.WriteUInt(11, 4)
+		NetStarter.rgmSelectBoneResponse()
 			net.WriteBool(plTable.IsPhysBone)
 			net.WriteEntity(plTable.Entity)
 			net.WriteUInt(plTable.Bone, 10)
@@ -2161,8 +2200,7 @@ function TOOL:RightClick()
 
 			plTable.GizmoOffset = offset
 
-			net.Start("RAGDOLLMOVER")
-				net.WriteUInt(3, 4)
+			NetStarter.rgmUpdateGizmo()
 				net.WriteVector(plTable.GizmoOffset)
 			net.Send(pl)
 		end
@@ -2240,11 +2278,9 @@ if SERVER then
 			plTable.Moving = false
 			plTable.PlViewEnt = 0
 			RAGDOLLMOVER.Sync(pl, "Moving", "PlViewEnt")
-			net.Start("RAGDOLLMOVER")
-				net.WriteUInt(1, 4)
+			NetStarter.rgmUpdateSliders()
 			net.Send(pl)
-			net.Start("RAGDOLLMOVER")
-				net.WriteUInt(3, 4)
+			NetStarter.rgmUpdateGizmo()
 				net.WriteVector(plTable.GizmoOffset)
 			net.Send(pl)
 			return
@@ -2513,8 +2549,7 @@ do
 	for k, v in ipairs(ConVars) do
 
 		cvars.AddChangeCallback(v, function(convar, old, new)
-			net.Start("RAGDOLLMOVER")
-				net.WriteUInt(26, 5)
+			NetStarter.rgmUpdateCCVar()
 				net.WriteUInt(k, 4)
 			net.SendToServer()
 			if k == 8 then
@@ -2674,8 +2709,7 @@ local function rgmSendBonePos(pl, ent, boneid)
 
 	RecursiveGrabChildBones(boneid, childbones, ent)
 
-	net.Start("RAGDOLLMOVER")
-		net.WriteUInt(12, 5)
+	NetStarter.rgmSendBonePos()
 		net.WriteVector(gizmopos)
 		net.WriteAngle(gizmoang)
 		net.WriteVector(gizmoppos)
@@ -2693,15 +2727,13 @@ end
 
 local function RGMPrepareOffsets()
 	if not pl or not RAGDOLLMOVER[pl] or not IsValid(RAGDOLLMOVER[pl].Entity) or RAGDOLLMOVER[pl].Entity:GetClass() ~= "prop_ragdoll" then return end
-	net.Start("RAGDOLLMOVER")
-		net.WriteUInt(22, 5)
+	NetStarter.rgmPrepareOffsets()
 	net.SendToServer()
 end
 
 local function RGMClearOffsets()
 	if not pl or not RAGDOLLMOVER[pl] or not IsValid(RAGDOLLMOVER[pl].Entity) or RAGDOLLMOVER[pl].Entity:GetClass() ~= "prop_ragdoll" then return end
-	net.Start("RAGDOLLMOVER")
-		net.WriteUInt(23, 5)
+	NetStarter.rgmClearOffsets()
 	net.SendToServer()
 end
 
@@ -2741,27 +2773,32 @@ local function CManipSlider(cpanel, text, mode, axis, min, max, dec, textentry)
 		slider:SetDefaultValue(0)
 	end
 
-	local scratchpressold, textareafocusold, sliderpressold = slider.Scratch.OnMousePressed, slider.TextArea.OnGetFocus, slider.Slider.OnMousePressed
+	local scratchpressold, textareafocusold, sliderpressold, knobpressold = slider.Scratch.OnMousePressed, slider.TextArea.OnGetFocus, slider.Slider.OnMousePressed, slider.Slider.Knob.OnMousePressed
 
 	slider.Scratch.OnMousePressed = function(self, mc)
-		scratchpressold(self, mc)
 		RGMPrepareOffsets()
+		scratchpressold(self, mc)
 	end
 
 	slider.TextArea.OnGetFocus = function(self)
-		textareafocusold(self)
 		RGMPrepareOffsets()
+		textareafocusold(self)
 	end
 
 	slider.Slider.OnMousePressed = function(self, mc)
-		sliderpressold(self, mc)
 		RGMPrepareOffsets()
+		sliderpressold(self, mc)
 	end
 
-	local scratchrelaseold, textarealosefocusold, sliderreleaseold = slider.Scratch.OnMouseReleased, slider.TextArea.OnLoseFocus, slider.Slider.OnMouseReleased
+	slider.Slider.Knob.OnMousePressed = function(self, mc)
+		RGMPrepareOffsets()
+		knobpressold(self, mc)
+	end
+
+	local scratchreleaseold, textarealosefocusold, sliderreleaseold, knobreleaseold = slider.Scratch.OnMouseReleased, slider.TextArea.OnLoseFocus, slider.Slider.OnMouseReleased, slider.Slider.Knob.OnMouseReleased
 
 	slider.Scratch.OnMouseReleased = function(self, mc)
-		scratchrelaseold(self, mc)
+		scratchreleaseold(self, mc)
 		RGMClearOffsets()
 	end
 
@@ -2775,14 +2812,18 @@ local function CManipSlider(cpanel, text, mode, axis, min, max, dec, textentry)
 		RGMClearOffsets()
 	end
 
+	slider.Slider.Knob.OnMouseReleased = function(self, mc)
+		knobreleaseold(self, mc)
+		RGMClearOffsets()
+	end
+
 	function slider:OnValueChanged(value)
 		if ManipSliderUpdating then return end
 		ManipSliderUpdating = true
 
 		if mode == 3 and value == 0 then value = 0.01 end
 
-		net.Start("RAGDOLLMOVER")
-			net.WriteUInt(24, 5)
+		NetStarter.rgmAdjustBone()
 			net.WriteInt(mode, 3)
 			net.WriteInt(axis, 3)
 			net.WriteFloat(value)
@@ -2811,8 +2852,7 @@ local function CManipEntry(cpanel, mode)
 
 				if mode == 3 and tonumber(values[i]) == 0 then values[i] = 0.01 end
 
-				net.Start("RAGDOLLMOVER")
-					net.WriteUInt(24, 5)
+				NetStarter.rgmAdjustBone()
 					net.WriteInt(mode, 3)
 					net.WriteInt(i, 3)
 					net.WriteFloat(tonumber(values[i]))
@@ -2869,8 +2909,7 @@ local function CGizmoSlider(cpanel, text, axis, min, max, dec)
 	end
 
 	function slider:OnValueChanged(value)
-		net.Start("RAGDOLLMOVER")
-			net.WriteUInt(25, 5)
+		NetStarter.rgmGizmoOffset()
 			net.WriteUInt(axis, 2)
 			net.WriteFloat(value)
 		net.SendToServer()
@@ -3009,15 +3048,13 @@ end
 
 local function RGMResetGizmo()
 	if not RAGDOLLMOVER[pl] then return end
-	net.Start("RAGDOLLMOVER")
-		net.WriteUInt(13, 5)
+	NetStarter.rgmResetGizmo()
 	net.SendToServer()
 end
 
 local function RGMGizmoMode()
 	if not RAGDOLLMOVER[pl] then return end
-	net.Start("RAGDOLLMOVER")
-		net.WriteUInt(14, 5)
+	NetStarter.rgmOperationSwitch()
 		net.WriteUInt(1, 2)
 	net.SendToServer()
 end
@@ -3025,8 +3062,7 @@ end
 local function RGMResetAllBones()
 	if not RAGDOLLMOVER[pl] or not RAGDOLLMOVER[pl].Entity then return end
 
-	net.Start("RAGDOLLMOVER")
-		net.WriteUInt(16, 5)
+	NetStarter.rgmResetAllBones()
 		net.WriteEntity(RAGDOLLMOVER[pl].Entity)
 	net.SendToServer()
 end
@@ -3236,11 +3272,144 @@ cvars.AddChangeCallback("ragdollmover_ik_leg_R", function(convar, old, new)
 	end
 end)
 
+NetStarter = {
+
+	rgmAskForPhysbones = function() -- 1
+		net.Start("RAGDOLLMOVER")
+		net.WriteUInt(1, 5)
+	end,
+
+	rgmAskForNodeUpdatePhysics = function() -- 2
+		net.Start("RAGDOLLMOVER")
+		net.WriteUInt(2, 5)
+	end,
+
+	rgmAskForParented = function() -- 3
+		net.Start("RAGDOLLMOVER")
+		net.WriteUInt(3, 5)
+	end,
+
+	rgmSelectBone = function() -- 4
+		net.Start("RAGDOLLMOVER")
+		net.WriteUInt(4, 5)
+	end,
+
+	rgmLockBone = function() -- 5
+		net.Start("RAGDOLLMOVER")
+		net.WriteUInt(5, 5)
+	end,
+
+	rgmBoneFreezer = function() -- 6
+		net.Start("RAGDOLLMOVER")
+		net.WriteUInt(6, 5)
+	end,
+
+	rgmLockToBone = function() -- 7
+		net.Start("RAGDOLLMOVER")
+		net.WriteUInt(7, 5)
+	end,
+
+	rgmUnlockToBone = function() -- 8
+		net.Start("RAGDOLLMOVER")
+		net.WriteUInt(8, 5)
+	end,
+
+	rgmLockConstrained = function() -- 9
+		net.Start("RAGDOLLMOVER")
+		net.WriteUInt(9, 5)
+	end,
+
+	rgmUnlockConstrained = function() -- 10
+		net.Start("RAGDOLLMOVER")
+		net.WriteUInt(10, 5)
+	end,
+
+	rgmSelectEntity = function() -- 11
+		net.Start("RAGDOLLMOVER")
+		net.WriteUInt(11, 5)
+	end,
+
+	rgmSendBonePos = function() -- 12
+		net.Start("RAGDOLLMOVER")
+		net.WriteUInt(12, 5)
+	end,
+
+	rgmResetGizmo = function() -- 13
+		net.Start("RAGDOLLMOVER")
+		net.WriteUInt(13, 5)
+	end,
+
+	rgmOperationSwitch = function() -- 14
+		net.Start("RAGDOLLMOVER")
+		net.WriteUInt(14, 5)
+	end,
+
+	rgmSetGizmoToBone = function() -- 15
+		net.Start("RAGDOLLMOVER")
+		net.WriteUInt(15, 5)
+	end,
+
+	rgmResetAllBones = function() -- 16
+		net.Start("RAGDOLLMOVER")
+		net.WriteUInt(16, 5)
+	end,
+
+	rgmResetAll = function() -- 17
+		net.Start("RAGDOLLMOVER")
+		net.WriteUInt(17, 5)
+	end,
+
+	rgmResetPos = function() -- 18
+		net.Start("RAGDOLLMOVER")
+		net.WriteUInt(18, 5)
+	end,
+
+	rgmResetAng = function() -- 19
+		net.Start("RAGDOLLMOVER")
+		net.WriteUInt(19, 5)
+	end,
+
+	rgmResetScale = function() -- 20
+		net.Start("RAGDOLLMOVER")
+		net.WriteUInt(20, 5)
+	end,
+
+	rgmScaleZero = function() -- 21
+		net.Start("RAGDOLLMOVER")
+		net.WriteUInt(21, 5)
+	end,
+
+	rgmPrepareOffsets = function() -- 22
+		net.Start("RAGDOLLMOVER")
+		net.WriteUInt(22, 5)
+	end,
+
+	rgmClearOffsets = function() -- 23
+		net.Start("RAGDOLLMOVER")
+		net.WriteUInt(23, 5)
+	end,
+
+	rgmAdjustBone = function() -- 24
+		net.Start("RAGDOLLMOVER")
+		net.WriteUInt(24, 5)
+	end,
+
+	rgmGizmoOffset = function() -- 25
+		net.Start("RAGDOLLMOVER")
+		net.WriteUInt(25, 5)
+	end,
+
+	rgmUpdateCCVar = function() -- 26
+		net.Start("RAGDOLLMOVER")
+		net.WriteUInt(26, 5)
+	end
+
+}
+
 local NodeFunctions = {
 
 	function(ent, id) -- 1 nodeReset
-		net.Start("RAGDOLLMOVER")
-			net.WriteUInt(17, 5)
+		NetStarter.rgmResetAll()
 			net.WriteEntity(ent)
 			net.WriteUInt(id, 10)
 			net.WriteBool(false)
@@ -3248,8 +3417,7 @@ local NodeFunctions = {
 	end,
 
 	function(ent, id) -- 2 nodeResetPos
-		net.Start("RAGDOLLMOVER")
-			net.WriteUInt(18, 5)
+		NetStarter.rgmResetPos()
 			net.WriteEntity(ent)
 			net.WriteBool(false)
 			net.WriteUInt(id, 10) -- with SFM studiomdl, it seems like upper limit for bones is 256. Used 10 bits in case if there was 512 https://developer.valvesoftware.com/wiki/Skeleton
@@ -3257,8 +3425,7 @@ local NodeFunctions = {
 	end,
 
 	function(ent, id) -- 3 nodeResetRot
-		net.Start("RAGDOLLMOVER")
-			net.WriteUInt(19, 5)
+		NetStarter.rgmResetAng()
 			net.WriteEntity(ent)
 			net.WriteBool(false)
 			net.WriteUInt(id, 10)
@@ -3266,8 +3433,7 @@ local NodeFunctions = {
 	end,
 
 	function(ent, id) -- 4 nodeResetScale
-		net.Start("RAGDOLLMOVER")
-			net.WriteUInt(20, 5)
+		NetStarter.rgmResetScale()
 			net.WriteEntity(ent)
 			net.WriteBool(false)
 			net.WriteUInt(id, 10)
@@ -3275,8 +3441,7 @@ local NodeFunctions = {
 	end,
 
 	function(ent, id) -- 5 nodeResetCh
-		net.Start("RAGDOLLMOVER")
-			net.WriteUInt(17, 5)
+		NetStarter.rgmResetAll()
 			net.WriteEntity(ent)
 			net.WriteUInt(id, 10)
 			net.WriteBool(true)
@@ -3284,8 +3449,7 @@ local NodeFunctions = {
 	end,
 
 	function(ent, id) -- 6 nodeResetPosCh
-		net.Start("RAGDOLLMOVER")
-			net.WriteUInt(18, 5)
+		NetStarter.rgmResetPos()
 			net.WriteEntity(ent)
 			net.WriteBool(true)
 			net.WriteUInt(id, 10)
@@ -3293,8 +3457,7 @@ local NodeFunctions = {
 	end,
 
 	function(ent, id) -- 7 nodeResetAngCh
-		net.Start("RAGDOLLMOVER")
-			net.WriteUInt(19, 5)
+		NetStarter.rgmResetAng()
 			net.WriteEntity(ent)
 			net.WriteBool(true)
 			net.WriteUInt(id, 10)
@@ -3302,8 +3465,7 @@ local NodeFunctions = {
 	end,
 
 	function(ent, id) -- 8 nodeResetScaleCh
-		net.Start("RAGDOLLMOVER")
-			net.WriteUInt(20, 5)
+		NetStarter.rgmResetScale()
 			net.WriteEntity(ent)
 			net.WriteBool(true)
 			net.WriteUInt(id, 10)
@@ -3311,8 +3473,7 @@ local NodeFunctions = {
 	end,
 
 	function(ent, id)  -- 9 nodeScaleZero
-		net.Start("RAGDOLLMOVER")
-			net.WriteUInt(21, 5)
+		NetStarter.rgmScaleZero()
 			net.WriteEntity(ent)
 			net.WriteBool(false)
 			net.WriteUInt(id, 10)
@@ -3320,8 +3481,7 @@ local NodeFunctions = {
 	end,
 
 	function(ent, id) -- 10 nodeScaleZeroCh
-		net.Start("RAGDOLLMOVER")
-			net.WriteUInt(21, 5)
+		NetStarter.rgmScaleZero()
 			net.WriteEntity(ent)
 			net.WriteBool(true)
 			net.WriteUInt(id, 10)
@@ -3329,16 +3489,14 @@ local NodeFunctions = {
 	end,
 
 	function(ent, id) -- 11 nodeUnlock
-		net.Start("RAGDOLLMOVER")
-			net.WriteUInt(8, 5)
+		NetStarter.rgmUnlockToBone()
 			net.WriteEntity(ent)
 			net.WriteUInt(id, 10)
 		net.SendToServer()
 	end,
 
 	function(ent, id) -- 12 nodePosLock
-		net.Start("RAGDOLLMOVER")
-			net.WriteUInt(5, 5)
+		NetStarter.rgmLockBone()
 			net.WriteEntity(ent)
 			net.WriteUInt(0, 2)
 			net.WriteUInt(id, 10)
@@ -3346,8 +3504,7 @@ local NodeFunctions = {
 	end,
 
 	function(ent, id) -- 13 nodeRotLock
-		net.Start("RAGDOLLMOVER")
-			net.WriteUInt(5, 5)
+		NetStarter.rgmLockBone()
 			net.WriteEntity(ent)
 			net.WriteUInt(1, 2)
 			net.WriteUInt(id, 10)
@@ -3380,8 +3537,7 @@ local NodeFunctions = {
 
 		ResetMode = false
 
-		net.Start("RAGDOLLMOVER")
-			net.WriteUInt(14, 5)
+		NetStarter.rgmOperationSwitch()
 			net.WriteUInt(2, 2)
 		net.SendToServer()
 
@@ -3389,8 +3545,7 @@ local NodeFunctions = {
 	end,
 
 	function(ent, id) -- 15 nodeScaleLock
-		net.Start("RAGDOLLMOVER")
-			net.WriteUInt(5, 5)
+		NetStarter.rgmLockBone()
 			net.WriteEntity(ent)
 			net.WriteUInt(2, 2)
 			net.WriteUInt(id, 10)
@@ -3398,8 +3553,7 @@ local NodeFunctions = {
 	end,
 
 	function(ent, id) -- 16 nodeFreezeBone
-		net.Start("RAGDOLLMOVER")
-			net.WriteUInt(6, 5)
+		NetStarter.rgmBoneFreezer()
 			net.WriteEntity(ent)
 			net.WriteUInt(id, 10)
 		net.SendToServer()
@@ -3412,8 +3566,7 @@ local NodeFunctions = {
 			pos = matrix:GetTranslation()
 		end
 
-		net.Start("RAGDOLLMOVER")
-			net.WriteUInt(15, 5)
+		NetStarter.rgmSetGizmoToBone()
 			net.WriteVector(pos)
 		net.SendToServer()
 	end,
@@ -3423,8 +3576,7 @@ local NodeFunctions = {
 	end,
 
 	function(ent, id) -- 19 nodeAllPhysLock
-		net.Start("RAGDOLLMOVER")
-			net.WriteUInt(5, 5)
+		NetStarter.rgmLockBone()
 			net.WriteEntity(ent)
 			net.WriteUInt(3, 2)
 			net.WriteUInt(id, 10)
@@ -3467,15 +3619,13 @@ local function SetBoneNodes(bonepanel, sortedbones)
 
 			nodes[ent][v.id].DoClick = function()
 				if not LockMode then
-					net.Start("RAGDOLLMOVER")
-						net.WriteUInt(4, 5)
+					NetStarter.rgmSelectBone()
 						net.WriteEntity(ent)
 						net.WriteUInt(v.id, 10)
 					net.SendToServer()
 				else
 					if LockMode == 1 then
-						net.Start("RAGDOLLMOVER")
-							net.WriteUInt(7, 5)
+						NetStarter.rgmLockToBone()
 							net.WriteEntity(ent)
 							net.WriteUInt(v.id, 10)
 							net.WriteEntity(LockTo.ent)
@@ -3493,8 +3643,7 @@ local function SetBoneNodes(bonepanel, sortedbones)
 							nodes[LockTo.ent][LockTo.id].Label:SetToolTip(BoneTypeSort[nodes[LockTo.ent][LockTo.id].Type].ToolTip)
 						end
 					elseif LockMode == 2 then
-						net.Start("RAGDOLLMOVER")
-							net.WriteUInt(9, 5)
+						NetStarter.rgmLockConstrained()
 							net.WriteEntity(ent)
 							net.WriteEntity(LockTo.id) -- In this case it isn't really "LockTo", more of "LockThis" but I was lazy so used same variables. Probably once I get to C++ stuff trying to do the same thing would be baaad
 							net.WriteBool(true)
@@ -3510,8 +3659,7 @@ local function SetBoneNodes(bonepanel, sortedbones)
 
 					ResetMode = false
 
-					net.Start("RAGDOLLMOVER")
-						net.WriteUInt(14, 5)
+					NetStarter.rgmOperationSwitch()
 						net.WriteUInt(0, 2)
 					net.SendToServer()
 
@@ -3709,8 +3857,7 @@ local function RGMBuildBoneMenu(ents, selectedent, bonepanel)
 
 	SetBoneNodes(bonepanel, sortedbones)
 
-	net.Start("RAGDOLLMOVER")
-		net.WriteUInt(1, 5)
+	NetStarter.rgmAskForPhysbones()
 		net.WriteUInt(count, 13)
 		for ent, _ in pairs(ents) do
 			net.WriteEntity(ent)
@@ -3719,8 +3866,7 @@ local function RGMBuildBoneMenu(ents, selectedent, bonepanel)
 
 	for ent, _ in pairs(ents) do
 		if ent:IsEffectActive(EF_BONEMERGE) or ent:GetClass() == "ent_advbonemerge" then
-			net.Start("RAGDOLLMOVER")
-				net.WriteUInt(3, 5)
+			NetStarter.rgmAskForParented()
 				net.WriteUInt(count, 13)
 				for ent, _ in pairs(ents) do
 					net.WriteEntity(ent)
@@ -3740,8 +3886,7 @@ local function ShowOnlyPhysNodes(ent, bonepanel)
 		count = count + 1
 	end
 
-	net.Start("RAGDOLLMOVER")
-		net.WriteUInt(2, 5)
+	NetStarter.rgmAskForNodeUpdatePhysics()
 		net.WriteBool(true)
 		net.WriteUInt(count, 13)
 
@@ -3760,8 +3905,7 @@ local function ShowOnlyNonPhysNodes(ent, bonepanel)
 		count = count + 1
 	end
 
-	net.Start("RAGDOLLMOVER")
-		net.WriteUInt(2, 5)
+	NetStarter.rgmAskForNodeUpdatePhysics()
 		net.WriteBool(false)
 		net.WriteUInt(count, 13)
 
@@ -3812,8 +3956,7 @@ local function UpdateBoneNodes(bonepanel, physids, isphys)
 	SetBoneNodes(bonepanel, sortedbones)
 
 	if isphys then
-		net.Start("RAGDOLLMOVER")
-			net.WriteUInt(1, 5)
+		NetStarter.rgmAskForPhysbones()
 			net.WriteUInt(count, 13)
 			for ent, _ in pairs(TreeEntities) do
 				net.WriteEntity(ent)
@@ -3823,8 +3966,7 @@ local function UpdateBoneNodes(bonepanel, physids, isphys)
 
 	for ent, _ in pairs(TreeEntities) do
 		if ent:IsEffectActive(EF_BONEMERGE) then
-			net.Start("RAGDOLLMOVER")
-				net.WriteUInt(3, 5)
+			NetStarter.rgmAskForParented()
 				net.WriteUInt(count, 13)
 				for ent, _ in pairs(TreeEntities) do
 					net.WriteEntity(ent)
@@ -3848,8 +3990,7 @@ local function RGMBuildEntMenu(ents, children, entpanel)
 		entnodes[parent]:SetExpanded(true)
 
 		entnodes[parent].DoClick = function()
-			net.Start("RAGDOLLMOVER")
-				net.WriteUInt(11, 5)
+			NetStarter.rgmSelectEntity()
 				net.WriteEntity(parent)
 				net.WriteBool(false)
 			net.SendToServer()
@@ -3890,8 +4031,7 @@ local function RGMBuildEntMenu(ents, children, entpanel)
 				entnodes[v]:SetExpanded(true)
 
 				entnodes[v].DoClick = function()
-					net.Start("RAGDOLLMOVER")
-						net.WriteUInt(11, 5)
+					NetStarter.rgmSelectEntity()
 						net.WriteEntity(v)
 						net.WriteBool(false)
 					net.SendToServer()
@@ -3947,14 +4087,12 @@ local function RGMBuildConstrainedEnts(parent, children, entpanel)
 
 		conentnodes[ent].DoClick = function()
 			if conentnodes[ent].Locked then
-				net.Start("RAGDOLLMOVER")
-					net.WriteUInt(10, 5)
+				NetStarter.rgmUnlockConstrained()
 					net.WriteEntity(ent)
 				net.SendToServer()
 			else
 				if parent:GetClass() ~= "prop_ragdoll" and not IsPropRagdoll then
-					net.Start("RAGDOLLMOVER")
-						net.WriteUInt(9, 5)
+					NetStarter.rgmLockConstrained()
 						net.WriteEntity(parent)
 						net.WriteEntity(ent)
 						net.WriteBool(false)
@@ -3986,8 +4124,7 @@ local function RGMBuildConstrainedEnts(parent, children, entpanel)
 
 					ResetMode = false
 
-					net.Start("RAGDOLLMOVER")
-						net.WriteUInt(14, 5)
+					NetStarter.rgmOperationSwitch()
 						net.WriteUInt(2, 2)
 					net.SendToServer()
 
@@ -4001,8 +4138,7 @@ local function RGMBuildConstrainedEnts(parent, children, entpanel)
 
 			local option = entmenu:AddOption("#tool.ragdollmover.entselect", function()
 				if not IsValid(ent) then return end
-				net.Start("RAGDOLLMOVER")
-					net.WriteUInt(11, 5)
+				NetStarter.rgmSelectEntity()
 					net.WriteEntity(ent)
 					net.WriteBool(true)
 				net.SendToServer()
@@ -4225,8 +4361,7 @@ local NETFUNC = {
 		local tool = pl:GetTool()
 		if RAGDOLLMOVER[pl] and IsValid(pl:GetActiveWeapon()) and  pl:GetActiveWeapon():GetClass() == "gmod_tool" and tool and tool.Mode == "ragdollmover" then
 
-			net.Start("RAGDOLLMOVER")
-				net.WriteUInt(14, 5)
+			NetStarter.rgmOperationSwitch()
 				net.WriteUInt(0, 2)
 			net.SendToServer()
 
@@ -4297,8 +4432,7 @@ local NETFUNC = {
 		local tool = pl:GetTool()
 		if RAGDOLLMOVER[pl] and IsValid(pl:GetActiveWeapon()) and  pl:GetActiveWeapon():GetClass() == "gmod_tool" and tool and tool.Mode == "ragdollmover" then
 
-			net.Start("RAGDOLLMOVER")
-				net.WriteUInt(14, 5)
+			NetStarter.rgmOperationSwitch()
 				net.WriteUInt(0, 2)
 			net.SendToServer()
 
@@ -4344,8 +4478,7 @@ local NETFUNC = {
 		local tool = pl:GetTool()
 		if RAGDOLLMOVER[pl] and IsValid(pl:GetActiveWeapon()) and  pl:GetActiveWeapon():GetClass() == "gmod_tool" and tool and tool.Mode == "ragdollmover" then
 
-			net.Start("RAGDOLLMOVER")
-				net.WriteUInt(14, 5)
+			NetStarter.rgmOperationSwitch()
 				net.WriteUInt(0, 2)
 			net.SendToServer()
 
@@ -4586,8 +4719,7 @@ function TOOL:Think()
 							if LockMode == false and isright then
 								ResetMode = true
 
-								net.Start("RAGDOLLMOVER")
-									net.WriteUInt(14, 5)
+								NetStarter.rgmOperationSwitch()
 									net.WriteUInt(3, 2)
 								net.SendToServer()
 
@@ -4595,15 +4727,13 @@ function TOOL:Think()
 
 								gui.EnableScreenClicker(true)
 							elseif LockMode == false then
-								net.Start("RAGDOLLMOVER")
-									net.WriteUInt(4, 5)
+								NetStarter.rgmSelectBone()
 									net.WriteEntity(ent)
 									net.WriteUInt(selbones[1], 10)
 								net.SendToServer()
 							else
 								if LockMode == 1 then
-									net.Start("RAGDOLLMOVER")
-										net.WriteUInt(7, 5)
+									NetStarter.rgmLockToBone()
 										net.WriteEntity(ent)
 										net.WriteUInt(selbones[1], 10)
 										net.WriteEntity(LockTo.ent)
@@ -4621,8 +4751,7 @@ function TOOL:Think()
 										nodes[LockTo.ent][LockTo.id].Label:SetToolTip(BoneTypeSort[nodes[LockTo.ent][LockTo.id].Type].ToolTip)
 									end
 								elseif LockMode == 2 then
-									net.Start("RAGDOLLMOVER")
-										net.WriteUInt(9, 5)
+									NetStarter.rgmLockConstrained()
 										net.WriteEntity(ent)
 										net.WriteEntity(LockTo.id)
 										net.WriteBool(true)
@@ -4639,8 +4768,7 @@ function TOOL:Think()
 
 							if not ResetMode then
 								timer.Simple(0.1, function()
-									net.Start("RAGDOLLMOVER")
-										net.WriteUInt(14, 5)
+									NetStarter.rgmOperationSwitch()
 										net.WriteUInt(0, 2)
 									net.SendToServer()
 								end)
@@ -4648,8 +4776,7 @@ function TOOL:Think()
 						else
 							plTable.SelectedBones = selbones
 
-							net.Start("RAGDOLLMOVER")
-								net.WriteUInt(14, 5)
+							NetStarter.rgmOperationSwitch()
 								net.WriteUInt(3, 2)
 							net.SendToServer()
 
@@ -4669,15 +4796,13 @@ function TOOL:Think()
 						ResetMode = true
 						plTable.SelectedBones = { rgm.AdvBoneSelectRadialPick() }
 					elseif LockMode == false then
-						net.Start("RAGDOLLMOVER")
-							net.WriteUInt(4, 5)
+						NetStarter.rgmSelectBone()
 							net.WriteEntity(ent)
 							net.WriteUInt(rgm.AdvBoneSelectRadialPick(), 10)
 						net.SendToServer()
 					else
 						if LockMode == 1 then
-							net.Start("RAGDOLLMOVER")
-								net.WriteUInt(7, 5)
+							NetStarter.rgmLockToBone()
 								net.WriteEntity(ent)
 								net.WriteUInt(rgm.AdvBoneSelectRadialPick(), 10)
 								net.WriteEntity(LockTo.ent)
@@ -4695,8 +4820,7 @@ function TOOL:Think()
 								nodes[LockTo.ent][LockTo.id].Label:SetToolTip(BoneTypeSort[nodes[LockTo.ent][LockTo.id].Type].ToolTip)
 							end
 						elseif LockMode == 2 then
-							net.Start("RAGDOLLMOVER")
-								net.WriteUInt(9, 5)
+							NetStarter.rgmLockConstrained()
 								net.WriteEntity(ent)
 								net.WriteEntity(LockTo.id)
 								net.WriteBool(true)
@@ -4713,8 +4837,7 @@ function TOOL:Think()
 
 					if not ResetMode and doreset then
 						timer.Simple(0.1, function()
-							net.Start("RAGDOLLMOVER")
-								net.WriteUInt(14, 5)
+							NetStarter.rgmOperationSwitch()
 								net.WriteUInt(0, 2)
 							net.SendToServer()
 						end)
@@ -4739,8 +4862,7 @@ hook.Add("KeyPress", "rgmSwitchSelectionMode", function(pl, key)
 			if op ~= 2 and IsValid(RAGDOLLMOVER[pl].Entity) then opset = 2 end
 			ResetMode = false
 
-			net.Start("RAGDOLLMOVER")
-				net.WriteUInt(14, 5)
+			NetStarter.rgmOperationSwitch()
 				net.WriteUInt(opset, 2)
 			net.SendToServer()
 
