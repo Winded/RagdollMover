@@ -1332,9 +1332,7 @@ local NETFUNC = {
 	function(len, pl) --			16 - rgmResetAllBones
 		local ent = net.ReadEntity()
 
-		if not RAGDOLLMOVER[pl] then return end
 		if not rgmCanTool(ent, pl) then return end
-		local plTable = RAGDOLLMOVER[pl]
 
 		for i = 0, ent:GetBoneCount() - 1 do
 			local pos, ang, scale = ent:GetManipulateBonePosition(i), ent:GetManipulateBoneAngles(i), ent:GetManipulateBoneScale(i) -- Grabbing existing vectors as to not create new ones, in case ManipulateBone functions were overriden by something like Advanced Bonemerge
