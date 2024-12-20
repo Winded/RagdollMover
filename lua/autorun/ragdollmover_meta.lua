@@ -3,8 +3,7 @@
 	Other functionality that isn't part of the rgm module.
 ]]
 
-resource.AddSingleFile("resource/localization/en/ragdollmover_tools.properties")
-resource.AddSingleFile("resource/localization/en/ragdollmover_ui.properties")
+resource.AddWorkShop("104575630")
 
 local MAX_EDICT_BITS = 13
 
