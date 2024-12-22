@@ -1142,7 +1142,7 @@ function AdvBoneSelectRender(ent, bonenodes)
 			table.insert(selectedBones, {name, i})
 		else
 			if nodesExist and bonenodes[ent][i] and bonenodes[ent][i].Type then
-				surface.SetDrawColor(BONETYPE_COLORS[bonenodes[ent][i].Type][1]:Lerp(BONETYPE_COLORS[bonenodes[ent][i].Type][2], (bonedistances[i] - mindist) / (maxdist * 0.75)):Unpack())
+				surface.SetDrawColor(BONETYPE_COLORS[bonenodes[ent][i].Type][( ( bonedistances[i] - mindist ) < maxdist * 0.5 ) and 1 or 2]:Unpack())
 			else
 				surface.SetDrawColor(COLOR_RGMGREEN:Unpack())
 			end
