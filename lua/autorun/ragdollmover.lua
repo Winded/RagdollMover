@@ -998,7 +998,7 @@ local COLOR_BLUE = RGM_Constants.COLOR_BLUE
 local COLOR_BRIGHT_YELLOW = RGM_Constants.COLOR_BRIGHT_YELLOW
 local OUTLINE_WIDTH = RGM_Constants.OUTLINE_WIDTH
 
-local BONETYPE_COLORS = {RGM_Constants.COLOR_GREEN, RGM_Constants.COLOR_CYAN, RGM_Constants.COLOR_YELLOW, RGM_Constants.COLOR_RED}
+local BONETYPE_COLORS = { { RGM_Constants.COLOR_GREEN, RGM_Constants.COLOR_DARKGREEN }, { RGM_Constants.COLOR_CYAN, RGM_Constants.COLOR_DARKCYAN }, { RGM_Constants.COLOR_YELLOW, RGM_Constants.COLOR_DARKYELLOW }, { RGM_Constants.COLOR_RED, RGM_Constants.COLOR_DARKRED } }
 
 function DrawBoneName(ent, bone, name)
 	if not name then
@@ -1108,6 +1108,17 @@ end)
 function AdvBoneSelectRender(ent, bonenodes)
 	local mx, my = input.GetCursorPos() -- possible bug on mac https://wiki.facepunch.com/gmod/input.GetCursorPos
 	local nodesExist = bonenodes and bonenodes[ent] and true
+	local bonedistances = {}
+	local plpos = LocalPlayer():EyePos()
+	local mindist, maxdist = nil, nil
+
+	for i = 0, ent:GetBoneCount() - 1 do
+		local dist = plpos:DistToSqr( ent:GetBonePosition(i) )
+		if not mindist or mindist > dist then mindist = dist end
+		if not maxdist or maxdist < dist then maxdist = dist end
+		bonedistances[i] = dist
+	end
+	maxdist = maxdist - mindist
 
 	local selectedBones = {}
 	for i = 0, ent:GetBoneCount() - 1 do
@@ -1131,7 +1142,7 @@ function AdvBoneSelectRender(ent, bonenodes)
 			table.insert(selectedBones, {name, i})
 		else
 			if nodesExist and bonenodes[ent][i] and bonenodes[ent][i].Type then
-				surface.SetDrawColor(BONETYPE_COLORS[bonenodes[ent][i].Type]:Unpack())
+				surface.SetDrawColor(BONETYPE_COLORS[bonenodes[ent][i].Type][1]:Lerp(BONETYPE_COLORS[bonenodes[ent][i].Type][2], (bonedistances[i] - mindist) / (maxdist * 0.75)):Unpack())
 			else
 				surface.SetDrawColor(COLOR_RGMGREEN:Unpack())
 			end
@@ -1179,7 +1190,7 @@ function AdvBoneSelectRender(ent, bonenodes)
 
 		local color
 		if nodesExist then
-			color = BONETYPE_COLORS[bonenodes[ent][selectedBones[i + 1][2]].Type]
+			color = BONETYPE_COLORS[bonenodes[ent][selectedBones[i + 1][2]].Type][1]
 		else
 			color = COLOR_RGMGREEN
 		end
@@ -1269,7 +1280,7 @@ function AdvBoneSelectRadialRender(ent, bones, bonenodes, isresetmode)
 			local uix, uiy = (math.sin(thisrad) * 250 * modifier), (math.cos(thisrad) * -250 * modifier)
 			local color = COLOR_WHITE
 			if bonenodes and bonenodes[ent] and bonenodes[ent][bone] and bonenodes[ent][bone].Type then
-				color = BONETYPE_COLORS[bonenodes[ent][bone].Type]
+				color = BONETYPE_COLORS[bonenodes[ent][bone].Type][1]
 			end
 			uix, uiy = uix + midw, uiy + midh
 
@@ -1293,7 +1304,7 @@ function AdvBoneSelectRadialRender(ent, bones, bonenodes, isresetmode)
 				SelectedBone = bone
 			else
 				if bonenodes and bonenodes[ent] and bonenodes[ent][bone] and bonenodes[ent][bone].Type then
-					surface.SetDrawColor(BONETYPE_COLORS[bonenodes[ent][bone].Type]:Unpack())
+					surface.SetDrawColor(BONETYPE_COLORS[bonenodes[ent][bone].Type][1]:Unpack())
 				else
 					surface.SetDrawColor(COLOR_RGMGREEN:Unpack())
 				end
@@ -1455,7 +1466,7 @@ local function DrawRecursiveBones(ent, bone, bonenodes)
 		DrawRecursiveBones(ent, boneid, bonenodes)
 		local color
 		if nodeexist and nodecache[boneid] then
-			color = BONETYPE_COLORS[nodecache[boneid].Type]
+			color = BONETYPE_COLORS[nodecache[boneid].Type][1]
 		else
 			color = COLOR_RGMGREEN
 		end
@@ -1483,7 +1494,7 @@ function DrawSkeleton(ent, bonenodes)
 				pos = pos:ToScreen()
 				local color
 				if bonenodes then
-					color = BONETYPE_COLORS[bonenodes[ent][v].Type]
+					color = BONETYPE_COLORS[bonenodes[ent][v].Type][1]
 				else
 					color = COLOR_RGMGREEN
 				end
@@ -1511,7 +1522,7 @@ function DrawSkeleton(ent, bonenodes)
 
 			local color
 			if bonenodes and bonenodes[ent] and bonenodes[ent][bone] and bonenodes[ent][bone].Type then
-				color = BONETYPE_COLORS[bonenodes[ent][bone].Type]
+				color = BONETYPE_COLORS[bonenodes[ent][bone].Type][1]
 			else
 				color = COLOR_RGMGREEN
 			end
