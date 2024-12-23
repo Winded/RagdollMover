@@ -998,7 +998,22 @@ local COLOR_BLUE = RGM_Constants.COLOR_BLUE
 local COLOR_BRIGHT_YELLOW = RGM_Constants.COLOR_BRIGHT_YELLOW
 local OUTLINE_WIDTH = RGM_Constants.OUTLINE_WIDTH
 
-local BONETYPE_COLORS = { { RGM_Constants.COLOR_GREEN, RGM_Constants.COLOR_DARKGREEN }, { RGM_Constants.COLOR_CYAN, RGM_Constants.COLOR_DARKCYAN }, { RGM_Constants.COLOR_YELLOW, RGM_Constants.COLOR_DARKYELLOW }, { RGM_Constants.COLOR_RED, RGM_Constants.COLOR_DARKRED } }
+local function gradient(startPoint, endPoint, points)
+	local colors = {}
+	for i = 0, points-1 do
+		colors[i+1] = startPoint:Lerp(endPoint, i / points)
+	end
+	return colors
+end
+
+local NUM_GRADIENT_POINTS = 2
+
+local BONETYPE_COLORS = { 
+	gradient(RGM_Constants.COLOR_GREEN, RGM_Constants.COLOR_DARKGREEN, NUM_GRADIENT_POINTS), 
+	gradient(RGM_Constants.COLOR_CYAN, RGM_Constants.COLOR_DARKCYAN, NUM_GRADIENT_POINTS), 
+	gradient(RGM_Constants.COLOR_YELLOW, RGM_Constants.COLOR_DARKYELLOW, NUM_GRADIENT_POINTS), 
+	gradient(RGM_Constants.COLOR_RED, RGM_Constants.COLOR_DARKRED, NUM_GRADIENT_POINTS) 
+}
 
 function DrawBoneName(ent, bone, name)
 	if not name then
@@ -1118,7 +1133,6 @@ function AdvBoneSelectRender(ent, bonenodes)
 		if not maxdist or maxdist < dist then maxdist = dist end
 		bonedistances[i] = dist
 	end
-	maxdist = maxdist - mindist
 
 	local selectedBones = {}
 	for i = 0, ent:GetBoneCount() - 1 do
@@ -1142,7 +1156,9 @@ function AdvBoneSelectRender(ent, bonenodes)
 			table.insert(selectedBones, {name, i})
 		else
 			if nodesExist and bonenodes[ent][i] and bonenodes[ent][i].Type then
-				surface.SetDrawColor(BONETYPE_COLORS[bonenodes[ent][i].Type][( ( bonedistances[i] - mindist ) < maxdist * 0.5 ) and 1 or 2]:Unpack())
+				local fraction = ( bonedistances[i] - mindist ) / (maxdist - mindist)
+				fraction = math.max(1, math.ceil(fraction * NUM_GRADIENT_POINTS))
+				surface.SetDrawColor(BONETYPE_COLORS[bonenodes[ent][i].Type][fraction]:Unpack())
 			else
 				surface.SetDrawColor(COLOR_RGMGREEN:Unpack())
 			end
