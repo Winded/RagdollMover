@@ -1133,6 +1133,7 @@ function AdvBoneSelectRender(ent, bonenodes)
 		if not maxdist or maxdist < dist then maxdist = dist end
 		bonedistances[i] = dist
 	end
+	maxdist = maxdist - mindist
 
 	local selectedBones = {}
 	for i = 0, ent:GetBoneCount() - 1 do
@@ -1156,7 +1157,7 @@ function AdvBoneSelectRender(ent, bonenodes)
 			table.insert(selectedBones, {name, i})
 		else
 			if nodesExist and bonenodes[ent][i] and bonenodes[ent][i].Type then
-				local fraction = ( bonedistances[i] - mindist ) / (maxdist - mindist)
+				local fraction = ( bonedistances[i] - mindist ) / maxdist
 				fraction = math.max(1, math.ceil(fraction * NUM_GRADIENT_POINTS))
 				surface.SetDrawColor(BONETYPE_COLORS[bonenodes[ent][i].Type][fraction]:Unpack())
 			else
