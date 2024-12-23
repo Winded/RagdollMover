@@ -1140,6 +1140,8 @@ function AdvBoneSelectRender(ent, bonenodes, prevbones, calc)
 			end
 			bonedistances[i] = dist
 		end
+		-- maxdist or mindist may be nil if we weren't looking at all the bones. 
+		-- We set them to some numbers to avoid issues with indicing with these
 		maxdist = maxdist or 1
 		mindist = mindist or 0
 		maxdist = maxdist - mindist
@@ -1155,12 +1157,6 @@ function AdvBoneSelectRender(ent, bonenodes, prevbones, calc)
 		local x, y = pos.x, pos.y
 
 		local dist = math.abs((mx - x)^2 + (my - y)^2)
-
-		local circ = table.Copy(RGM_CIRCLE)
-		for k, v in ipairs(circ) do
-			v.x = v.x + x
-			v.y = v.y + y
-		end
 
 		if calc then
 			local fraction = ( bonedistances[i] - mindist ) / maxdist
@@ -1178,17 +1174,25 @@ function AdvBoneSelectRender(ent, bonenodes, prevbones, calc)
 			end
 		end
 
-		draw.NoTexture()
-		surface.DrawPoly(circ)
-
-		if bonenodes[ent][i].bonelock then
-			surface.SetMaterial(LockGo)
-			surface.SetDrawColor(COLOR_WHITE:Unpack())
-			surface.DrawTexturedRect(x - 12, y - 12, 24, 24)
-		elseif bonenodes[ent][i].poslock or bonenodes[ent][i].anglock then
-			surface.SetMaterial(Lock)
-			surface.SetDrawColor(COLOR_WHITE:Unpack())
-			surface.DrawTexturedRect(x - 12, y - 12, 24, 24)
+		if pos.visible then
+			local circ = table.Copy(RGM_CIRCLE)
+			for k, v in ipairs(circ) do
+				v.x = v.x + x
+				v.y = v.y + y
+			end
+	
+			draw.NoTexture()
+			surface.DrawPoly(circ)
+	
+			if bonenodes[ent][i].bonelock then
+				surface.SetMaterial(LockGo)
+				surface.SetDrawColor(COLOR_WHITE:Unpack())
+				surface.DrawTexturedRect(x - 12, y - 12, 24, 24)
+			elseif bonenodes[ent][i].poslock or bonenodes[ent][i].anglock then
+				surface.SetMaterial(Lock)
+				surface.SetDrawColor(COLOR_WHITE:Unpack())
+				surface.DrawTexturedRect(x - 12, y - 12, 24, 24)
+			end
 		end
 	end
 
