@@ -998,7 +998,22 @@ local COLOR_BLUE = RGM_Constants.COLOR_BLUE
 local COLOR_BRIGHT_YELLOW = RGM_Constants.COLOR_BRIGHT_YELLOW
 local OUTLINE_WIDTH = RGM_Constants.OUTLINE_WIDTH
 
-local BONETYPE_COLORS = { { RGM_Constants.COLOR_GREEN, RGM_Constants.COLOR_DARKGREEN }, { RGM_Constants.COLOR_CYAN, RGM_Constants.COLOR_DARKCYAN }, { RGM_Constants.COLOR_YELLOW, RGM_Constants.COLOR_DARKYELLOW }, { RGM_Constants.COLOR_RED, RGM_Constants.COLOR_DARKRED } }
+local function gradient(startPoint, endPoint, points)
+	local colors = {}
+	for i = 0, points-1 do
+		colors[i+1] = startPoint:Lerp(endPoint, i / points)
+	end
+	return colors
+end
+
+local NUM_GRADIENT_POINTS = 4
+
+local BONETYPE_COLORS = { 
+	gradient(RGM_Constants.COLOR_GREEN, RGM_Constants.COLOR_DARKGREEN, NUM_GRADIENT_POINTS), 
+	gradient(RGM_Constants.COLOR_CYAN, RGM_Constants.COLOR_DARKCYAN, NUM_GRADIENT_POINTS), 
+	gradient(RGM_Constants.COLOR_YELLOW, RGM_Constants.COLOR_DARKYELLOW, NUM_GRADIENT_POINTS), 
+	gradient(RGM_Constants.COLOR_RED, RGM_Constants.COLOR_DARKRED, NUM_GRADIENT_POINTS) 
+}
 
 function DrawBoneName(ent, bone, name)
 	if not name then
@@ -1109,18 +1124,26 @@ function AdvBoneSelectRender(ent, bonenodes, prevbones, calc)
 	local mx, my = input.GetCursorPos() -- possible bug on mac https://wiki.facepunch.com/gmod/input.GetCursorPos
 	local nodesExist = bonenodes and bonenodes[ent] and true
 	local bonedistances = {}
-	local plpos = LocalPlayer():EyePos()
+	local eyeVector = LocalPlayer():GetAimVector()
 	local mindist, maxdist = nil, nil
 
 	if calc then
 		prevbones = {}
 
 		for i = 0, ent:GetBoneCount() - 1 do
-			local dist = plpos:DistToSqr( ent:GetBonePosition(i) )
-			if not mindist or mindist > dist then mindist = dist end
-			if not maxdist or maxdist < dist then maxdist = dist end
+			local pos = ent:GetBonePosition(i)
+			local dist = 1000
+			if pos:ToScreen().visible then
+				dist = eyeVector:Dot( pos )
+				if not mindist or mindist > dist then mindist = dist end
+				if not maxdist or maxdist < dist then maxdist = dist end
+			end
 			bonedistances[i] = dist
 		end
+		-- maxdist or mindist may be nil if we weren't looking at all the bones. 
+		-- We set them to some numbers to avoid issues with indicing with these
+		maxdist = maxdist or 1
+		mindist = mindist or 0
 		maxdist = maxdist - mindist
 	end
 
@@ -1135,14 +1158,9 @@ function AdvBoneSelectRender(ent, bonenodes, prevbones, calc)
 
 		local dist = math.abs((mx - x)^2 + (my - y)^2)
 
-		local circ = table.Copy(RGM_CIRCLE)
-		for k, v in ipairs(circ) do
-			v.x = v.x + x
-			v.y = v.y + y
-		end
-
 		if calc then
-			prevbones[i] = ( ( bonedistances[i] - mindist ) < maxdist * 0.5 ) and 1 or 2
+			local fraction = ( bonedistances[i] - mindist ) / maxdist
+			prevbones[i] = math.Clamp(math.ceil(fraction * NUM_GRADIENT_POINTS), 1, NUM_GRADIENT_POINTS )
 		end
 
 		if dist < 576 then -- 24 pixels
@@ -1156,17 +1174,25 @@ function AdvBoneSelectRender(ent, bonenodes, prevbones, calc)
 			end
 		end
 
-		draw.NoTexture()
-		surface.DrawPoly(circ)
-
-		if bonenodes[ent][i].bonelock then
-			surface.SetMaterial(LockGo)
-			surface.SetDrawColor(COLOR_WHITE:Unpack())
-			surface.DrawTexturedRect(x - 12, y - 12, 24, 24)
-		elseif bonenodes[ent][i].poslock or bonenodes[ent][i].anglock then
-			surface.SetMaterial(Lock)
-			surface.SetDrawColor(COLOR_WHITE:Unpack())
-			surface.DrawTexturedRect(x - 12, y - 12, 24, 24)
+		if pos.visible then
+			local circ = table.Copy(RGM_CIRCLE)
+			for k, v in ipairs(circ) do
+				v.x = v.x + x
+				v.y = v.y + y
+			end
+	
+			draw.NoTexture()
+			surface.DrawPoly(circ)
+	
+			if bonenodes[ent][i].bonelock then
+				surface.SetMaterial(LockGo)
+				surface.SetDrawColor(COLOR_WHITE:Unpack())
+				surface.DrawTexturedRect(x - 12, y - 12, 24, 24)
+			elseif bonenodes[ent][i].poslock or bonenodes[ent][i].anglock then
+				surface.SetMaterial(Lock)
+				surface.SetDrawColor(COLOR_WHITE:Unpack())
+				surface.DrawTexturedRect(x - 12, y - 12, 24, 24)
+			end
 		end
 	end
 
