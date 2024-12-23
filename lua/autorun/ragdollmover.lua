@@ -1124,18 +1124,24 @@ function AdvBoneSelectRender(ent, bonenodes, prevbones, calc)
 	local mx, my = input.GetCursorPos() -- possible bug on mac https://wiki.facepunch.com/gmod/input.GetCursorPos
 	local nodesExist = bonenodes and bonenodes[ent] and true
 	local bonedistances = {}
-	local plpos = LocalPlayer():EyePos()
+	local eyeVector = LocalPlayer():GetAimVector()
 	local mindist, maxdist = nil, nil
 
 	if calc then
 		prevbones = {}
 
 		for i = 0, ent:GetBoneCount() - 1 do
-			local dist = plpos:DistToSqr( ent:GetBonePosition(i) )
-			if not mindist or mindist > dist then mindist = dist end
-			if not maxdist or maxdist < dist then maxdist = dist end
+			local pos = ent:GetBonePosition(i)
+			local dist = 1000
+			if pos:ToScreen().visible then
+				dist = eyeVector:Dot( pos )
+				if not mindist or mindist > dist then mindist = dist end
+				if not maxdist or maxdist < dist then maxdist = dist end
+			end
 			bonedistances[i] = dist
 		end
+		maxdist = maxdist or 1
+		mindist = mindist or 0
 		maxdist = maxdist - mindist
 	end
 
