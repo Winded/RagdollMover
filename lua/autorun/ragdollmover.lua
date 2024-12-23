@@ -1105,20 +1105,24 @@ concommand.Add("ragdollmover_changelog", function()
 	showChangelog()
 end)
 
-function AdvBoneSelectRender(ent, bonenodes)
+function AdvBoneSelectRender(ent, bonenodes, prevbones, calc)
 	local mx, my = input.GetCursorPos() -- possible bug on mac https://wiki.facepunch.com/gmod/input.GetCursorPos
 	local nodesExist = bonenodes and bonenodes[ent] and true
 	local bonedistances = {}
 	local plpos = LocalPlayer():EyePos()
 	local mindist, maxdist = nil, nil
 
-	for i = 0, ent:GetBoneCount() - 1 do
-		local dist = plpos:DistToSqr( ent:GetBonePosition(i) )
-		if not mindist or mindist > dist then mindist = dist end
-		if not maxdist or maxdist < dist then maxdist = dist end
-		bonedistances[i] = dist
+	if calc then
+		prevbones = {}
+
+		for i = 0, ent:GetBoneCount() - 1 do
+			local dist = plpos:DistToSqr( ent:GetBonePosition(i) )
+			if not mindist or mindist > dist then mindist = dist end
+			if not maxdist or maxdist < dist then maxdist = dist end
+			bonedistances[i] = dist
+		end
+		maxdist = maxdist - mindist
 	end
-	maxdist = maxdist - mindist
 
 	local selectedBones = {}
 	for i = 0, ent:GetBoneCount() - 1 do
@@ -1137,12 +1141,16 @@ function AdvBoneSelectRender(ent, bonenodes)
 			v.y = v.y + y
 		end
 
+		if calc then
+			prevbones[i] = ( ( bonedistances[i] - mindist ) < maxdist * 0.5 ) and 1 or 2
+		end
+
 		if dist < 576 then -- 24 pixels
 			surface.SetDrawColor(COLOR_BRIGHT_YELLOW:Unpack())
 			table.insert(selectedBones, {name, i})
 		else
 			if nodesExist and bonenodes[ent][i] and bonenodes[ent][i].Type then
-				surface.SetDrawColor(BONETYPE_COLORS[bonenodes[ent][i].Type][( ( bonedistances[i] - mindist ) < maxdist * 0.5 ) and 1 or 2]:Unpack())
+				surface.SetDrawColor(BONETYPE_COLORS[bonenodes[ent][i].Type][prevbones[i]]:Unpack())
 			else
 				surface.SetDrawColor(COLOR_RGMGREEN:Unpack())
 			end
@@ -1197,6 +1205,8 @@ function AdvBoneSelectRender(ent, bonenodes)
 
 		draw.SimpleTextOutlined(selectedBones[i + 1][1], "RagdollMoverFont", xPos, yPos, color, TEXT_ALIGN_LEFT, TEXT_ALIGN_BOTTOM, OUTLINE_WIDTH, COLOR_RGMBLACK)
 	end
+
+	return prevbones
 end
 
 function AdvBoneSelectPick(ent, bonenodes)
