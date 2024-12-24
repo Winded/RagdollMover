@@ -4892,8 +4892,8 @@ hook.Add("KeyPress", "rgmSwitchSelectionMode", function(pl, key)
 	end
 end)
 
-local BoneColors = nil
-local LastThink, LastEnt = 0, nil
+local BoneColors, BonePoses = nil, nil
+local LastSelectThink, LastSkeletonThink, LastEnt = 0, 0, nil
 
 function TOOL:DrawHUD()
 
@@ -4947,11 +4947,16 @@ function TOOL:DrawHUD()
 	})
 	local aimedbone = IsValid(tr.Entity) and (tr.Entity:GetClass() == "prop_ragdoll" and plTable.AimedBone or 0) or 0
 	if IsValid(ent) and EntityFilter(ent, self) and SkeletonDraw then
-		rgm.DrawSkeleton(ent, nodes)
+		local timecheck = (thinktime - LastSkeletonThink) > 0,0667 -- 1/15
+		BonePoses = rgm.DrawSkeleton(ent, nodes, BonePoses, timecheck)
+
+		if timecheck then
+			LastSkeletonThink = thinktime
+		end
 	end
 
 	if self:GetOperation() == 2 and IsValid(ent) then
-		local timecheck = (thinktime - LastThink) > 0.1
+		local timecheck = (thinktime - LastSelectThink) > 0.1
 		local calc = ( not LastEnt or LastEnt ~= ent ) or timecheck
 
 		if self:GetStage() == 0 then
@@ -4962,7 +4967,7 @@ function TOOL:DrawHUD()
 
 		LastEnt = ent
 		if timecheck then
-			LastThink = thinktime
+			LastSelectThink = thinktime
 		end
 	elseif IsValid(tr.Entity) and EntityFilter(tr.Entity, self) and (not bone or aimedbone ~= bone or tr.Entity ~= ent) and not moving then
 		rgm.DrawBoneConnections(tr.Entity, aimedbone)

@@ -1486,33 +1486,42 @@ end
 
 local SkeletonData = {}
 
-local function DrawRecursiveBones(ent, bone, bonenodes)
+local function DrawRecursiveBones(ent, bone, bonenodes, poscache)
 	local mainpos = ent:GetBonePosition(bone)
+	poscache[bone] = mainpos
+
 	mainpos = mainpos:ToScreen()
 	local nodecache = bonenodes[ent]
 	local nodeexist = nodecache and true or false
+	local mainvisible = mainpos.visible
 
 	for _, boneid in ipairs(ent:GetChildBones(bone)) do
 		SkeletonData[boneid] = bone
 		local pos = ent:GetBonePosition(boneid)
 		pos = pos:ToScreen()
+		local posvisible = pos.visible
 
-		surface.SetDrawColor(COLOR_WHITE:Unpack())
-		surface.DrawLine(mainpos.x, mainpos.y, pos.x, pos.y)
-		DrawRecursiveBones(ent, boneid, bonenodes)
+		if mainvisible or posvisible then
+			surface.SetDrawColor(COLOR_WHITE:Unpack())
+			surface.DrawLine(mainpos.x, mainpos.y, pos.x, pos.y)
+		end
+		DrawRecursiveBones(ent, boneid, bonenodes, poscache)
 		local color
 		if nodeexist and nodecache[boneid] then
 			color = BONETYPE_COLORS[nodecache[boneid].Type][1]
 		else
 			color = COLOR_RGMGREEN
 		end
-		surface.DrawCircle(pos.x, pos.y, 2.5, color)
+		if posvisible then
+			surface.DrawCircle(pos.x, pos.y, 2.5, color)
+		end
 	end
 end
 
-function DrawSkeleton(ent, bonenodes)
+function DrawSkeleton(ent, bonenodes, poscache, calc)
 	if SkeletonData.ent ~= ent then
 		SkeletonData = {}
+		poscache = {}
 
 		local num = ent:GetBoneCount() - 1
 		for v = 0, num do
@@ -1525,7 +1534,7 @@ function DrawSkeleton(ent, bonenodes)
 					pos = ent:GetPos()
 				end
 
-				DrawRecursiveBones(ent, v, bonenodes)
+				DrawRecursiveBones(ent, v, bonenodes, poscache)
 
 				pos = pos:ToScreen()
 				local color
@@ -1538,34 +1547,43 @@ function DrawSkeleton(ent, bonenodes)
 			end
 		end
 
-		SkeletonData.ent = ent
+		SkeletonData.ent = ent		
 	else
+		if calc then poscache = {} end
+
 		for bone, parent in pairs(SkeletonData) do
 			if type(bone) ~= "number" or parent == -1 then continue end
-			local pos = ent:GetBonePosition(bone)
+			local pos = calc and ent:GetBonePosition(bone) or poscache[bone]
 			pos = pos:ToScreen()
 
-			local parentpos = ent:GetBonePosition(parent)
+			local parentpos = calc and ent:GetBonePosition(parent) or poscache[parent]
 			parentpos = parentpos:ToScreen()
-			surface.SetDrawColor(COLOR_WHITE:Unpack())
-			surface.DrawLine(parentpos.x, parentpos.y, pos.x, pos.y)
+			if pos.visible or parentpos.visible then
+				surface.SetDrawColor(COLOR_WHITE:Unpack())
+				surface.DrawLine(parentpos.x, parentpos.y, pos.x, pos.y)
+			end
 		end
 
 		for bone, parent in pairs(SkeletonData) do
 			if type(bone) ~= "number" then continue end
-			local pos = ent:GetBonePosition(bone)
+			local pos = calc and ent:GetBonePosition(bone) or poscache[bone]
+			if calc then poscache[bone] = pos end
 			pos = pos:ToScreen()
 
-			local color
-			if bonenodes and bonenodes[ent] and bonenodes[ent][bone] and bonenodes[ent][bone].Type then
-				color = BONETYPE_COLORS[bonenodes[ent][bone].Type][1]
-			else
-				color = COLOR_RGMGREEN
-			end
+			if pos.visible then
+				local color
+				if bonenodes and bonenodes[ent] and bonenodes[ent][bone] and bonenodes[ent][bone].Type then
+					color = BONETYPE_COLORS[bonenodes[ent][bone].Type][1]
+				else
+					color = COLOR_RGMGREEN
+				end
 
-			surface.DrawCircle(pos.x, pos.y, 2.5, color)
+				surface.DrawCircle(pos.x, pos.y, 2.5, color)
+			end
 		end
 	end
+
+	return poscache
 
 end
 
