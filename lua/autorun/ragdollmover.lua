@@ -1547,7 +1547,7 @@ function DrawSkeleton(ent, bonenodes, poscache, calc)
 			end
 		end
 
-		SkeletonData.ent = ent		
+		SkeletonData.ent = ent
 	else
 		if calc then poscache = {} end
 

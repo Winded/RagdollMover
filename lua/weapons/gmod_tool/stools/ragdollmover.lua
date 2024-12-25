@@ -4947,7 +4947,7 @@ function TOOL:DrawHUD()
 	})
 	local aimedbone = IsValid(tr.Entity) and (tr.Entity:GetClass() == "prop_ragdoll" and plTable.AimedBone or 0) or 0
 	if IsValid(ent) and EntityFilter(ent, self) and SkeletonDraw then
-		local timecheck = (thinktime - LastSkeletonThink) > 0,0667 -- 1/15
+		local timecheck = (thinktime - LastSkeletonThink) > 0.0303 -- 1/33
 		BonePoses = rgm.DrawSkeleton(ent, nodes, BonePoses, timecheck)
 
 		if timecheck then
