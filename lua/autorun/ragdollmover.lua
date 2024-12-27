@@ -1154,6 +1154,7 @@ function AdvBoneSelectRender(ent, bonenodes, prevbones, calc)
 		if nodesExist and (not bonenodes[ent][i]) or false then continue end
 		local pos = ent:GetBonePosition(i)
 		pos = pos:ToScreen()
+		if not pos.visible then continue end
 		local x, y = pos.x, pos.y
 
 		local dist = math.abs((mx - x)^2 + (my - y)^2)
@@ -1167,32 +1168,30 @@ function AdvBoneSelectRender(ent, bonenodes, prevbones, calc)
 			surface.SetDrawColor(COLOR_BRIGHT_YELLOW:Unpack())
 			table.insert(selectedBones, {name, i})
 		else
-			if nodesExist and bonenodes[ent][i] and bonenodes[ent][i].Type then
+			if nodesExist and bonenodes[ent][i] and bonenodes[ent][i].Type and prevbones[i] then
 				surface.SetDrawColor(BONETYPE_COLORS[bonenodes[ent][i].Type][prevbones[i]]:Unpack())
 			else
 				surface.SetDrawColor(COLOR_RGMGREEN:Unpack())
 			end
 		end
 
-		if pos.visible then
-			local circ = table.Copy(RGM_CIRCLE)
-			for k, v in ipairs(circ) do
-				v.x = v.x + x
-				v.y = v.y + y
-			end
-	
-			draw.NoTexture()
-			surface.DrawPoly(circ)
-	
-			if bonenodes[ent][i].bonelock then
-				surface.SetMaterial(LockGo)
-				surface.SetDrawColor(COLOR_WHITE:Unpack())
-				surface.DrawTexturedRect(x - 12, y - 12, 24, 24)
-			elseif bonenodes[ent][i].poslock or bonenodes[ent][i].anglock then
-				surface.SetMaterial(Lock)
-				surface.SetDrawColor(COLOR_WHITE:Unpack())
-				surface.DrawTexturedRect(x - 12, y - 12, 24, 24)
-			end
+		local circ = table.Copy(RGM_CIRCLE)
+		for k, v in ipairs(circ) do
+			v.x = v.x + x
+			v.y = v.y + y
+		end
+
+		draw.NoTexture()
+		surface.DrawPoly(circ)
+
+		if bonenodes[ent][i].bonelock then
+			surface.SetMaterial(LockGo)
+			surface.SetDrawColor(COLOR_WHITE:Unpack())
+			surface.DrawTexturedRect(x - 12, y - 12, 24, 24)
+		elseif bonenodes[ent][i].poslock or bonenodes[ent][i].anglock then
+			surface.SetMaterial(Lock)
+			surface.SetDrawColor(COLOR_WHITE:Unpack())
+			surface.DrawTexturedRect(x - 12, y - 12, 24, 24)
 		end
 	end
 
