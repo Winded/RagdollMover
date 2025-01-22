@@ -2225,7 +2225,7 @@ function TOOL:Reload()
 end
 
 
-function TOOL:Think()	
+function TOOL:Think()
 
 if SERVER then
 
@@ -2235,7 +2235,7 @@ if SERVER then
 	if CurTime() < self.LastThink + (RAGDOLLMOVER[pl].updaterate or 0.01) then return end
 
 	local plTable = RAGDOLLMOVER[pl]
-	
+
 	local ent = plTable.Entity
 	local axis = plTable.Axis
 
@@ -4892,6 +4892,9 @@ hook.Add("KeyPress", "rgmSwitchSelectionMode", function(pl, key)
 	end
 end)
 
+local BoneColors = nil
+local LastSelectThink, LastEnt = 0, nil
+
 function TOOL:DrawHUD()
 
 	if not RAGDOLLMOVER[pl] then RAGDOLLMOVER[pl] = {} end
@@ -4902,6 +4905,7 @@ function TOOL:DrawHUD()
 	local bone = plTable.Bone
 	local axis = plTable.Axis
 	local moving = plTable.Moving or false
+	local thinktime = CurTime()
 	--We don't draw the axis if we don't have the axis entity or the target entity,
 	--or if we're not allowed to draw it.
 
@@ -4947,10 +4951,18 @@ function TOOL:DrawHUD()
 	end
 
 	if self:GetOperation() == 2 and IsValid(ent) then
+		local timecheck = (thinktime - LastSelectThink) > 0.1
+		local calc = ( not LastEnt or LastEnt ~= ent ) or timecheck
+
 		if self:GetStage() == 0 then
-			rgm.AdvBoneSelectRender(ent, nodes)
+			BoneColors = rgm.AdvBoneSelectRender(ent, nodes, BoneColors, calc)
 		else
 			rgm.AdvBoneSelectRadialRender(ent, plTable.SelectedBones, nodes, ResetMode)
+		end
+
+		LastEnt = ent
+		if timecheck then
+			LastSelectThink = thinktime
 		end
 	elseif IsValid(tr.Entity) and EntityFilter(tr.Entity, self) and (not bone or aimedbone ~= bone or tr.Entity ~= ent) and not moving then
 		rgm.DrawBoneConnections(tr.Entity, aimedbone)
