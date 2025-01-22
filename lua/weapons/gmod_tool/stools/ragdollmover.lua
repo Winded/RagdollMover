@@ -2225,7 +2225,7 @@ function TOOL:Reload()
 end
 
 
-function TOOL:Think()	
+function TOOL:Think()
 
 if SERVER then
 
@@ -2235,7 +2235,7 @@ if SERVER then
 	if CurTime() < self.LastThink + (RAGDOLLMOVER[pl].updaterate or 0.01) then return end
 
 	local plTable = RAGDOLLMOVER[pl]
-	
+
 	local ent = plTable.Entity
 	local axis = plTable.Axis
 
