@@ -1851,7 +1851,7 @@ function TOOL:Deploy()
 end
 
 local function EntityFilter(ent, tool)
-	return (ent:GetClass() == "prop_ragdoll" or ent:GetClass() == "prop_physics" or ent:GetClass() == "prop_effect") or (tool:GetClientNumber("disablefilter") ~= 0 and not ent:IsWorld())
+	return ent:GetBrushPlaneCount() == 0 and ((ent:GetClass() == "prop_ragdoll" or ent:GetClass() == "prop_physics" or ent:GetClass() == "prop_effect") or (tool:GetClientNumber("disablefilter") ~= 0 and not ent:IsWorld()))
 end
 
 function TOOL:LeftClick()
@@ -2225,7 +2225,7 @@ function TOOL:Reload()
 end
 
 
-function TOOL:Think()
+function TOOL:Think()	
 
 if SERVER then
 
@@ -2235,7 +2235,7 @@ if SERVER then
 	if CurTime() < self.LastThink + (RAGDOLLMOVER[pl].updaterate or 0.01) then return end
 
 	local plTable = RAGDOLLMOVER[pl]
-
+	
 	local ent = plTable.Entity
 	local axis = plTable.Axis
 

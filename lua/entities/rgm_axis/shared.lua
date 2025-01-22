@@ -10,6 +10,7 @@ function ENT:Initialize()
 
 	self:DrawShadow(false)
 	self:SetCollisionBounds(-self.DefaultMinMax, self.DefaultMinMax)
+	self:SetMoveType(MOVETYPE_VPHYSICS)
 	self:SetSolid(SOLID_VPHYSICS)
 	self:SetNotSolid(true)
 
