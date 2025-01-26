@@ -4892,7 +4892,7 @@ hook.Add("KeyPress", "rgmSwitchSelectionMode", function(pl, key)
 	end
 end)
 
-local BoneColors = nil
+local BoneColors = {}
 local LastSelectThink, LastEnt = 0, nil
 
 function TOOL:DrawHUD()
@@ -4911,6 +4911,8 @@ function TOOL:DrawHUD()
 
 	local plviewent = plTable.always_use_pl_view == 1 and pl or (plTable.PlViewEnt ~= 0 and Entity(plTable.PlViewEnt) or nil)
 	local eyepos, eyeang = rgm.EyePosAng(pl, plviewent)
+	local viewvec = IsValid(plviewent) and plviewent:GetForward() or pl:GetViewEntity():GetForward()
+	local fov = pl:GetFOV()
 
 	if not (self:GetOperation() == 2) and IsValid(ent) and IsValid(axis) and bone then
 		local width = GizmoWidth or 0.5
@@ -4955,7 +4957,7 @@ function TOOL:DrawHUD()
 		local calc = ( not LastEnt or LastEnt ~= ent ) or timecheck
 
 		if self:GetStage() == 0 then
-			BoneColors = rgm.AdvBoneSelectRender(ent, nodes, BoneColors, calc)
+			BoneColors = rgm.AdvBoneSelectRender(ent, nodes, BoneColors, calc, eyepos, viewvec, fov)
 		else
 			rgm.AdvBoneSelectRadialRender(ent, plTable.SelectedBones, nodes, ResetMode)
 		end
