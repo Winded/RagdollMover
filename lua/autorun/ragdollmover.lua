@@ -1050,16 +1050,40 @@ function DrawEntName(ent)
 	draw.SimpleTextOutlined(name, "RagdollMoverFont", textpos.x, textpos.y, COLOR_RGMGREEN, TEXT_ALIGN_LEFT, TEXT_ALIGN_BOTTOM, OUTLINE_WIDTH, COLOR_RGMBLACK)
 end
 
-local RGM_CIRCLE = {
-	{ x = -3, y = -3 },
+local RGM_SHAPES = {
+	{ -- Square, phys
+		{ x = -5, y = -5 },
 
-	{ x = 0, y = -4 },
-	{ x = 3, y = -3 },
-	{ x = 4, y = 0 },
-	{ x = 3, y = 3 },
-	{ x = 0, y = 4 },
-	{ x = -3, y = 3 },
-	{ x = -4, y = 0 }
+		{ x = 5, y = -5 },
+		{ x = 5, y = 5 },
+		{ x = -5, y = 5 }
+	},
+
+	{ -- Circle, nonphys
+		{ x = -3, y = -3 },
+
+		{ x = 0, y = -4 },
+		{ x = 3, y = -3 },
+		{ x = 4, y = 0 },
+		{ x = 3, y = 3 },
+		{ x = 0, y = 4 },
+		{ x = -3, y = 3 },
+		{ x = -4, y = 0 }
+	},
+
+	{ -- Triangle, procedural
+		{ x = 0, y = -5 },
+
+		{ x = 5, y = 5 },
+		{ x = -5, y = 5 }
+	},
+
+	{ -- 180 rotated triangle, parented
+		{ x = -5, y = -5 },
+
+		{ x = 5, y = -5 },
+		{ x = 0, y = 5 }
+	}
 }
 
 local LockGo = Material("icon16/lock_go.png", "alphatest")
@@ -1165,25 +1189,27 @@ function AdvBoneSelectRender(ent, bonenodes, prevbones, calc, eyePos, eyeVector,
 			prevbones[i] = math.Clamp(math.ceil(fraction * NUM_GRADIENT_POINTS), 1, NUM_GRADIENT_POINTS )
 		end
 
+		local bonetype = bonenodes[ent][i] and bonenodes[ent][i].Type or 1
+
 		if dist < 576 then -- 24 pixels
 			surface.SetDrawColor(COLOR_BRIGHT_YELLOW:Unpack())
 			table.insert(selectedBones, {name, i})
 		else
-			if nodesExist and bonenodes[ent][i] and bonenodes[ent][i].Type and prevbones[i] then
-				surface.SetDrawColor(BONETYPE_COLORS[bonenodes[ent][i].Type][prevbones[i]]:Unpack())
+			if nodesExist and bonetype and prevbones[i] then
+				surface.SetDrawColor(BONETYPE_COLORS[bonetype][prevbones[i]]:Unpack())
 			else
 				surface.SetDrawColor(COLOR_RGMGREEN:Unpack())
 			end
 		end
 
-		local circ = table.Copy(RGM_CIRCLE)
-		for k, v in ipairs(circ) do
+		local shape = table.Copy(RGM_SHAPES[bonetype])
+		for k, v in ipairs(shape) do
 			v.x = v.x + x
 			v.y = v.y + y
 		end
 
 		draw.NoTexture()
-		surface.DrawPoly(circ)
+		surface.DrawPoly(shape)
 
 		if bonenodes[ent][i].bonelock then
 			surface.SetMaterial(LockGo)
@@ -1210,6 +1236,7 @@ function AdvBoneSelectRender(ent, bonenodes, prevbones, calc, eyePos, eyeVector,
 	local scrH = ScrH() - 100 -- Some padding to keep the bones centered
 	local columns = 0
 
+	local id = #selectedBones
 	-- List the selected bones. If they attempt to overflow through the screen, add the items to another column.
 	for i = 0, #selectedBones - 1 do
 		local yPos = my + (i % maxItemsPerColumn) * (RGMFontSize + 3)
@@ -1230,9 +1257,13 @@ function AdvBoneSelectRender(ent, bonenodes, prevbones, calc, eyePos, eyeVector,
 		end
 
 		draw.SimpleTextOutlined(selectedBones[i + 1][1], "RagdollMoverFont", xPos, yPos, color, TEXT_ALIGN_LEFT, TEXT_ALIGN_BOTTOM, OUTLINE_WIDTH, COLOR_RGMBLACK)
+
+		-- Modify the data structure of the individual selectedBone so we don't have to worry about indexing later on
+		selectedBones[i + 1] = selectedBones[i + 1][2]
+		id = id + selectedBones[i + 1]
 	end
 
-	return prevbones
+	return prevbones, selectedBones, id
 end
 
 function AdvBoneSelectPick(ent, bonenodes)
@@ -1315,8 +1346,12 @@ function AdvBoneSelectRadialRender(ent, bones, bonenodes, isresetmode)
 			local thisrad = thisang / 180 * math.pi
 			local uix, uiy = (math.sin(thisrad) * 250 * modifier), (math.cos(thisrad) * -250 * modifier)
 			local color = COLOR_WHITE
-			if bonenodes and bonenodes[ent] and bonenodes[ent][bone] and bonenodes[ent][bone].Type then
-				color = BONETYPE_COLORS[bonenodes[ent][bone].Type][1]
+
+			local nodecheck = (bonenodes and bonenodes[ent] and bonenodes[ent][bone] and bonenodes[ent][bone].Type) and true or false
+			local bonetype = bonenodes[ent][bone] and bonenodes[ent][bone].Type or 1
+
+			if nodecheck then
+				color = BONETYPE_COLORS[bonetype][1]
 			end
 			uix, uiy = uix + midw, uiy + midh
 
@@ -1328,8 +1363,8 @@ function AdvBoneSelectRadialRender(ent, bones, bonenodes, isresetmode)
 			local pos = ent:GetBonePosition(bone)
 			pos = pos:ToScreen()
 
-			local circ = table.Copy(RGM_CIRCLE)
-			for k, v in ipairs(circ) do
+			local shape = table.Copy(RGM_SHAPES[bonetype])
+			for k, v in ipairs(shape) do
 				v.x = v.x + pos.x
 				v.y = v.y + pos.y
 			end
@@ -1339,15 +1374,11 @@ function AdvBoneSelectRadialRender(ent, bones, bonenodes, isresetmode)
 				color = COLOR_BRIGHT_YELLOW
 				SelectedBone = bone
 			else
-				if bonenodes and bonenodes[ent] and bonenodes[ent][bone] and bonenodes[ent][bone].Type then
-					surface.SetDrawColor(BONETYPE_COLORS[bonenodes[ent][bone].Type][1]:Unpack())
-				else
-					surface.SetDrawColor(COLOR_RGMGREEN:Unpack())
-				end
+					surface.SetDrawColor(BONETYPE_COLORS[bonetype][1]:Unpack())
 			end
 
 			draw.NoTexture()
-			surface.DrawPoly(circ)
+			surface.DrawPoly(shape)
 
 			local ytextoffset = -14
 			if uiy > (midh + 30) then ytextoffset = RGMFontSize + 14 end
@@ -1365,6 +1396,7 @@ function AdvBoneSelectRadialRender(ent, bones, bonenodes, isresetmode)
 			draw.SimpleTextOutlined(name, "RagdollMoverFont", uix + xtextoffset, uiy + ytextoffset, color, TEXT_ALIGN_CENTER, TEXT_ALIGN_BOTTOM, OUTLINE_WIDTH, COLOR_RGMBLACK)
 		end
 
+		return {SelectedBone}, SelectedBone and 1 + SelectedBone or 0
 	else
 		local bone = bones[1]
 		local btype = 2
@@ -1375,8 +1407,8 @@ function AdvBoneSelectRadialRender(ent, bones, bonenodes, isresetmode)
 		local pos = ent:GetBonePosition(bone)
 		pos = pos:ToScreen()
 
-		local circ = table.Copy(RGM_CIRCLE)
-		for k, v in ipairs(circ) do
+		local shape = table.Copy(RGM_SHAPES[btype])
+		for k, v in ipairs(shape) do
 			v.x = v.x + pos.x
 			v.y = v.y + pos.y
 		end
@@ -1384,7 +1416,7 @@ function AdvBoneSelectRadialRender(ent, bones, bonenodes, isresetmode)
 		surface.SetDrawColor(COLOR_WHITE:Unpack())
 
 		draw.NoTexture()
-		surface.DrawPoly(circ)
+		surface.DrawPoly(shape)
 
 		local boneoptions = btype == 1 and FeaturesPhys or FeaturesNPhys
 		local count = #boneoptions
@@ -1451,13 +1483,26 @@ function AdvBoneSelectRadialRender(ent, bones, bonenodes, isresetmode)
 
 			k = k + 1
 		end
-
+		return {bone}, 1 + bone
 	end
 end
 
 function AdvBoneSelectRadialPick()
 	if not SelectedBone then return 0 end
 	return SelectedBone
+end
+
+do
+	local pi, sin = math.pi, math.sin
+	function AdvBoneSelectPulse(ent, bones, boneScales)
+		for _, bone in ipairs(bones) do
+			if not bone then continue end
+
+			if boneScales[bone] then
+				ent:ManipulateBoneScale(bone, boneScales[bone] + VECTOR_ONE * 0.05 * sin(2.666 * pi * RealTime()))
+			end
+		end
+	end
 end
 
 function DrawBoneConnections(ent, bone)
