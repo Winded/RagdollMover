@@ -1236,6 +1236,7 @@ function AdvBoneSelectRender(ent, bonenodes, prevbones, calc, eyePos, eyeVector,
 	local scrH = ScrH() - 100 -- Some padding to keep the bones centered
 	local columns = 0
 
+	local id = #selectedBones
 	-- List the selected bones. If they attempt to overflow through the screen, add the items to another column.
 	for i = 0, #selectedBones - 1 do
 		local yPos = my + (i % maxItemsPerColumn) * (RGMFontSize + 3)
@@ -1256,9 +1257,13 @@ function AdvBoneSelectRender(ent, bonenodes, prevbones, calc, eyePos, eyeVector,
 		end
 
 		draw.SimpleTextOutlined(selectedBones[i + 1][1], "RagdollMoverFont", xPos, yPos, color, TEXT_ALIGN_LEFT, TEXT_ALIGN_BOTTOM, OUTLINE_WIDTH, COLOR_RGMBLACK)
+
+		-- Modify the data structure of the individual selectedBone so we don't have to worry about indexing later on
+		selectedBones[i + 1] = selectedBones[i + 1][2]
+		id = id + selectedBones[i + 1]
 	end
 
-	return prevbones
+	return prevbones, selectedBones, id
 end
 
 function AdvBoneSelectPick(ent, bonenodes)
@@ -1391,6 +1396,7 @@ function AdvBoneSelectRadialRender(ent, bones, bonenodes, isresetmode)
 			draw.SimpleTextOutlined(name, "RagdollMoverFont", uix + xtextoffset, uiy + ytextoffset, color, TEXT_ALIGN_CENTER, TEXT_ALIGN_BOTTOM, OUTLINE_WIDTH, COLOR_RGMBLACK)
 		end
 
+		return {SelectedBone}, SelectedBone and 1 + SelectedBone or 0
 	else
 		local bone = bones[1]
 		local btype = 2
@@ -1477,13 +1483,26 @@ function AdvBoneSelectRadialRender(ent, bones, bonenodes, isresetmode)
 
 			k = k + 1
 		end
-
+		return {bone}, 1 + bone
 	end
 end
 
 function AdvBoneSelectRadialPick()
 	if not SelectedBone then return 0 end
 	return SelectedBone
+end
+
+do
+	local pi, sin = math.pi, math.sin
+	function AdvBoneSelectPulse(ent, bones, boneScales)
+		for _, bone in ipairs(bones) do
+			if not bone then continue end
+
+			if boneScales[bone] then
+				ent:ManipulateBoneScale(bone, boneScales[bone] + VECTOR_ONE * 0.05 * sin(2.666 * pi * RealTime()))
+			end
+		end
+	end
 end
 
 function DrawBoneConnections(ent, bone)
