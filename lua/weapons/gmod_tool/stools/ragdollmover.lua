@@ -3267,7 +3267,7 @@ local Col4
 local LockMode, LockTo = false, { id = nil, ent = nil }
 local IsPropRagdoll, TreeEntities = false, {}
 local ScaleLocks = {}
-local ResetMode = false
+local ResetMode, RecalculateColors = false, false
 
 cvars.AddChangeCallback("ragdollmover_ik_hand_L", function(convar, old, new)
 	if not IsValid(EnableIKButt) then return end
@@ -3629,6 +3629,7 @@ local NodeFunctions = {
 }
 
 local function SetBoneNodes(bonepanel, sortedbones)
+	RecalculateColors = true
 	nodes = {}
 
 	local width = 0
@@ -5006,7 +5007,8 @@ function TOOL:DrawHUD()
 	local id = 0
 	if self:GetOperation() == 2 and IsValid(ent) then
 		local timecheck = (thinktime - LastSelectThink) > 0.1
-		local calc = ( not LastEnt or LastEnt ~= ent ) or timecheck
+		local calc = ( not LastEnt or LastEnt ~= ent ) or timecheck or RecalculateColors
+		RecalculateColors = false
 
 		if self:GetStage() == 0 then
 			BoneColors, BoneScaleGroup, id = rgm.AdvBoneSelectRender(ent, nodes, BoneColors, calc, eyepos, viewvec, fov)
