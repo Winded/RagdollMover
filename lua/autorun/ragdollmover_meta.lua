@@ -16,6 +16,31 @@ local TYPE_BOOL		 = 5
 
 RAGDOLLMOVER = {}
 
+local shouldCallHook = false
+hook.Add("EntityKeyValue", "RGMAllowTool", function(ent, key, val)
+	-- I couldn't find a clean, direct way to add ragdollmover to the m_tblToolsAllowed for both
+	-- loading into a map or loading a save on the same map.
+	if key == "gmod_allowtools" and not string.find(val, "ragdollmover") then
+		shouldCallHook = true
+	end
+
+	-- We can't call the hook at the same time the key is gmod_allowtools because ent.m_tblToolsAllowed 
+	-- must exist (which relies on the gmod_allowtools key), but it doesn't yet
+	if shouldCallHook and key ~= "gmod_allowtools" then
+		hook.Run("RGMAllowTool", ent)
+		shouldCallHook = false
+	end
+end)
+
+-- Some brush entities only allow a select number of tools (see https://wiki.facepunch.com/gmod/Sandbox_Specific_Mapping)
+-- Without this, the gizmos would not be "selectable"
+hook.Add("RGMAllowTool", "RGMAllowTool", function(ent)
+	-- If the table is not filled, we don't want to insert it, as it would make other tools not work
+	if istable(ent.m_tblToolsAllowed) and #ent.m_tblToolsAllowed > 0 then
+		table.insert(ent.m_tblToolsAllowed, "ragdollmover")
+	end
+end)
+
 if SERVER then
 
 util.AddNetworkString("RAGDOLLMOVER_META")
@@ -42,6 +67,7 @@ hook.Add("PlayerDisconnected", "RGMCleanupGizmos", function(pl)
 	end
 	RAGDOLLMOVER[pl] = nil
 end)
+
 
 local NumpadBindRot, NumpadBindScale = {}, {}
 local RotKey, ScaleKey = {}, {}
@@ -127,7 +153,7 @@ numpad.Register("rgmAxisChangeStateRot", function(pl)
 	if not RAGDOLLMOVER[pl] then RAGDOLLMOVER[pl] = {} end
 	if not rgmMode[pl] then rgmMode[pl] = 1 end
 
-	if not pl:GetTool() then return end
+	if not pl:GetTool() or RAGDOLLMOVER[pl].Moving then return end
 	if pl:GetTool().Mode ~= "ragdollmover" or pl:GetActiveWeapon():GetClass() ~= "gmod_tool" then return end
 	if RotKey[pl] == ScaleKey[pl] then
 		rgmMode[pl] = rgmMode[pl] + 1
@@ -147,7 +173,7 @@ end)
 numpad.Register("rgmAxisChangeStateScale", function(pl)
 	if not RAGDOLLMOVER[pl] then RAGDOLLMOVER[pl] = {} end
 
-	if not pl:GetTool() then return end
+	if not pl:GetTool() or RAGDOLLMOVER[pl].Moving then return end
 	if pl:GetTool().Mode ~= "ragdollmover" or pl:GetActiveWeapon():GetClass() ~= "gmod_tool" then return end
 	if RotKey[pl] == ScaleKey[pl] then return end
 	RAGDOLLMOVER[pl].Scale = not RAGDOLLMOVER[pl].Scale

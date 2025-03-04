@@ -12,11 +12,12 @@ local Fulldisc = GetConVar("ragdollmover_fulldisc")
 
 local pl
 
-function ENT:DrawLines(scale, width)
+function ENT:DrawLines(width)
 	if not pl then pl = LocalPlayer() end
 
 	local rotate = RAGDOLLMOVER[pl].Rotate or false
 	local modescale = RAGDOLLMOVER[pl].Scale or false
+	local scale = self.scale
 	local start, last = 1, 7
 	if rotate then start, last = 8, 12 end
 	if modescale then start, last = 13, 18 end
@@ -26,7 +27,7 @@ function ENT:DrawLines(scale, width)
 	for i = start, last do
 		local moveaxis = self.Axises[i]
 		local yellow = false
-		if moveaxis:TestCollision(pl, scale) and not gotselected then
+		if moveaxis:TestCollision(pl) and not gotselected then
 			yellow = true
 			gotselected = true
 		end
@@ -36,9 +37,9 @@ function ENT:DrawLines(scale, width)
 	self.width = width
 end
 
-function ENT:DrawDirectionLine(norm, scale, ghost)
+function ENT:DrawDirectionLine(norm, ghost)
 	local pos1 = self:GetPos():ToScreen()
-	local pos2 = (self:GetPos() + (norm * scale)):ToScreen()
+	local pos2 = (self:GetPos() + (norm * self.scale)):ToScreen()
 	local grn = 255
 	if ghost then grn = 150 end
 	surface.SetDrawColor(0, grn, 0, 255)

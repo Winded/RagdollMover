@@ -11,8 +11,28 @@ local VECTOR_FRONT = RGM_Constants.VECTOR_FRONT
 local ANGLE_DISC = Angle(0, 90, 0)
 local ANGLE_ARROW_OFFSET = Angle(0, 90, 90)
 
+-- How much we should try to contain the player and the gizmo
+local DISTANCE_PADDING = 10
+-- How much player's velocity should influence collision bound
+local PLAYER_WEIGHT = 0.9
+-- How much gizmo's own velocity should influence collision bound
+local GIZMO_WEIGHT = 0.1
+
 function ENT:Think()
 	local pl = self.Owner
+	local size = self.DefaultMinMax
+	-- Extend the collision bounds to include us, with some velocity tracking to ensure that the gizmo updates as much as possible outside of the world
+	if not util.IsInWorld(self:GetPos()) then
+		local velocity = (self:GetPos() - self.LastPos) / FrameTime()
+		size = DISTANCE_PADDING * (pl:GetPos() - self:GetPos()) + (PLAYER_WEIGHT * pl:GetVelocity() + GIZMO_WEIGHT * velocity)
+	end
+	-- Only set the collision bounds if it differs from our last size.
+	if self.LastSize ~= size then
+		self:SetCollisionBounds(-1 * size, size)
+		self.LastSize = size
+	end
+	self.LastPos = self:GetPos()
+
 	if not IsValid(pl) then return end
 
 	local plTable = RAGDOLLMOVER[pl]
