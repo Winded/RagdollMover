@@ -22,18 +22,18 @@ function ENT:Initialize()
 	self.ArrowXY = RGMGIZMOS.CreateGizmo(2, 5, self, Color(0, 255, 0, 255), Vector(0, 0, -1):Angle(), Color(255, 0, 0, 255))
 	self.ArrowXZ = RGMGIZMOS.CreateGizmo(2, 6, self, Color(255, 0, 0, 255), Vector(0, -1, 0):Angle(), Color(0, 0, 255, 255))
 	self.ArrowYZ = RGMGIZMOS.CreateGizmo(2, 7, self, Color(0, 255, 0, 255), Vector(1, 0, 0):Angle(), Color(0, 0, 255, 255))
+	
+	self.Ball = RGMGIZMOS.CreateGizmo(5, 8, self, Color(175, 175, 175, 75), Vector(0, 0, 0):Angle())
 
-	self.DiscP = RGMGIZMOS.CreateGizmo(3, 8, self, Color(255, 0, 0, 255), Vector(0, 1, 0):Angle()) -- 0 90 0
+	self.DiscP = RGMGIZMOS.CreateGizmo(3, 9, self, Color(255, 0, 0, 255), Vector(0, 1, 0):Angle()) -- 0 90 0
 	self.DiscP.axistype = 1 -- axistype is a variable to help with setting non physical bones - 1 for pitch, 2 yaw, 3 roll, 4 for the big one
-	self.DiscY = RGMGIZMOS.CreateGizmo(3, 9, self, Color(0, 255, 0, 255), Vector(0, 0, 1):Angle()) -- 270 0 0
+	self.DiscY = RGMGIZMOS.CreateGizmo(3, 10, self, Color(0, 255, 0, 255), Vector(0, 0, 1):Angle()) -- 270 0 0
 	self.DiscY.axistype = 2
-	self.DiscR = RGMGIZMOS.CreateGizmo(3, 10, self, Color(0, 0, 255, 255), Vector(1, 0, 0):Angle()) -- 0 0 0
+	self.DiscR = RGMGIZMOS.CreateGizmo(3, 11, self, Color(0, 0, 255, 255), Vector(1, 0, 0):Angle()) -- 0 0 0
 	self.DiscR.axistype = 3
 
-	self.DiscLarge = RGMGIZMOS.CreateGizmo(4, 11, self, Color(175, 175, 175, 255), Vector(1, 0, 0):Angle())
+	self.DiscLarge = RGMGIZMOS.CreateGizmo(4, 12, self, Color(175, 175, 175, 255), Vector(1, 0, 0):Angle())
 	self.DiscLarge.axistype = 4
-
-	self.Ball = RGMGIZMOS.CreateGizmo(5, 12, self, Color(175, 175, 175, 75), Vector(0, 0, 0):Angle())
 
 	self.ScaleX = RGMGIZMOS.CreateGizmo(6, 13, self, Color(255, 0, 0, 255), Vector(1, 0, 0):Angle())
 	self.ScaleX.axistype = 1
@@ -46,26 +46,11 @@ function ENT:Initialize()
 	self.ScaleXZ = RGMGIZMOS.CreateGizmo(7, 17, self, Color(255, 0, 0, 255), Vector(0, -1, 0):Angle(), Color(0, 0, 255, 255))
 	self.ScaleYZ = RGMGIZMOS.CreateGizmo(7, 18, self, Color(0, 255, 0, 255), Vector(1, 0, 0):Angle(), Color(0, 0, 255, 255))
 
-	self.Axises = {
-		self.ArrowOmni,
-		self.ArrowX,
-		self.ArrowY,
-		self.ArrowZ,
-		self.ArrowXY,
-		self.ArrowXZ,
-		self.ArrowYZ,
-		self.DiscP,
-		self.DiscY,
-		self.DiscR,
-		self.DiscLarge,
-		self.Ball,
-		self.ScaleX,
-		self.ScaleY,
-		self.ScaleZ,
-		self.ScaleXY,
-		self.ScaleXZ,
-		self.ScaleYZ,
-	}
+	self.Axises = {}
+
+	for i, gizmoName in ipairs(RGMGIZMOS.GizmoTable) do
+		self.Axises[i] = self[gizmoName]
+	end
 
 	self.scale = 0
 	self.width = 0

@@ -1765,33 +1765,45 @@ concommand.Add("ragdollmover_resetroot", function(pl)
 	net.Send(pl)
 end)
 
+local function spawnAxis(pl, tool, plTable)
+	local axis = ents.Create("rgm_axis")
+	axis:SetPos(pl:EyePos())
+	axis:Spawn()
+	axis.Owner = pl
+	axis.localpos = tool:GetClientNumber("localpos", 0) ~= 0
+	axis.localang = tool:GetClientNumber("localang", 1) ~= 0
+	axis.localoffset = tool:GetClientNumber("localoffset", 1) ~= 0
+	axis.relativerotate = tool:GetClientNumber("relativerotate", 0) ~= 0
+	axis.scalechildren = tool:GetClientNumber("scalechildren", 0) ~= 0
+	axis.smovechildren = tool:GetClientNumber("smovechildren", 0) ~= 0
+	axis.scalerelativemove = tool:GetClientNumber("scalerelativemove", 0) ~= 0
+	plTable.Axis = axis
+
+	plTable.updaterate = tool:GetClientNumber("updaterate", 0.01)
+	plTable.unfreeze = tool:GetClientNumber("unfreeze", 0)
+	plTable.snapenable = tool:GetClientNumber("snapenable", 0)
+	plTable.snapamount = tool:GetClientNumber("snapamount", 30)
+	plTable.physmove = tool:GetClientNumber("physmove", 0)
+	plTable.always_use_pl_view = tool:GetClientNumber("always_use_pl_view", 0)
+
+	RAGDOLLMOVER.Sync(pl, "Axis", "always_use_pl_view")
+end
+
+concommand.Add("ragdollmover_resetgizmo", function(pl)
+	local plTable = RAGDOLLMOVER[pl]
+	if not plTable or not IsValid(plTable.Axis) then return end
+
+	plTable.Axis:Remove()
+	spawnAxis(pl, pl:GetTool(), plTable)
+end)
+
 function TOOL:Deploy()
 	if SERVER then
 		local pl = self:GetOwner()
 		local plTable = RAGDOLLMOVER[pl]
 		local axis = plTable.Axis
 		if not IsValid(axis) then
-			axis = ents.Create("rgm_axis")
-			axis:SetPos(pl:EyePos())
-			axis:Spawn()
-			axis.Owner = pl
-			axis.localpos = self:GetClientNumber("localpos", 0) ~= 0
-			axis.localang = self:GetClientNumber("localang", 1) ~= 0
-			axis.localoffset = self:GetClientNumber("localoffset", 1) ~= 0
-			axis.relativerotate = self:GetClientNumber("relativerotate", 0) ~= 0
-			axis.scalechildren = self:GetClientNumber("scalechildren", 0) ~= 0
-			axis.smovechildren = self:GetClientNumber("smovechildren", 0) ~= 0
-			axis.scalerelativemove = self:GetClientNumber("scalerelativemove", 0) ~= 0
-			plTable.Axis = axis
-
-			plTable.updaterate = self:GetClientNumber("updaterate", 0.01)
-			plTable.unfreeze = self:GetClientNumber("unfreeze", 0)
-			plTable.snapenable = self:GetClientNumber("snapenable", 0)
-			plTable.snapamount = self:GetClientNumber("snapamount", 30)
-			plTable.physmove = self:GetClientNumber("physmove", 0)
-			plTable.always_use_pl_view = self:GetClientNumber("always_use_pl_view", 0)
-
-			RAGDOLLMOVER.Sync(pl, "Axis", "always_use_pl_view")
+			spawnAxis(pl, self, plTable)
 		end
 	end
 end
@@ -1866,29 +1878,7 @@ function TOOL:LeftClick()
 
 	local axis = plTable.Axis
 	if not IsValid(axis) then
-		axis = ents.Create("rgm_axis")
-		axis:SetPos(pl:EyePos())
-		axis:Spawn()
-		axis.Owner = pl
-		axis.localpos = self:GetClientNumber("localpos", 0) ~= 0
-		axis.localang = self:GetClientNumber("localang", 1) ~= 0
-		axis.localoffset = self:GetClientNumber("localoffset", 1) ~= 0
-		axis.relativerotate = self:GetClientNumber("relativerotate", 0) ~= 0
-		axis.scalechildren = self:GetClientNumber("scalechildren", 0) ~= 0
-		axis.smovechildren = self:GetClientNumber("smovechildren", 0) ~= 0
-		axis.scalerelativemove = self:GetClientNumber("scalerelativemove", 0) ~= 0
-		plTable.Axis = axis
-
-		plTable.updaterate = self:GetClientNumber("updaterate", 0.01)
-		plTable.unfreeze = self:GetClientNumber("unfreeze", 0)
-		plTable.snapenable = self:GetClientNumber("snapenable", 0)
-		plTable.snapamount = self:GetClientNumber("snapamount", 30)
-		plTable.physmove = self:GetClientNumber("physmove", 0)
-		plTable.always_use_pl_view = self:GetClientNumber("always_use_pl_view", 0)
-
-		plTable.Axis = axis
-
-		RAGDOLLMOVER.Sync(pl, "Axis", "always_use_pl_view")
+		spawnAxis(pl, self, plTable)
 		return false
 	end
 

@@ -5,6 +5,14 @@ local VECTOR_SIDE = RGM_Constants.VECTOR_LEFT
 local COLOR_BRIGHT_YELLOW = RGM_Constants.COLOR_BRIGHT_YELLOW
 local COLOR_BRIGHT_YELLOW2 = ColorAlpha(COLOR_BRIGHT_YELLOW, 100)
 
+local PARENTED_BONE = 0
+local PHYSICAL_BONE = 1
+local NONPHYSICAL_BONE = 2
+
+local function isnan(num)
+	return num == num
+end
+
 ----------------
 -- BASE GIZMO --
 ----------------
@@ -201,13 +209,13 @@ do
 			local pos, ang
 			local _, selfangle = LocalToWorld(vector_origin, self.AngOffset, vector_origin, axis:GetAngles()) --self:GetAngles()
 
-			if movetype == 1 then
+			if movetype == PHYSICAL_BONE then
 				local obj = ent:GetPhysicsObjectNum(bone)
 				localized = Vector(localized.x, 0, 0)
 				intersect = LocalToWorld(localized, angle_zero, axis:GetPos(), arrowAng)
 				ang = obj:GetAngles()
 				pos = LocalToWorld(Vector(offpos.x, 0, 0), angle_zero, intersect - offset, selfangle)
-			elseif movetype == 2 then
+			elseif movetype == NONPHYSICAL_BONE then
 				local finalpos, boneang
 				local advbones = nil
 				if ent:GetClass() == "ent_advbonemerge" then
@@ -261,7 +269,7 @@ do
 				finalpos = nphyspos + localized
 				ang = ent:GetManipulateBoneAngles(bone)
 				pos = finalpos
-			elseif movetype == 0 then
+			elseif movetype == PARENTED_BONE then
 				localized = Vector(localized.x, 0, 0)
 				intersect = self:LocalToWorld(localized)
 				ang = ent:GetLocalAngles()
@@ -357,11 +365,11 @@ do
 			end
 			local pos, ang
 
-			if movetype == 1 then
+			if movetype == PHYSICAL_BONE then
 				local obj = ent:GetPhysicsObjectNum(bone)
 				ang = obj:GetAngles()
 				pos = LocalToWorld(offpos, angle_zero, intersect - offset, self:GetAngles())
-			elseif movetype == 2 then
+			elseif movetype == NONPHYSICAL_BONE then
 				local localized, finalpos, boneang
 				local advbones = nil
 				if ent:GetClass() == "ent_advbonemerge" then
@@ -414,7 +422,7 @@ do
 				finalpos = nphyspos + localized
 				ang = ent:GetManipulateBoneAngles(bone)
 				pos = finalpos
-			elseif movetype == 0 then
+			elseif movetype == PARENTED_BONE then
 				ang = ent:GetLocalAngles()
 				pos = LocalToWorld(offpos, angle_zero, intersect - offset, self:GetAngles())
 				pos = parent:WorldToLocal(pos)
@@ -532,11 +540,11 @@ do
 			end
 			local pos, ang
 
-			if movetype == 1 then
+			if movetype == PHYSICAL_BONE then
 				local obj = ent:GetPhysicsObjectNum(bone)
 				ang = obj:GetAngles()
 				pos = LocalToWorld(offpos, angle_zero, intersect - offset, self:GetAngles())
-			elseif movetype == 2 then
+			elseif movetype == NONPHYSICAL_BONE then
 				local localized, startmove, finalpos, boneang
 				local advbones = nil
 				if ent:GetClass() == "ent_advbonemerge" then
@@ -589,7 +597,7 @@ do
 				finalpos = nphyspos + localized
 				ang = ent:GetManipulateBoneAngles(bone)
 				pos = finalpos
-			elseif movetype == 0 then
+			elseif movetype == PARENTED_BONE then
 				ang = ent:GetLocalAngles()
 				pos = LocalToWorld(offpos, angle_zero, intersect - offset, self:GetAngles())
 				pos = parent:WorldToLocal(pos)
@@ -732,7 +740,7 @@ do
 			axistable[3]:Normalize()
 			axistable[4]:Normalize()
 
-			if movetype == 1 then
+			if movetype == PHYSICAL_BONE then
 				local offset = plTable.GizmoOffset
 				local entoffset = vector_origin
 				if axis.localoffset and not axis.relativerotate then
@@ -755,6 +763,10 @@ do
 
 				local pos = self:GetPos()
 				local ang = self:LocalToWorldAngles(Angle(0, 0, rotationangle))
+
+				debugoverlay.Text(axis.BonePos + vector_up * 0, ang.x, 0, false)
+				debugoverlay.Text(axis.BonePos + vector_up * 10, ang.y, 0, false)
+				debugoverlay.Text(axis.BonePos + vector_up * 20, ang.z, 0, false)
 				if axis.relativerotate then
 					offset = WorldToLocal(axis.BonePos, angle_zero, axis:GetPos(), axis.LocalAngles)
 					_p, _a = LocalToWorld(vector_origin, offang, pos, ang)
@@ -763,7 +775,7 @@ do
 					_p, _a = LocalToWorld(vector_origin, offang, pos, ang)
 					_p = pos - offset
 				end
-			elseif movetype == 2 then
+			elseif movetype == NONPHYSICAL_BONE then
 				local rotateang, axisangle
 				local parent = ent:GetParent()
 				axisangle = axistable[self.axistype]
@@ -840,7 +852,7 @@ do
 					_p = ent:GetManipulateBonePosition(bone)
 				end
 
-			elseif movetype == 0 then
+			elseif movetype == PARENTED_BONE then
 				local offset = plTable.GizmoOffset
 				local entoffset = vector_origin
 				if axis.localoffset and not axis.relativerotate then
@@ -1041,10 +1053,6 @@ do
 	if SERVER then
 
 		do
-			local deg = math.deg
-			local acos = math.acos
-
-			-- FIXME: Migrate to using mouse to obtain position or angle deltas
 			function ball:ProcessMovement(_, offang, eyepos, eyeang, ent, bone, ppos, pnorm, movetype, snapamount, startangle, _, nphysangle)
 				local intersect = self:GetGrabPos(eyepos, eyeang)
 				local localized = self:WorldToLocal(intersect)
@@ -1053,39 +1061,59 @@ do
 				local pl = axis.Owner
 				local plTable = RAGDOLLMOVER[pl]
 				local offset = plTable.GizmoOffset
+				local entoffset = vector_origin
+				if axis.localoffset and not axis.relativerotate then
+					offset = LocalToWorld(offset, angle_zero, axis:GetPos(), axis.LocalAngles)
+					offset = offset - axis:GetPos()
+				end
+				if ent.rgmPRoffset then
+					entoffset = LocalToWorld(ent.rgmPRoffset, angle_zero, axis:GetPos(), axis.LocalAngles)
+					entoffset = entoffset - axis:GetPos()
+					offset = offset + entoffset
+				end
 
 				local aim = eyeang:Forward()
 
-				local planeNormal = (eyepos - self:GetPos())
+				local planeNormal = self:WorldToLocal(eyepos)
 
-				local delta = vector_origin
-				if axis.lastPoint  then
-					delta = localized - axis.lastPoint
-				end
-				if axis.LastStartAngle and axis.LastStartAngle ~= startangle then
-					
-				else
-					axis.LastStartAngle = startangle
-				end
-				axis.lastPoint = localized
+				local startpoint = startangle
+				local delta = localized - startpoint
 
-				-- The arcball method maps screen positions to positions on a sphere. 
-				-- Angles can be obtained from the sphere positions, allowing mouse movements
-				-- to correspond to angle changes.
-				-- Proper sphere rotation would happen when we rewrite the tool
-				local rotation = deg(acos(localized:Dot(axis.lastPoint) / localized:Length() / axis.lastPoint:Length()))
+				local rotationAngle = delta:Length()
+				rotationAngle = isnan(rotationAngle) and rotationAngle or 0
+				if snapamount ~= 0 then
+					rotationAngle = math.floor(rotationAngle / snapamount) * snapamount
+				end
 				local rotationAxis = planeNormal:Cross(delta):GetNormalized()
+				rotationAxis = rotationAxis:IsZero() and vector_up or rotationAxis
 
 				-- debugoverlay.Sphere(intersect, 1, 0.1, Color(255, 0, 255), true)
-				-- debugoverlay.Sphere(self:LocalToWorld(startangle), 1, 0.1, Color(0, 0, 255), true)
-				-- debugoverlay.Line(self:GetPos(), self:GetPos() + rotationAxis * 40, 0.1, Color(255, 127, 0), true)
+				-- debugoverlay.Sphere(self:LocalToWorld(startangle), 1, 0.1, Color(0, 255, 0), true)
+				-- debugoverlay.Line(self:LocalToWorld(startangle), self:LocalToWorld(startangle + delta), 0.1, Color(255, 0, 0), true)
+				-- debugoverlay.Line(self:LocalToWorld(startangle), self:LocalToWorld(startangle + rotationAxis * 40), 0.1, Color(255, 127, 0), true)
+
+				if self.LastStartAngle ~= startangle then
+					local _, lastAngle = ent:GetBonePosition(bone)
+					self.LastAngle = lastAngle * 1
+					self.LastStartAngle = startangle
+				end
 
 				local pos = self:GetPos()
-				local ang = axis.lastAngle or angle_zero * 1
-				ang:RotateAroundAxis(rotationAxis, rotation)
+				local ang = self.LastAngle * 1
+				ang:RotateAroundAxis(rotationAxis, rotationAngle)
+				
 				ang = self:LocalToWorldAngles(ang)
+
+				debugoverlay.Text(axis.BonePos + vector_up * 0, ang.x, 0, false)
+				debugoverlay.Text(axis.BonePos + vector_up * 10, ang.y, 0, false)
+				debugoverlay.Text(axis.BonePos + vector_up * 20, ang.z, 0, false)
 				_p, _a = LocalToWorld(vector_origin, offang, pos, ang)
-				_p, _a = self:GetPos(), angle_zero
+				if axis.relativerotate then
+					offset = WorldToLocal(axis.BonePos, angle_zero, axis:GetPos(), axis.LocalAngles)
+					_p = LocalToWorld(offset, _a, pos, _a)
+				else
+					_p = pos - offset
+				end
 
 				return _p, _a
 			end
@@ -1292,8 +1320,8 @@ RGMGIZMOS.GizmoTable = {
 	"ArrowOmni",
 	"ArrowX", "ArrowY", "ArrowZ",
 	"ArrowXY", "ArrowXZ", "ArrowYZ",
-	"DiscP", "DiscY", "DiscR", "DiscLarge",
 	"Ball",
+	"DiscP", "DiscY", "DiscR", "DiscLarge",
 	"ScaleX", "ScaleY", "ScaleZ",
 	"ScaleXY", "ScaleXZ", "ScaleYZ",
 }
