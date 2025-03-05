@@ -1,5 +1,15 @@
 RGMGIZMOS = {}
 
+RGMGIZMOS.AxisTypeEnum = {
+	Pitch = 1,
+	Yaw = 2,
+	Roll = 3,
+	Large = 4,
+	X = 1,
+	Y = 2,
+	Z = 3,
+}
+
 local VECTOR_FRONT = RGM_Constants.VECTOR_FRONT
 local VECTOR_SIDE = RGM_Constants.VECTOR_LEFT
 local COLOR_BRIGHT_YELLOW = RGM_Constants.COLOR_BRIGHT_YELLOW
@@ -8,6 +18,8 @@ local COLOR_BRIGHT_YELLOW2 = ColorAlpha(COLOR_BRIGHT_YELLOW, 100)
 local PARENTED_BONE = 0
 local PHYSICAL_BONE = 1
 local NONPHYSICAL_BONE = 2
+
+local AxisType = RGMGIZMOS.AxisTypeEnum
 
 local function isnan(num)
 	return num == num
@@ -670,11 +682,11 @@ do
 		local function ConvertVector(vec, axistype)
 			local result
 
-			if axistype == 1 then
+			if axistype == AxisType.Pitch then
 				result = Vector(-vec.x, vec.z, 0)
-			elseif axistype == 2 then
+			elseif axistype == AxisType.Yaw then
 				result = Vector(vec.x, vec.y, 0)
-			elseif axistype == 3 then
+			elseif axistype == AxisType.Roll then
 				result = Vector(vec.y, vec.z, 0)
 			else
 				result = vec
@@ -834,7 +846,7 @@ do
 					rotationangle = snapAngle(self, localized, startangle, snapamount, true)
 				end
 
-				if self.axistype == 4 then
+				if self.axistype == AxisType.Large then
 					_a = nphysangle
 				else
 					_a = ent:GetManipulateBoneAngles(bone)
@@ -990,9 +1002,7 @@ local disclarge = table.Copy(disc)
 
 do
 
-	function disclarge:TestCollision(pl, scale, shouldTest)
-		if not shouldTest then return false end
-
+	function disclarge:TestCollision(pl, scale)
 		local plTable = RAGDOLLMOVER[pl]
 		local plviewent = plTable.always_use_pl_view == 1 and pl or (plTable.PlViewEnt ~= 0 and Entity(plTable.PlViewEnt) or nil)
 		local eyepos, eyeang = rgm.EyePosAng(pl, plviewent)
@@ -1012,9 +1022,7 @@ do
 
 	if CLIENT then
 
-		function disclarge:DrawLines(yellow, scale, width, shouldDraw)
-			if not shouldDraw then return end
-
+		function disclarge:DrawLines(yellow, scale, width)
 			local toscreen = {}
 			local linetable = self:GetLinePositions(width)
 			local color = self:GetColor()
@@ -1053,9 +1061,8 @@ do
 		return intersect
 	end
 
-	function ball:TestCollision(pl, scale, shouldTest)
+	function ball:TestCollision(pl, scale)
 		if GetConVar("ragdollmover_drawsphere"):GetInt() <= 0 then return end 
-		if not shouldTest then return false end
 
 		local plTable = RAGDOLLMOVER[pl]
 		local plviewent = plTable.always_use_pl_view == 1 and pl or (plTable.PlViewEnt ~= 0 and Entity(plTable.PlViewEnt) or nil)
@@ -1142,9 +1149,8 @@ do
 	end
 
 	if CLIENT then
-		function ball:DrawLines(yellow, scale, width, shouldDraw)
+		function ball:DrawLines(yellow, scale)
 			if GetConVar("ragdollmover_drawsphere"):GetInt() <= 0 then return end 
-			if not shouldDraw then return end
 
 			local color = self:GetColor()
 			color = Color(color[1], color[2], color[3], color[4])
@@ -1321,15 +1327,33 @@ local GIZMO_TYPES = {
 	scaleside, -- SCALE SIDE [7]
 }
 
+-- Items that map to the gizmo classes in GIZMO_TYPES, so users who `CreateGizmo` can simply reference a name instead of a number 
+RGMGIZMOS.GizmoTypeEnum = {
+	OmniPos = 0,
+	PosArrow = 1,
+	PosSide = 2,
+	Disc = 3,
+	DiscLarge = 4,
+	Ball = 5,
+	ScaleArrow = 6,
+	ScaleSide = 7
+}
+
+-- Nonphysical bones don't fare well with free rotations because of gimbal lock, so we disable certain gizmos that may cause them
+local GimbalLockProne = {
+	[RGMGIZMOS.GizmoTypeEnum.Ball] = true,
+	[RGMGIZMOS.GizmoTypeEnum.DiscLarge] = true,
+}
+
 ---------------
 -- FUNCTIONS --
 ---------------
-RGMGIZMOS.CreateGizmo = function(gizmotype, id, parent, color, offset, color2)
+RGMGIZMOS.CreateGizmo = function(gizmotype, parent, color, offset, color2)
 	local gizmo
 	if not offset then offset = Angle(0, 0, 0) end
 
 	gizmo = table.Copy(GIZMO_TYPES[gizmotype+1])
-	gizmo.id = id
+	gizmo.gizmotype = gizmotype
 	gizmo.Parent = parent
 	gizmo.AngOffset = offset
 	gizmo.LocalAng = offset
@@ -1339,6 +1363,27 @@ RGMGIZMOS.CreateGizmo = function(gizmotype, id, parent, color, offset, color2)
 	end
 
 	return gizmo
+end
+
+-- Check if the specified gizmo type can potentially cause gimbal locks for a certain condition
+RGMGIZMOS.CanGimbalLock = function(gizmotype, condition)
+	condition = Either(condition ~= nil, condition, true)
+	return GimbalLockProne[gizmotype] and condition
+end
+
+-- Instead of explicitly making calls to CreateGizmo, create them using repeated calls to this
+-- function, which automatically ids a gizmo in increasing order. This is an alternative to say,
+-- storing the gizmo id per player
+RGMGIZMOS.GizmoFactory = function()
+	local id = 0
+	local CreateGizmo = RGMGIZMOS.CreateGizmo
+	return function(gizmotype, parent, color, offset, color2)
+		id = id + 1
+		local gizmo = CreateGizmo(gizmotype, parent, color, offset, color2)
+		gizmo.id = id
+
+		return gizmo
+	end
 end
 
 RGMGIZMOS.GizmoTable = {

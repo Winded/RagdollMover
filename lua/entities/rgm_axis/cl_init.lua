@@ -8,6 +8,7 @@ local OUTLINE_WIDTH = RGM_Constants.OUTLINE_WIDTH
 local ANGLE_ARROW_OFFSET = Angle(0, 90, 90)
 local ANGLE_DISC = Angle(0, 90, 0)
 
+local GizmoCanGimbalLock = RGMGIZMOS.CanGimbalLock
 local Fulldisc = GetConVar("ragdollmover_fulldisc")
 
 local pl
@@ -19,8 +20,10 @@ function ENT:DrawLines(width)
 	local rotate = plTable.Rotate or false
 	local modescale = plTable.Scale or false
 	local ent = plTable.Entity
-	local bone = plTable.Bone
+	local bone = plTable.Bone or 0
 	local isparentbone = IsValid(ent) and IsValid(ent:GetParent()) and bone == 0 and not ent:IsEffectActive(EF_BONEMERGE) and not ent:IsEffectActive(EF_FOLLOWBONE) and not (ent:GetClass() == "prop_ragdoll")
+	local isnonphysbone = not (isparentbone or plTable.IsPhysBone)
+	
 	local scale = self.scale
 	local start, last = 1, 7
 	if rotate then start, last = 8, 12 end
@@ -30,12 +33,14 @@ function ENT:DrawLines(width)
 	local gotselected = false
 	for i = start, last do
 		local moveaxis = self.Axises[i]
+		if GizmoCanGimbalLock(moveaxis.gizmotype, isnonphysbone) then continue end
+
 		local yellow = false
-		if moveaxis:TestCollision(pl, scale, isparentbone or plTable.IsPhysBone) and not gotselected then
+		if moveaxis:TestCollision(pl, scale) and not gotselected then
 			yellow = true
 			gotselected = true
 		end
-		moveaxis:DrawLines(yellow, scale, width, isparentbone or plTable.IsPhysBone)
+		moveaxis:DrawLines(yellow, scale, width)
 	end
 
 	self.width = width
