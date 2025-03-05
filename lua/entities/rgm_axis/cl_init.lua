@@ -15,8 +15,12 @@ local pl
 function ENT:DrawLines(width)
 	if not pl then pl = LocalPlayer() end
 
-	local rotate = RAGDOLLMOVER[pl].Rotate or false
-	local modescale = RAGDOLLMOVER[pl].Scale or false
+	local plTable = RAGDOLLMOVER[pl]
+	local rotate = plTable.Rotate or false
+	local modescale = plTable.Scale or false
+	local ent = plTable.Entity
+	local bone = plTable.Bone
+	local isparentbone = IsValid(ent) and IsValid(ent:GetParent()) and bone == 0 and not ent:IsEffectActive(EF_BONEMERGE) and not ent:IsEffectActive(EF_FOLLOWBONE) and not (ent:GetClass() == "prop_ragdoll")
 	local scale = self.scale
 	local start, last = 1, 7
 	if rotate then start, last = 8, 12 end
@@ -27,11 +31,11 @@ function ENT:DrawLines(width)
 	for i = start, last do
 		local moveaxis = self.Axises[i]
 		local yellow = false
-		if moveaxis:TestCollision(pl) and not gotselected then
+		if moveaxis:TestCollision(pl, scale, isparentbone or plTable.IsPhysBone) and not gotselected then
 			yellow = true
 			gotselected = true
 		end
-		moveaxis:DrawLines(yellow, scale, width)
+		moveaxis:DrawLines(yellow, scale, width, isparentbone or plTable.IsPhysBone)
 	end
 
 	self.width = width

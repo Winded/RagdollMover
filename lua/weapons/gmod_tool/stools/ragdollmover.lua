@@ -1937,7 +1937,8 @@ function TOOL:LeftClick()
 	end
 
 	local ent = plTable.Entity
-	local collision = axis:TestCollision(pl)
+	local isparentbone = IsValid(ent) and IsValid(ent:GetParent()) and plTable.Bone == 0 and not ent:IsEffectActive(EF_BONEMERGE) and not ent:IsEffectActive(EF_FOLLOWBONE) and not (ent:GetClass() == "prop_ragdoll")
+	local collision = axis:TestCollision(pl, isparentbone or plTable.IsPhysBone)
 
 	if collision and IsValid(ent) and rgmCanTool(ent, pl) then
 

@@ -990,7 +990,9 @@ local disclarge = table.Copy(disc)
 
 do
 
-	function disclarge:TestCollision(pl)
+	function disclarge:TestCollision(pl, scale, shouldTest)
+		if not shouldTest then return false end
+
 		local plTable = RAGDOLLMOVER[pl]
 		local plviewent = plTable.always_use_pl_view == 1 and pl or (plTable.PlViewEnt ~= 0 and Entity(plTable.PlViewEnt) or nil)
 		local eyepos, eyeang = rgm.EyePosAng(pl, plviewent)
@@ -1010,7 +1012,9 @@ do
 
 	if CLIENT then
 
-		function disclarge:DrawLines(yellow, scale, width)
+		function disclarge:DrawLines(yellow, scale, width, shouldDraw)
+			if not shouldDraw then return end
+
 			local toscreen = {}
 			local linetable = self:GetLinePositions(width)
 			local color = self:GetColor()
@@ -1049,8 +1053,9 @@ do
 		return intersect
 	end
 
-	function ball:TestCollision(pl, scale)
+	function ball:TestCollision(pl, scale, shouldTest)
 		if GetConVar("ragdollmover_drawsphere"):GetInt() <= 0 then return end 
+		if not shouldTest then return false end
 
 		local plTable = RAGDOLLMOVER[pl]
 		local plviewent = plTable.always_use_pl_view == 1 and pl or (plTable.PlViewEnt ~= 0 and Entity(plTable.PlViewEnt) or nil)
@@ -1137,8 +1142,10 @@ do
 	end
 
 	if CLIENT then
-		function ball:DrawLines(yellow, scale)
+		function ball:DrawLines(yellow, scale, width, shouldDraw)
 			if GetConVar("ragdollmover_drawsphere"):GetInt() <= 0 then return end 
+			if not shouldDraw then return end
+
 			local color = self:GetColor()
 			color = Color(color[1], color[2], color[3], color[4])
 			if yellow then

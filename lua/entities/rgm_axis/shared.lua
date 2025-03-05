@@ -64,7 +64,7 @@ function ENT:Initialize()
 	end
 end
 
-function ENT:TestCollision(pl)
+function ENT:TestCollision(pl, shouldTest)
 	-- PrintTable(self:GetTable())
 	local rotate = RAGDOLLMOVER[pl].Rotate or false
 	local modescale = RAGDOLLMOVER[pl].Scale or false
@@ -77,7 +77,7 @@ function ENT:TestCollision(pl)
 	for i = start, last do
 		local e = self.Axises[i]
 		-- print(e)
-		local intersect = e:TestCollision(pl)
+		local intersect = e:TestCollision(pl, self.scale, shouldTest)
 		if intersect then return intersect end
 	end
 
