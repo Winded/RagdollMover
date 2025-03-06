@@ -789,9 +789,6 @@ do
 				local pos = self:GetPos()
 				local ang = self:LocalToWorldAngles(Angle(0, 0, rotationangle))
 
-				debugoverlay.Text(axis.BonePos + vector_up * 0, ang.x, 0, false)
-				debugoverlay.Text(axis.BonePos + vector_up * 10, ang.y, 0, false)
-				debugoverlay.Text(axis.BonePos + vector_up * 20, ang.z, 0, false)
 				if axis.relativerotate then
 					offset = WorldToLocal(axis.BonePos, angle_zero, axis:GetPos(), axis.LocalAngles)
 					_p, _a = LocalToWorld(vector_origin, offang, pos, ang)
@@ -1071,7 +1068,6 @@ do
 		local distmin, distmax = self.collpositions[1], self.collpositions[2]
 		local dist = intersect:Distance(self:GetPos())
 		if dist >= distmin and dist <= distmax then
-			debugoverlay.Sphere(intersect, 1, 0.1, Color(0,0,255), true)
 			return {axis = self, hitpos = intersect}
 		end
 		return false
