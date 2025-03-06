@@ -81,17 +81,17 @@ function ENT:TestCollision(pl)
 	local rotate = plTable.Rotate or false
 	local modescale = plTable.Scale or false
 	
-	local start, last = 1, 7
+	local start, last, inc = 1, 7, 1
 
-	if rotate then start, last = 8, 12 end
+	if rotate then start, last, inc = 12, 8, -1 end
 	if modescale then start, last = 13, 18 end
 
 	if not self.Axises then return false end
-	for i = start, last do
+	for i = start, last, inc do
 		local e = self.Axises[i]
 		if GizmoCanGimbalLock(e.gizmotype, isnonphysbone) then continue end
 		-- print(e)
-		local intersect = e:TestCollision(pl, self.scale)
+		local intersect = e:TestCollision(pl)
 		if intersect then return intersect end
 	end
 

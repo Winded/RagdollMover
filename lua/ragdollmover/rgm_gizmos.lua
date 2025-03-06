@@ -1002,7 +1002,7 @@ local disclarge = table.Copy(disc)
 
 do
 
-	function disclarge:TestCollision(pl, scale)
+	function disclarge:TestCollision(pl)
 		local plTable = RAGDOLLMOVER[pl]
 		local plviewent = plTable.always_use_pl_view == 1 and pl or (plTable.PlViewEnt ~= 0 and Entity(plTable.PlViewEnt) or nil)
 		local eyepos, eyeang = rgm.EyePosAng(pl, plviewent)
@@ -1061,21 +1061,24 @@ do
 		return intersect
 	end
 
-	function ball:TestCollision(pl, scale)
+	function ball:TestCollision(pl)
 		if GetConVar("ragdollmover_drawsphere"):GetInt() <= 0 then return end 
 
 		local plTable = RAGDOLLMOVER[pl]
 		local plviewent = plTable.always_use_pl_view == 1 and pl or (plTable.PlViewEnt ~= 0 and Entity(plTable.PlViewEnt) or nil)
 		local eyepos, eyeang = rgm.EyePosAng(pl, plviewent)
 		local intersect = self:GetGrabPos(eyepos, eyeang)
-		local distmin = 0
-		local distmax = scale
+		local distmin, distmax = self.collpositions[1], self.collpositions[2]
 		local dist = intersect:Distance(self:GetPos())
 		if dist >= distmin and dist <= distmax then
 			debugoverlay.Sphere(intersect, 1, 0.1, Color(0,0,255), true)
 			return {axis = self, hitpos = intersect}
 		end
 		return false
+	end
+
+	function ball:CalculateGizmo(scale)
+		self.collpositions = { 0, scale }
 	end
 
 	if SERVER then

@@ -30,17 +30,36 @@ function ENT:DrawLines(width)
 	if modescale then start, last = 13, 18 end
 	-- print(self.Axises)
 
-	local gotselected = false
+	-- First, draw all gizmos for a specific mode as unselected
+	local selected = {}
 	for i = start, last do
 		local moveaxis = self.Axises[i]
 		if GizmoCanGimbalLock(moveaxis.gizmotype, isnonphysbone) then continue end
 
-		local yellow = false
-		if moveaxis:TestCollision(pl, scale) and not gotselected then
-			yellow = true
-			gotselected = true
+		if moveaxis:TestCollision(pl) then
+			table.insert(selected, i)
 		end
-		moveaxis:DrawLines(yellow, scale, width)
+
+		moveaxis:DrawLines(false, scale, width)
+	end
+	
+	-- Then iterate over the selected gizmos and draw a single selected one yellow
+	local gotselected = false
+	local inc = 1
+	start, last = 1, #selected
+	if rotate then start, last, inc = #selected, 1, -1 end -- We also switched the order in `:TestCollision`, so selections are consistent
+	for i = start, last, inc do
+		local moveaxis = self.Axises[selected[i]]
+		if selected[i] and not gotselected then
+			gotselected = moveaxis.id
+		end
+		if moveaxis.IsBall and #selected > 1 then
+			continue
+		end
+
+		if gotselected == moveaxis.id then
+			moveaxis:DrawLines(gotselected == moveaxis.id, scale, width)
+		end
 	end
 
 	self.width = width

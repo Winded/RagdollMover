@@ -2581,7 +2581,7 @@ do
 			net.SendToServer()
 			if k == 8 then
 				if not pl or not RAGDOLLMOVER[pl] or not IsValid(RAGDOLLMOVER[pl].Axis) then return end
-				RAGDOLLMOVER[pl].Axis.scale = new
+				RAGDOLLMOVER[pl].Axis.scale = tonumber(new)
 				RAGDOLLMOVER[pl].Axis:CalculateGizmo()
 			elseif k == 14 then
 				RAGDOLLMOVER[pl].always_use_pl_view = tonumber(new)
