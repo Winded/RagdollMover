@@ -1116,29 +1116,26 @@ do
 					rotationAngle = math.floor(rotationAngle / snapamount) * snapamount
 				end
 				local rotationAxis = planeNormal:Cross(delta):GetNormalized()
-				rotationAxis = rotationAxis:IsZero() and vector_up or rotationAxis
-
-				-- debugoverlay.Sphere(intersect, 1, 0.1, Color(255, 0, 255), true)
-				-- debugoverlay.Sphere(self:LocalToWorld(startangle), 1, 0.1, Color(0, 255, 0), true)
-				-- debugoverlay.Line(self:LocalToWorld(startangle), self:LocalToWorld(startangle + delta), 0.1, Color(255, 0, 0), true)
-				-- debugoverlay.Line(self:LocalToWorld(startangle), self:LocalToWorld(startangle + rotationAxis * 40), 0.1, Color(255, 127, 0), true)
+				rotationAxis = rotationAxis:IsZero() and vector_origin or rotationAxis
 
 				if self.LastStartAngle ~= startangle then
-					local _, lastAngle = ent:GetBonePosition(bone)
+					local physObj = ent:GetPhysicsObjectNum(bone)
+
+					local lastAngle
+					if IsValid(physObj) then
+						lastAngle = physObj:GetAngles()
+					end
 					self.LastAngle = lastAngle * 1
 					self.LastStartAngle = startangle
 				end
 
 				local pos = self:GetPos()
-				local ang = self.LastAngle * 1
+				local ang = angle_zero * 1
 				ang:RotateAroundAxis(rotationAxis, rotationAngle)
 				
 				ang = self:LocalToWorldAngles(ang)
 
-				debugoverlay.Text(axis.BonePos + vector_up * 0, ang.x, 0, false)
-				debugoverlay.Text(axis.BonePos + vector_up * 10, ang.y, 0, false)
-				debugoverlay.Text(axis.BonePos + vector_up * 20, ang.z, 0, false)
-				_p, _a = LocalToWorld(vector_origin, offang, pos, ang)
+				_p, _a = LocalToWorld(vector_origin, self:WorldToLocalAngles(self.LastAngle), pos, ang)
 				if axis.relativerotate then
 					offset = WorldToLocal(axis.BonePos, angle_zero, axis:GetPos(), axis.LocalAngles)
 					_p = LocalToWorld(offset, _a, pos, _a)
