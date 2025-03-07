@@ -32,7 +32,7 @@ function ENT:Initialize()
 	self.ArrowXZ = CreateGizmo(GizmoType.PosSide, self, Color(255, 0, 0, 255), Vector(0, -1, 0):Angle(), Color(0, 0, 255, 255))
 	self.ArrowYZ = CreateGizmo(GizmoType.PosSide, self, Color(0, 255, 0, 255), Vector(1, 0, 0):Angle(), Color(0, 0, 255, 255))
 	
-	self.Ball = CreateGizmo(GizmoType.Ball, self, Color(175, 175, 175, 75), Vector(0, 0, 0):Angle())
+	self.Ball = CreateGizmo(GizmoType.Ball, self, Color(255, 255, 255, 5), Vector(0, 0, 0):Angle())
 
 	self.DiscP = CreateGizmo(GizmoType.Disc, self, Color(255, 0, 0, 255), Vector(0, 1, 0):Angle()) -- 0 90 0
 	self.DiscP.axistype = AxisType.Pitch -- axistype is a variable to help with setting non physical bones - 1 for pitch, 2 yaw, 3 roll, 4 for the big one

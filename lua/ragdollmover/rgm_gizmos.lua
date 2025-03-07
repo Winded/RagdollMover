@@ -13,7 +13,7 @@ RGMGIZMOS.AxisTypeEnum = {
 local VECTOR_FRONT = RGM_Constants.VECTOR_FRONT
 local VECTOR_SIDE = RGM_Constants.VECTOR_LEFT
 local COLOR_BRIGHT_YELLOW = RGM_Constants.COLOR_BRIGHT_YELLOW
-local COLOR_BRIGHT_YELLOW2 = ColorAlpha(COLOR_BRIGHT_YELLOW, 100)
+local COLOR_BRIGHT_YELLOW2 = ColorAlpha(COLOR_BRIGHT_YELLOW, 6)
 
 local PARENTED_BONE = 0
 local PHYSICAL_BONE = 1
@@ -1390,6 +1390,7 @@ RGMGIZMOS.GizmoTypeEnum = {
 -- Nonphysical bones don't fare well with free rotations because of gimbal lock, so we disable certain gizmos that may cause them
 local GimbalLockProne = {
 	[RGMGIZMOS.GizmoTypeEnum.DiscLarge] = true,
+	[RGMGIZMOS.GizmoTypeEnum.Ball] = true,
 }
 
 ---------------
