@@ -1100,7 +1100,9 @@ do
 				local startpoint = startangle
 				local delta = localized - startpoint
 
-				local rotationAngle = delta:Length()
+				-- Estimated length required to reach the 90 degree mark, if rotating from the center of the sphere 
+				local factor = 90 / self.collpositions[2]
+				local rotationAngle = delta:Length() * factor
 				rotationAngle = isnan(rotationAngle) and rotationAngle or 0
 				if snapamount ~= 0 then
 					rotationAngle = math.floor(rotationAngle / snapamount) * snapamount
