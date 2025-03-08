@@ -726,14 +726,12 @@ do
 			return result
 		end
 
-		local snapAngle do
-
-			local floor = math.floor
-			local ceil = math.ceil
+		do
+			local floor, ceil = math.floor, math.ceil
 
 			-- Accumulate delta angles per frame until startangle is different (stopped rotating)
 			-- Allows for correct snapped angles set by the rotation delta
-			function snapAngle(self, localized, startangle, snapamount, nonphys)
+			function disc:SnapAngle(localized, startangle, snapamount, nonphys)
 				local parent = self.Parent
 				if not parent.Accumulated then
 					parent.Accumulated = 0
@@ -742,7 +740,7 @@ do
 				end
 
 				local localAng = localized.y
-	
+
 				if parent.LastStartAngle ~= startangle.y then
 					parent.Accumulated = 0
 					parent.OldLocalAngle = localAng
@@ -760,7 +758,7 @@ do
 				local delta = parent.OldLocalAngle - localAng
 				parent.Accumulated = parent.Accumulated + delta
 				parent.OldLocalAngle = localAng
-	
+
 				local mathfunc = nil
 				if parent.Accumulated >= 0 then
 					mathfunc = floor
@@ -768,7 +766,7 @@ do
 					mathfunc = ceil
 				end
 
-	
+
 				if nonphys then
 					return -mathfunc(parent.Accumulated / snapamount) * snapamount
 				else
@@ -814,7 +812,7 @@ do
 
 				local rotationangle = localized.y
 				if snapamount ~= 0 then
-					rotationangle = snapAngle(self, localized, startangle, snapamount)
+					rotationangle = self:SnapAngle(localized, startangle, snapamount)
 				end
 
 				local pos = self:GetPos()
@@ -847,7 +845,7 @@ do
 
 				local rotationangle = localized.y
 				if snapamount ~= 0 then
-					rotationangle = snapAngle(self, localized, startangle, snapamount, true)
+					rotationangle = self:SnapAngle(localized, startangle, snapamount, true)
 				end
 
 				if self.axistype == AxisType.Large then
@@ -898,7 +896,7 @@ do
 
 				local rotationangle = localized.y
 				if snapamount ~= 0 then
-					rotationangle = snapAngle(self, localized, startangle, snapamount)
+					rotationangle = self:SnapAngle(localized, startangle, snapamount)
 				end
 
 				local pos = self:GetPos()
@@ -1082,11 +1080,46 @@ do
 
 	function ball:CalculateGizmo(scale)
 		self.collpositions = { 0, scale }
+		self.Factor = 90 / scale
 	end
 
 	if SERVER then
 
 		do
+
+			do
+				local floor = math.floor
+
+				-- Accumulate delta angles per frame until startangle is different (stopped rotating)
+				-- Allows for correct snapped angles set by the rotation delta
+				function ball:SnapAngle(localized, startangle, snapamount, planeNormal)
+					if self.LastStartAngle ~= startangle then
+						self.LastPoint = startangle
+						self.LastSnapX, self.LastSnapY = 0, 0
+						self.Accumulated = vector_origin
+					end
+					local angle = planeNormal:Angle()
+					local xAxis, yAxis = angle:Right(), angle:Up()
+					local x, y = self.Delta:Dot(xAxis) * self.Factor, self.Delta:Dot(yAxis) * self.Factor
+					local snapX, snapY = floor(x / snapamount), floor(y / snapamount)
+
+					local snapDelta = (localized - self.LastPoint)
+					self.Accumulated = self.Accumulated + snapDelta
+					self.LastPoint = localized
+					local snapCount = floor(self.Factor * self.Accumulated:Length() / snapamount)
+
+					local rotationAngle = snapCount * snapamount
+
+					local calculateAxis = false
+					if self.LastSnapX ~= snapX or self.LastSnapY ~= snapY then
+						calculateAxis = true
+						self.LastSnapX, self.LastSnapY = snapX, snapY
+					end
+
+					return rotationAngle, calculateAxis
+				end
+			end
+
 			function ball:ProcessMovement(_, offang, eyepos, eyeang, ent, bone, ppos, pnorm, movetype, snapamount, startangle, _, nphysangle)
 				local intersect = self:GetGrabPos(eyepos, eyeang)
 				local localized = self:WorldToLocal(intersect)
@@ -1098,16 +1131,19 @@ do
 				local planeNormal = self:WorldToLocal(eyepos)
 
 				local startpoint = startangle
-				local delta = localized - startpoint
+				self.Delta = localized - startpoint
 
 				-- Estimated length required to reach the 90 degree mark, if rotating from the center of the sphere 
-				local factor = 90 / self.collpositions[2]
-				local rotationAngle = delta:Length() * factor
+				local rotationAngle = self.Delta:Length() * self.Factor
 				rotationAngle = isnan(rotationAngle) and rotationAngle or 0
+				local calculateAxis = true
 				if snapamount ~= 0 then
-					rotationAngle = math.floor(rotationAngle / snapamount) * snapamount
+					rotationAngle, calculateAxis = self:SnapAngle(localized, startangle, snapamount, planeNormal)
 				end
-				local rotationAxis = planeNormal:Cross(delta):GetNormalized()
+				if calculateAxis or not self.RotationAxis then
+					self.RotationAxis = planeNormal:Cross(self.Delta):GetNormalized()
+				end
+				local rotationAxis = self.RotationAxis
 				rotationAxis = rotationAxis:IsZero() and vector_origin or rotationAxis
 
 				if self.LastStartAngle ~= startangle then
