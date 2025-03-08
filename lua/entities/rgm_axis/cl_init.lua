@@ -8,6 +8,7 @@ local OUTLINE_WIDTH = RGM_Constants.OUTLINE_WIDTH
 local ANGLE_ARROW_OFFSET = Angle(0, 90, 90)
 local ANGLE_DISC = Angle(0, 90, 0)
 
+local GizmoCanGimbalLock = RGMGIZMOS.CanGimbalLock
 local Fulldisc = GetConVar("ragdollmover_fulldisc")
 
 local pl
@@ -15,23 +16,50 @@ local pl
 function ENT:DrawLines(width)
 	if not pl then pl = LocalPlayer() end
 
-	local rotate = RAGDOLLMOVER[pl].Rotate or false
-	local modescale = RAGDOLLMOVER[pl].Scale or false
+	local plTable = RAGDOLLMOVER[pl]
+	local rotate = plTable.Rotate or false
+	local modescale = plTable.Scale or false
+	local ent = plTable.Entity
+	local bone = plTable.Bone or 0
+	local isparentbone = IsValid(ent) and IsValid(ent:GetParent()) and bone == 0 and not ent:IsEffectActive(EF_BONEMERGE) and not ent:IsEffectActive(EF_FOLLOWBONE) and not (ent:GetClass() == "prop_ragdoll")
+	local isnonphysbone = not (isparentbone or plTable.IsPhysBone)
+	
 	local scale = self.scale
 	local start, last = 1, 7
-	if rotate then start, last = 8, 11 end
-	if modescale then start, last = 12, 17 end
+	if rotate then start, last = 8, 12 end
+	if modescale then start, last = 13, 18 end
 	-- print(self.Axises)
 
-	local gotselected = false
+	-- First, draw all gizmos for a specific mode as unselected
+	local selected = {}
 	for i = start, last do
 		local moveaxis = self.Axises[i]
-		local yellow = false
-		if moveaxis:TestCollision(pl) and not gotselected then
-			yellow = true
-			gotselected = true
+		if GizmoCanGimbalLock(moveaxis.gizmotype, isnonphysbone) then continue end
+
+		if moveaxis:TestCollision(pl) then
+			table.insert(selected, i)
 		end
-		moveaxis:DrawLines(yellow, scale, width)
+
+		moveaxis:DrawLines(false, scale, width)
+	end
+	
+	-- Then iterate over the selected gizmos and draw a single selected one yellow
+	local gotselected = false
+	local inc = 1
+	start, last = 1, #selected
+	if rotate then start, last, inc = #selected, 1, -1 end -- We also switched the order in `:TestCollision`, so selections are consistent
+	for i = start, last, inc do
+		local moveaxis = self.Axises[selected[i]]
+		if selected[i] and not gotselected then
+			gotselected = moveaxis.id
+		end
+		if moveaxis.IsBall and #selected > 1 then
+			continue
+		end
+
+		if gotselected == moveaxis.id then
+			moveaxis:DrawLines(gotselected == moveaxis.id, scale, width)
+		end
 	end
 
 	self.width = width
