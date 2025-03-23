@@ -20,7 +20,7 @@ TOOL.ClientConVar["scalerelativemove"] = 0
 TOOL.ClientConVar["drawskeleton"] = 0
 TOOL.ClientConVar["snapenable"] = 0
 TOOL.ClientConVar["snapamount"] = 30
-TOOL.ClientConVar["drawsphere"] = 1
+TOOL.ClientConVar["drawsphere"] = 0
 
 TOOL.ClientConVar["ik_leg_L"] = 0
 TOOL.ClientConVar["ik_leg_R"] = 0
