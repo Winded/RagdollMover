@@ -62,7 +62,9 @@ function ENT:DrawLines(width)
 		end
 	end
 
-	self.width = width
+	if rotate then self.rwidth = width
+	elseif modescale then self.swidth = width
+	else self.pwidth = width end
 end
 
 function ENT:DrawDirectionLine(norm, ghost)
