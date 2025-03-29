@@ -61,10 +61,13 @@ function ENT:Initialize()
 		self.Axises[i] = self[gizmoName]
 	end
 
-	local width = GetConVar("ragdollmover_width"):GetInt() or 0.5
-	self.pwidth = width -- width var for each axis type, should take up less space than having width var for each gizmo part
-	self.rwidth = width
-	self.swidth = width
+	if CLIENT then
+		local width = GetConVar("ragdollmover_width"):GetInt() or 0.5
+		self.pwidth = width -- width var for each axis type, should take up less space than having width var for each gizmo part
+		self.rwidth = width
+		self.swidth = width
+	end
+
 	self.scale = GetConVar("ragdollmover_scale"):GetInt() or 10
 	self:CalculateGizmo()
 
