@@ -1176,7 +1176,7 @@ function AdvBoneSelectRender(ent, bonenodes, prevbones, calc, eyePos, eyeVector,
 	for i = 0, ent:GetBoneCount() - 1 do
 		local name = ent:GetBoneName(i)
 		if name == "__INVALIDBONE__" then continue end
-		if nodesExist and (not bonenodes[ent][i]) or false then continue end
+		if not nodesExist or (not bonenodes[ent][i]) then continue end
 		if not prevbones[i] then continue end
 		local pos = ent:GetBonePosition(i)
 		pos = pos:ToScreen()
