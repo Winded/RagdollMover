@@ -3643,7 +3643,7 @@ local function SetBoneNodes(bonepanel, sortedbones)
 			nodes[ent][v.id].Type = v.Type
 			nodes[ent][v.id]:SetExpanded(true)
 
-			if ScaleLocks[ent][v.id] then
+			if ScaleLocks[ent] and ScaleLocks[ent][v.id] then
 				nodes[ent][v.id]:SetIcon("icon16/lightbulb.png")
 				nodes[ent][v.id].Label:SetToolTip("#tool.ragdollmover.lockedscale")
 				nodes[ent][v.id].scllock = true
@@ -4578,7 +4578,7 @@ local NETFUNC = {
 					elseif anglock or poslock then
 						nodes[ent][bone]:SetIcon("icon16/lock.png")
 						nodes[ent][bone].Label:SetToolTip("#tool.ragdollmover.lockedbone")
-					elseif ScaleLocks[ent][bone] then
+					elseif ScaleLocks[ent] and ScaleLocks[ent][bone] then
 						nodes[ent][bone]:SetIcon("icon16/lightbulb.png")
 						nodes[ent][bone].Label:SetToolTip("#tool.ragdollmover.lockedscale")
 					else
