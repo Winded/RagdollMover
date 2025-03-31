@@ -3643,7 +3643,7 @@ local function SetBoneNodes(bonepanel, sortedbones)
 			nodes[ent][v.id].Type = v.Type
 			nodes[ent][v.id]:SetExpanded(true)
 
-			if ScaleLocks[ent][v.id] then
+			if ScaleLocks[ent] and ScaleLocks[ent][v.id] then
 				nodes[ent][v.id]:SetIcon("icon16/lightbulb.png")
 				nodes[ent][v.id].Label:SetToolTip("#tool.ragdollmover.lockedscale")
 				nodes[ent][v.id].scllock = true
@@ -4578,7 +4578,7 @@ local NETFUNC = {
 					elseif anglock or poslock then
 						nodes[ent][bone]:SetIcon("icon16/lock.png")
 						nodes[ent][bone].Label:SetToolTip("#tool.ragdollmover.lockedbone")
-					elseif ScaleLocks[ent][bone] then
+					elseif ScaleLocks[ent] and ScaleLocks[ent][bone] then
 						nodes[ent][bone]:SetIcon("icon16/lightbulb.png")
 						nodes[ent][bone].Label:SetToolTip("#tool.ragdollmover.lockedscale")
 					else
@@ -5019,12 +5019,12 @@ function TOOL:DrawHUD()
 		filter = { pl, pl:GetViewEntity() }
 	})
 	local aimedbone = IsValid(tr.Entity) and (tr.Entity:GetClass() == "prop_ragdoll" and plTable.AimedBone or 0) or 0
-	if IsValid(ent) and EntityFilter(ent, self) and SkeletonDraw then
+	if nodes and IsValid(ent) and EntityFilter(ent, self) and SkeletonDraw then
 		rgm.DrawSkeleton(ent, nodes)
 	end
 
 	local id = 0
-	if self:GetOperation() == 2 and IsValid(ent) then
+	if nodes and self:GetOperation() == 2 and IsValid(ent) then
 		local timecheck = (thinktime - LastSelectThink) > 0.1
 		local calc = ( not LastEnt or LastEnt ~= ent ) or timecheck or RecalculateColors
 		RecalculateColors = false
