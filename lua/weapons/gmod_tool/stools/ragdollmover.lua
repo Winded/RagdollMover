@@ -4995,15 +4995,8 @@ function TOOL:DrawHUD()
 			moveaxis:DrawLines(true, axis.scale, width)
 
 			cam.End()
-			if moveaxis.IsDisc then
-				local intersect = moveaxis:GetGrabPos(eyepos, eyeang)
-				local fwd = (intersect - axis:GetPos())
-				fwd:Normalize()
-				axis:DrawDirectionLine(fwd, false)
-				local dirnorm = plTable.DirNorm or VECTOR_FRONT
-				axis:DrawDirectionLine(dirnorm, true)
-				axis:DrawAngleText(moveaxis, intersect, plTable.StartAngle)
-			end
+
+			if moveaxis.DrawText then moveaxis:DrawText(plTable, eyepos, eyeang) end
 		else
 			cam.Start({type = "3D"})
 			render.SetMaterial(material)
