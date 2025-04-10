@@ -249,12 +249,11 @@ local function rgmDoScale(pl, ent, axis, childbones, bone, sc, prevscale, physmo
 		local diff
 		local noscale = plTable.rgmScaleLocks
 		local RecursiveBoneScale
-		local relmove = axis.scalerelativemove
 
 		if axis.smovechildren and childbones then
 			diff = Vector(sc.x / prevscale.x, sc.y / prevscale.y, sc.z / prevscale.z)
 
-			if relmove then
+			if axis.scalerelativemove then
 
 				RecursiveBoneScale = function(ent, bone, scale, diff, ppos, pang, opos, oang, nppos, poschange)
 					if plTable.Bone == bone then
