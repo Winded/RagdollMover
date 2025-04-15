@@ -784,12 +784,13 @@ do
 			local axis = self.Parent
 			local pl = axis.Owner
 			local plTable = RAGDOLLMOVER[pl]
+			local plviewent = plTable.always_use_pl_view == 1 and pl or (plTable.PlViewEnt ~= 0 and Entity(plTable.PlViewEnt) or pl:GetViewEntity())
 
 			local axistable = {
 				(axis:LocalToWorld(VECTOR_SIDE) - self:GetPos()):Angle(),
 				(axis:LocalToWorld(vector_up) - self:GetPos()):Angle(),
 				(axis:LocalToWorld(VECTOR_FRONT) - self:GetPos()):Angle(),
-				(self:GetPos() - pl:EyePos()):Angle()
+				(self:GetPos() - plviewent:GetPos()):Angle()
 			}
 			axistable[1]:Normalize()
 			axistable[2]:Normalize()
