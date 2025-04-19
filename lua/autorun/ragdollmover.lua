@@ -79,9 +79,16 @@ function EyePosAng(pl, viewent)
 			eyepos = viewent:LocalToWorld(viewent:GetViewOffset())
 		end
 	end
-	local cursorvec = pl:GetAimVector()
+	local cursorvec = pl:GetAimVector():Angle()
+	local _, lookAng = WorldToLocal(vector_origin, cursorvec, vector_origin, pl:EyeAngles())
+	-- If the cursor is visible
+	if not lookAng:IsEqualTol(angle_zero, 2) then
+		local cv, ca = WorldToLocal(vector_origin, cursorvec, vector_origin, pl:GetViewEntity():EyeAngles())
+		-- Rotate the cursor vector to the current view entity's eye angles
+		_, cursorvec = LocalToWorld(cv, ca, vector_origin, viewent:EyeAngles())
+	end
 	--local cursorvec = pl:EyeAngles()
-	return eyepos, cursorvec:Angle()
+	return eyepos, cursorvec
 end
 
 function AbsVector(vec)
