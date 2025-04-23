@@ -397,6 +397,8 @@ function GetOffsetTable(tool, ent, rotate, bonelocks, entlocks)
 	end
 
 	for lockent, pb in pairs(entlocks) do -- getting offsets from physical entities that are locked to our bones
+		if pb.ent ~= ent then continue end
+
 		if not RTable[pb.id].locked then
 			RTable[pb.id].locked = {}
 		end
