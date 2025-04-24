@@ -689,6 +689,7 @@ local function getPoseId(ent, parent)
 	local cm = ent:GetBoneMatrix(0)
 	local pm = parent:GetBoneMatrix(0)
 	local pos, ang = WorldToLocal(cm:GetTranslation(), cm:GetAngles(), pm:GetTranslation(), pm:GetAngles())
+	ang:Normalize()
 	return pos[1] + pos[2] + pos[3] + ang[1] + ang[2] + ang[3]
 end
 
@@ -731,10 +732,11 @@ local function deserializeLockTo(boneLockData, entity)
 end
 
 local function serializeConstraints(entLockData)
+	local newLockData = {}
 	for lockent, lockinfo in pairs(entLockData) do
-		entLockData[isnumber(lockent) and lockent or lockent:EntIndex()] = lockinfo
-		entLockData[lockent] = nil
+		newLockData[lockent:EntIndex()] = lockinfo
 	end
+	return newLockData
 end
 
 local function serializePhysBones(poseData)
@@ -753,7 +755,7 @@ local function getDupeData(plTable, ent)
 	}
 	serializePhysBones(data.rgmPosLocks)
 	serializePhysBones(data.rgmAngLocks)
-	serializeConstraints(data.rgmEntLocks)
+	data.rgmEntLocks = serializeConstraints(data.rgmEntLocks)
 	return data
 end
 
@@ -2102,16 +2104,24 @@ function TOOL:Deploy()
 		if not IsValid(axis) then
 			spawnAxis(pl, self, plTable)
 		end
-		for ent, entarray in pairs(plTable.rgmEntLocks) do
-			for lockent, lockinfo in pairs(entarray) do
-				lockinfo.poseid = getPoseId(lockent, ent)
-			end
-		end
 		if IsValid(entity) then
 			local physchildren = rgmGetConstrainedEntities(entity)
 			rgmUpdateEntInfo(pl, entity, physchildren)
 		end
-		rgmDupeLocks(pl, entity, getDupeData(plTable, entity), true)
+	end
+end
+
+function TOOL:Holster()
+	if SERVER then
+		local pl = self:GetOwner()
+		local plTable = RAGDOLLMOVER[pl]
+
+		for ent, entarray in pairs(plTable.rgmEntLocks) do
+			for lockent, lockinfo in pairs(entarray) do
+				lockinfo.poseid = getPoseId(lockent, ent)
+			end
+			rgmDupeLocks(pl, ent, getDupeData(plTable, ent), true)
+		end
 	end
 end
 
@@ -2461,8 +2471,8 @@ if SERVER then
 				for lockent, lockinfo in pairs(entarray) do
 					lockinfo.poseid = getPoseId(lockent, ent)
 				end
+				rgmDupeLocks(pl, ent, getDupeData(plTable, ent), true)
 			end
-			rgmDupeLocks(pl, ent, getDupeData(plTable, ent), true)
 
 			rgmCalcGizmoPos(pl)
 
