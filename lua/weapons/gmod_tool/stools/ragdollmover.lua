@@ -641,8 +641,6 @@ local function rgmSetLocks(plTable, entity, data)
 		plTable.rgmScaleLocks[ent] = nil
 		plTable.rgmBoneLocks[ent] = nil
 		plTable.rgmEntLocks[ent] = nil
-		print("Removed some things")
-		print(ent)
 	end)
 end
 
@@ -686,8 +684,9 @@ end
 -- The pose id is a key that represents the pose of a constrained entity
 -- with respect to its parent. We use this to preserve constraint locks
 local function getPoseId(ent, parent)
-	local ppos, pang = parent:GetBonePosition(0)
-	local pos, ang = WorldToLocal(ent:GetPos(), ent:GetAngles(), ppos, pang)
+	local cm = ent:GetBoneMatrix(0)
+	local pm = parent:GetBoneMatrix(0)
+	local pos, ang = WorldToLocal(cm:GetTranslation(), cm:GetAngles(), pm:GetTranslation(), pm:GetAngles())
 	return pos[1] + pos[2] + pos[3] + ang[1] + ang[2] + ang[3]
 end
 
@@ -698,17 +697,21 @@ local function guessEntFromPoseId(ent, parent, desiredposeid)
 end
 
 -- Duping will point to another entity, instead of their own.
-local function rgmRelinkConstraints(entLockData, entity, ce, plTable)
+local function rgmRelinkConstraints(entLockData, entity, plTable)
 	local newLockData = {}
 	for _, lockinfo in pairs(entLockData) do
 		if not lockinfo.poseid then continue end
+		local found = {}
 
+		local children = rgmGetConstrainedEntities(entity)
 		-- This approximates the position of constrained entities wrt the entity
-		for _, child in pairs(ce) do
+		for index, child in ipairs(children) do
 			if child == entity then continue end
+			if found[index] then continue end
 
 			if guessEntFromPoseId(child, entity, lockinfo.poseid) then
 				newLockData[child] = {id = lockinfo.id, ent = entity, poseid = lockinfo.poseid}
+				found[index] = true
 				break
 			end
 		end
@@ -721,20 +724,15 @@ local function rgmDupeLocks(pl, ent, data, fromtool)
 	-- Duplicator only looks for first three parameters, so relinking
 	-- happens for dupes only
 	if not fromtool then
-		rgmRelinkPhysbones(data.rgmPosLocks, ent)
-		rgmRelinkPhysbones(data.rgmAngLocks, ent)
-
-		ent.rgmPostEntityPaste = ent.rgmPostEntityPaste or ent.PostEntityPaste
-		ent.PostEntityPaste = function(self, ply, ent, ce)
-			if ent.rgmPostEntityPaste then
-				ent.rgmPostEntityPaste(self, ply, ent, ce)
-			end
-			PrintTable(ce or {})
-			PrintTable(data.rgmEntLocks)
-			rgmRelinkConstraints(data.rgmEntLocks, ent, ce, RAGDOLLMOVER[pl])
-		end
+		timer.Simple(0, function()
+			rgmRelinkPhysbones(data.rgmPosLocks, ent)
+			rgmRelinkPhysbones(data.rgmAngLocks, ent)
+			rgmRelinkConstraints(data.rgmEntLocks, ent, RAGDOLLMOVER[pl])
+			rgmSetLocks(RAGDOLLMOVER[pl], ent, data)
+		end)
+	else		
+		rgmSetLocks(RAGDOLLMOVER[pl], ent, data)
 	end
-	rgmSetLocks(RAGDOLLMOVER[pl], ent, data)
 
 	duplicator.ClearEntityModifier(ent, "Ragdoll Mover Lock Data")
 	duplicator.StoreEntityModifier(ent, "Ragdoll Mover Lock Data", data)
@@ -1235,15 +1233,6 @@ local NETFUNC = {
 		end
 
 		plTable.rgmEntLocks[ent][lockent] = {id = physbone, ent = ent}
-		ent.rgmPreEntityCopy = ent.rgmPreEntityCopy or ent.PreEntityCopy
-		ent.PreEntityCopy = function(...)
-			for lockent, lockinfo in pairs(plTable.rgmEntLocks[ent]) do
-				lockinfo.poseid = getPoseId(lockent, ent)
-			end
-			if ent.rgmPreEntityCopy then
-				ent.rgmPreEntityCopy(...)
-			end
-		end
 
 		NetStarter.rgmLockConstrainedResponse()
 			net.WriteBool(true)
@@ -2074,6 +2063,11 @@ function TOOL:Deploy()
 		if not IsValid(axis) then
 			spawnAxis(pl, self, plTable)
 		end
+		for ent, entarray in pairs(plTable.rgmEntLocks) do
+			for lockent, lockinfo in pairs(entarray) do
+				lockinfo.poseid = getPoseId(lockent, ent)
+			end
+		end
 		if IsValid(entity) then
 			local physchildren = rgmGetConstrainedEntities(entity)
 			rgmUpdateEntInfo(pl, entity, physchildren)
@@ -2618,6 +2612,9 @@ if SERVER then
 			rgmDoScale(pl, ent, axis, childbones, bone, sc, prevscale, physmove)
 		end
 
+		for lockent, lockinfo in pairs(plTable.rgmEntLocks[ent]) do
+			lockinfo.poseid = getPoseId(lockent, ent)
+		end
 	end
 
 	local tr = util.TraceLine({
