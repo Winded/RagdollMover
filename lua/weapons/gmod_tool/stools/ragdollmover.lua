@@ -58,6 +58,8 @@ local VECTOR_FRONT = RGM_Constants.VECTOR_FRONT
 local VECTOR_LEFT = RGM_Constants.VECTOR_LEFT
 local VECTOR_SCALEDEF = RGM_Constants.VECTOR_ONE
 
+local RGM_LOCKS_DUPE_KEY = "Ragdoll Mover Lock Data"
+
 local function rgmGetBone(pl, ent, bone)
 	local plTable = RAGDOLLMOVER[pl]
 	--------------------------------------------------------- yeah this part is from locrotscale
@@ -540,7 +542,7 @@ end
 local function rgmUpdateConstrainedEnts(pl, plTable, ent)
 	if not plTable.rgmEntLocks[ent] then return end
 
-	for lockent, lockentinfo in pairs(plTable.rgmEntLocks[ent]) do
+	for lockent, _ in pairs(plTable.rgmEntLocks[ent]) do
 		NetStarter.rgmLockConstrainedResponse()
 			net.WriteBool(true)
 			net.WriteEntity(lockent)
@@ -691,8 +693,7 @@ local function getPoseId(ent, parent)
 end
 
 -- Check if the poseid for an `ent` and `parent` matches the `desiredposeid`
-local function guessEntFromPoseId(ent, parent, desiredposeid)
-	local poseid = getPoseId(ent, parent)
+local function guessEntFromPoseId(desiredposeid, poseid)
 	return math.IsNearlyEqual(desiredposeid, poseid, 1e-3)
 end
 
@@ -700,18 +701,22 @@ end
 local function deserializeConstraints(entLockData, entity)
 	local newLockData = {}
 	local found = {}
+	local poseids = {}
 	local children = rgmGetConstrainedEntities(entity)
+	for _, child in ipairs(children) do
+		poseids[child] = getPoseId(child, entity)
+	end
+
 	for _, lockinfo in pairs(entLockData) do
 		if not lockinfo.poseid then continue end
 
 		-- This approximates the position of constrained entities wrt the entity
-		for index, child in ipairs(children) do
-			if child == entity then continue end
-			if found[index] then continue end
-
-			if guessEntFromPoseId(child, entity, lockinfo.poseid) then
-				newLockData[child] = {id = lockinfo.id, ent = entity, poseid = lockinfo.poseid}
-				found[index] = true
+		for _, child in ipairs(children) do
+			if found[child] then continue end
+			local poseid = poseids[child]
+			if guessEntFromPoseId(lockinfo.poseid, poseid) then
+				newLockData[child] = {id = lockinfo.id, ent = entity, poseid = poseid}
+				found[child] = true
 				break
 			end
 		end
@@ -737,8 +742,6 @@ local function serializePhysBones(poseData)
 		poseData[physIndex] = physIndex
 	end
 end
-
-local RGM_LOCKS_DUPE_KEY = "Ragdoll Mover Lock Data"
 
 local function getDupeData(plTable, ent)
 	local data = {
@@ -2108,6 +2111,7 @@ function TOOL:Deploy()
 			local physchildren = rgmGetConstrainedEntities(entity)
 			rgmUpdateEntInfo(pl, entity, physchildren)
 		end
+		rgmDupeLocks(pl, entity, getDupeData(plTable, entity), true)
 	end
 end
 
@@ -2458,6 +2462,7 @@ if SERVER then
 					lockinfo.poseid = getPoseId(lockent, ent)
 				end
 			end
+			rgmDupeLocks(pl, ent, getDupeData(plTable, ent), true)
 
 			rgmCalcGizmoPos(pl)
 
