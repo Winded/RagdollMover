@@ -593,33 +593,35 @@ function SetOffsets(tool, ent, ostable, sbone, rlocks, plocks, nphysinfo)
 		end
 	end
 
-	for k, v in pairs(ent.rgmIKChains) do
-		if tool:GetClientNumber(DefIKnames[v.type]) ~= 0 then
-			if v.ikhipparent then
-				if not RTable[v.ikhipparent] then RecursiveSetParent(ostable, sbone, ent, rlocks, plocks, RTable, v.ikhipparent, nphysinfo) end
+	if ent.rgmIKChains then
+		for k, v in pairs(ent.rgmIKChains) do
+			if tool:GetClientNumber(DefIKnames[v.type]) ~= 0 then
+				if v.ikhipparent then
+					if not RTable[v.ikhipparent] then RecursiveSetParent(ostable, sbone, ent, rlocks, plocks, RTable, v.ikhipparent, nphysinfo) end
+				end
+	
+				local footdata = ostable[v.foot]
+				if footdata ~= nil and (footdata.parent ~= v.knee and footdata.parent ~= v.hip) and not RTable[footdata.parent] and footdata.lock then 
+					RecursiveSetParent(ostable, sbone, ent, rlocks, plocks, RTable, footdata.parent, nphysinfo)
+				end
+	
+				local RT = ProcessIK(ent, v, sbone, RTable, footdata, nphysinfo)
+				table.Merge(RTable, RT)
 			end
-
-			local footdata = ostable[v.foot]
-			if footdata ~= nil and (footdata.parent ~= v.knee and footdata.parent ~= v.hip) and not RTable[footdata.parent] and footdata.lock then 
-				RecursiveSetParent(ostable, sbone, ent, rlocks, plocks, RTable, footdata.parent, nphysinfo)
-			end
-
-			local RT = ProcessIK(ent, v, sbone, RTable, footdata, nphysinfo)
-			table.Merge(RTable, RT)
 		end
-	end
-
-	for k, v in pairs(ent.rgmIKChains) do -- calculating IKs twice for proper bone locking stuff to IKs, perhaps there is a simpler way to do these
-		if tool:GetClientNumber(DefIKnames[v.type]) ~= 0 then
-
-			local footdata = ostable[v.foot]
-			if not RTable[footdata.parent] then
-				RecursiveSetParent(ostable, sbone, ent, rlocks, plocks, RTable, footdata.parent, nphysinfo)
+	
+		for k, v in pairs(ent.rgmIKChains) do -- calculating IKs twice for proper bone locking stuff to IKs, perhaps there is a simpler way to do these
+			if tool:GetClientNumber(DefIKnames[v.type]) ~= 0 then
+	
+				local footdata = ostable[v.foot]
+				if not RTable[footdata.parent] then
+					RecursiveSetParent(ostable, sbone, ent, rlocks, plocks, RTable, footdata.parent, nphysinfo)
+				end
+	
+				local RT = ProcessIK(ent, v, sbone, RTable, footdata, nphysinfo)
+				table.Merge(RTable, RT)
 			end
-
-			local RT = ProcessIK(ent, v, sbone, RTable, footdata, nphysinfo)
-			table.Merge(RTable, RT)
-		end
+		end	
 	end
 
 	for pb = 0, physcount do
