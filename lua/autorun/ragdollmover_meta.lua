@@ -3,7 +3,7 @@
 	Other functionality that isn't part of the rgm module.
 ]]
 
-resource.AddWorkShop("104575630")
+resource.AddWorkshop("104575630")
 
 local MAX_EDICT_BITS = 13
 
