@@ -1829,8 +1829,8 @@ end)
 local function spawnAxis(pl, tool, plTable)
 	local axis = ents.Create("rgm_axis")
 	axis:SetPos(pl:EyePos())
-	axis:Spawn()
 	axis.Owner = pl
+	axis:Spawn()
 	axis.localpos = tool:GetClientNumber("localpos", 0) ~= 0
 	axis.localang = tool:GetClientNumber("localang", 1) ~= 0
 	axis.localoffset = tool:GetClientNumber("localoffset", 1) ~= 0
