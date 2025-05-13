@@ -248,11 +248,17 @@ local function rgmDoScale(pl, ent, axis, childbones, bone, sc, prevscale, physmo
 
 	if axis.scalechildren and not (ent:GetClass() == "ent_advbonemerge") then
 		local scalediff = sc - prevscale
+		local scalediffsqr = scalediff:LengthSqr()
 		local diff
 		local noscale = plTable.rgmScaleLocks
 		local RecursiveBoneScale
+		-- When changing camera view while holding the scale gizmo, the user can achieve some massive scale differences,
+		-- resulting in distorted looking child bones. The magnitude check below ensures this doesn't happen.
+		-- From my experience, a scale difference of at least 1000 was achieved when the camera view and the view differ by
+		-- 90 degrees in orientation
+		local shouldmove = scalediffsqr <= 1000
 
-		if axis.smovechildren and childbones and childbones[bone] then
+		if axis.smovechildren and childbones and shouldmove then
 			diff = Vector(sc.x / prevscale.x, sc.y / prevscale.y, sc.z / prevscale.z)
 
 			if axis.scalerelativemove then
@@ -5212,15 +5218,8 @@ function TOOL:DrawHUD()
 			moveaxis:DrawLines(true, axis.scale, width)
 
 			cam.End()
-			if moveaxis.IsDisc then
-				local intersect = moveaxis:GetGrabPos(eyepos, eyeang)
-				local fwd = (intersect - axis:GetPos())
-				fwd:Normalize()
-				axis:DrawDirectionLine(fwd, false)
-				local dirnorm = plTable.DirNorm or VECTOR_FRONT
-				axis:DrawDirectionLine(dirnorm, true)
-				axis:DrawAngleText(moveaxis, intersect, plTable.StartAngle)
-			end
+
+			if moveaxis.DrawText then moveaxis:DrawText(plTable, eyepos, eyeang) end
 		else
 			cam.Start({type = "3D"})
 			render.SetMaterial(material)

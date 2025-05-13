@@ -8,18 +8,25 @@ RGMGIZMOS.AxisTypeEnum = {
 	X = 1,
 	Y = 2,
 	Z = 3,
+	XY = 1,
+	XZ = 2,
+	YZ = 3
 }
 
 local VECTOR_FRONT = RGM_Constants.VECTOR_FRONT
 local VECTOR_SIDE = RGM_Constants.VECTOR_LEFT
 local COLOR_BRIGHT_YELLOW = RGM_Constants.COLOR_BRIGHT_YELLOW
 local COLOR_BRIGHT_YELLOW2 = ColorAlpha(COLOR_BRIGHT_YELLOW, 6)
+local COLOR_RGMBLACK = RGM_Constants.COLOR_BLACK
+local OUTLINE_WIDTH = RGM_Constants.OUTLINE_WIDTH
 
 local PARENTED_BONE = 0
 local PHYSICAL_BONE = 1
 local NONPHYSICAL_BONE = 2
 
 local AxisType = RGMGIZMOS.AxisTypeEnum
+
+local Round = math.Round
 
 local function isnan(num)
 	return num == num
@@ -103,9 +110,9 @@ do
 
 	function basepart:SetColor(color, num)
 		if num == 2 then
-			self.Color2 = color:ToTable()
+			self.Color2 = color
 		else
-			self.Color = color:ToTable()
+			self.Color = color
 		end
 	end
 
@@ -113,9 +120,9 @@ do
 		local color
 
 		if num == 2 then
-			color = table.Copy(self.Color2)
+			color = self.Color2
 		else
-			color = table.Copy(self.Color)
+			color = self.Color
 		end
 
 		return color
@@ -165,7 +172,6 @@ do
 			local toscreen = {}
 			local linetable = self:GetLinePositions(width)
 			local color = self:GetColor()
-			color = Color(color[1], color[2], color[3], color[4])
 
 			for i, v in ipairs(linetable) do
 				local points = self:PointsToWorld(v, scale)
@@ -506,12 +512,8 @@ do
 			local toscreen = {}
 			local linetable = self:GetLinePositions(width)
 			local color = self:GetColor()
-			color = Color(color[1], color[2], color[3], color[4])
 
 			local color2 = self:GetColor(2)
-			if color2 then
-				color2 = Color(color2[1], color2[2], color2[3], color2[4])
-			end
 
 			for i, v in ipairs(linetable) do
 				local points = self:PointsToWorld(v, scale)
@@ -782,12 +784,13 @@ do
 			local axis = self.Parent
 			local pl = axis.Owner
 			local plTable = RAGDOLLMOVER[pl]
+			local plviewent = plTable.always_use_pl_view == 1 and pl or (plTable.PlViewEnt ~= 0 and Entity(plTable.PlViewEnt) or pl:GetViewEntity())
 
 			local axistable = {
 				(axis:LocalToWorld(VECTOR_SIDE) - self:GetPos()):Angle(),
 				(axis:LocalToWorld(vector_up) - self:GetPos()):Angle(),
 				(axis:LocalToWorld(VECTOR_FRONT) - self:GetPos()):Angle(),
-				(self:GetPos() - pl:EyePos()):Angle()
+				(self:GetPos() - plviewent:GetPos()):Angle()
 			}
 			axistable[1]:Normalize()
 			axistable[2]:Normalize()
@@ -971,7 +974,6 @@ do
 
 			local borderpos = largedisc:GetPos()
 			local color = self:GetColor()
-			color = Color(color[1], color[2], color[3], color[4])
 
 			local moving = RAGDOLLMOVER[pl].Moving or false
 
@@ -990,6 +992,17 @@ do
 			for i,v in ipairs(toscreen) do
 				render.DrawQuad(v[1][1], v[1][2], v[1][3], v[1][4], v[2])
 			end
+		end
+
+		function disc:DrawText(plTable, eyepos, eyeang)
+			local parent = self.Parent
+			local intersect = self:GetGrabPos(eyepos, eyeang)
+			local fwd = (intersect - parent:GetPos())
+			fwd:Normalize()
+			parent:DrawDirectionLine(fwd, false)
+			local dirnorm = plTable.DirNorm or VECTOR_FRONT
+			parent:DrawDirectionLine(dirnorm, true)
+			parent:DrawAngleText(self, intersect, plTable.StartAngle)
 		end
 
 	end
@@ -1028,7 +1041,6 @@ do
 			local toscreen = {}
 			local linetable = self:GetLinePositions(width)
 			local color = self:GetColor()
-			color = Color(color[1], color[2], color[3], color[4])
 
 			for i, v in ipairs(linetable) do
 				local col = color
@@ -1239,7 +1251,6 @@ do
 			if GetConVar("ragdollmover_drawsphere"):GetInt() <= 0 then return end 
 
 			local color = self:GetColor()
-			color = Color(color[1], color[2], color[3], color[4])
 			if yellow then
 				color = COLOR_BRIGHT_YELLOW2
 			end
@@ -1334,6 +1345,14 @@ do
 			return RTable
 		end
 
+		function scalearrow:DrawText(plTable, eyepos, eyeang)
+			local hitpos = self:GetGrabPos(eyepos, eyeang)
+
+			local text = Round(plTable.Entity:GetManipulateBoneScale(plTable.Bone)[self.axistype], 2)
+			local textpos = hitpos:ToScreen()
+			draw.SimpleTextOutlined(text, "RagdollMoverAngleFont", textpos.x + 5, textpos.y, self:GetColor(), TEXT_ALIGN_LEFT, TEXT_ALIGN_BOTTOM, OUTLINE_WIDTH, COLOR_RGMBLACK)
+		end
+
 	end
 
 end
@@ -1417,6 +1436,26 @@ do
 			end
 
 			return RTable
+		end
+
+		function scaleside:DrawText(plTable, eyepos, eyeang)
+			local hitpos = self:GetGrabPos(eyepos, eyeang)
+			local scalevec = plTable.Entity:GetManipulateBoneScale(plTable.Bone)
+			local vec1, vec2
+
+			if self.axistype == 1 then
+				vec1, vec2 = 1, 2
+			elseif self.axistype == 2 then
+				vec1, vec2 = 1, 3
+			else
+				vec1, vec2 = 2, 3
+			end
+
+			local text1 = Round(scalevec[vec1], 2)
+			local text2 = Round(scalevec[vec2], 2)
+			local textpos = hitpos:ToScreen()
+			draw.SimpleTextOutlined(text1, "RagdollMoverAngleFont", textpos.x + 5, textpos.y, self:GetColor(), TEXT_ALIGN_LEFT, TEXT_ALIGN_BOTTOM, OUTLINE_WIDTH, COLOR_RGMBLACK)
+			draw.SimpleTextOutlined(text2, "RagdollMoverAngleFont", textpos.x - 5, textpos.y, self:GetColor(2), TEXT_ALIGN_RIGHT, TEXT_ALIGN_BOTTOM, OUTLINE_WIDTH, COLOR_RGMBLACK)
 		end
 
 	end

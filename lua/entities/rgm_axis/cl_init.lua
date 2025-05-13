@@ -106,14 +106,15 @@ local lastang = nil
 function ENT:Think()
 	if not pl or not RAGDOLLMOVER[pl] then return end
 	if self ~= RAGDOLLMOVER[pl].Axis then return end
+	local plTable = RAGDOLLMOVER[pl]
 
-	local ent = RAGDOLLMOVER[pl].Entity
-	if not IsValid(ent) or not RAGDOLLMOVER[pl].Bone or not self.Axises then return end
+	local ent = plTable.Entity
+	if not IsValid(ent) or not plTable.Bone or not self.Axises then return end
 
-	if not RAGDOLLMOVER[pl].Moving then -- Prevent whole thing from rotating when we do localized rotation
-		if RAGDOLLMOVER[pl].Rotate then
-			if not RAGDOLLMOVER[pl].IsPhysBone then
-				local manipang = ent:GetManipulateBoneAngles(RAGDOLLMOVER[pl].Bone)
+	if not plTable.Moving then -- Prevent whole thing from rotating when we do localized rotation
+		if plTable.Rotate then
+			if not plTable.IsPhysBone then
+				local manipang = ent:GetManipulateBoneAngles(plTable.Bone)
 				if manipang ~= lastang then
 					self.DiscP.LocalAng = Angle(0, 90 + manipang.y, 0) -- Pitch follows Yaw angles
 					self.DiscR.LocalAng = Angle(0 + manipang.x, 0 + manipang.y, 0) -- Roll follows Pitch and Yaw angles
@@ -131,12 +132,8 @@ function ENT:Think()
 		end
 	end
 
-	local pos, poseye = self:GetPos(), pl:EyePos()
-
-	local viewent = pl:GetViewEntity()
-	if IsValid(viewent) and viewent ~= pl then
-		poseye = viewent:GetPos()
-	end
+	local plviewent = plTable.always_use_pl_view == 1 and pl or (plTable.PlViewEnt ~= 0 and Entity(plTable.PlViewEnt) or pl:GetViewEntity())
+	local pos, poseye = self:GetPos(), plviewent:EyePos()
 
 	local ang = (pos - poseye):Angle()
 	ang = self:WorldToLocalAngles(ang)
