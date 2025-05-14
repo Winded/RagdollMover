@@ -99,10 +99,14 @@ duplicator.RegisterEntityModifier("Ragdoll Mover Prop Ragdoll", function(pl, ent
 		duplicator.ClearEntityModifier(ent, "Ragdoll Mover Prop Ragdoll")
 		duplicator.StoreEntityModifier(ent, "Ragdoll Mover Prop Ragdoll", newdata)
 
-		for e, id in pairs(ent.rgmPRenttoid) do
-			if type(e) ~= "Entity" or (type(e) == "Entity" and not IsValid(e)) then -- if some of those entities don't exist, then we gotta dissolve the "ragdoll"
-				ClearPropRagdoll(ent)
-				break
+		if table.Count(ent.rgmPRenttoid) > CVMaxPRBones:GetInt() then
+			ClearPropRagdoll(ent)
+		else
+			for e, id in pairs(ent.rgmPRenttoid) do
+				if type(e) ~= "Entity" or (type(e) == "Entity" and not IsValid(e)) then -- if some of those entities don't exist, then we gotta dissolve the "ragdoll"
+					ClearPropRagdoll(ent)
+					break
+				end
 			end
 		end
 	end
