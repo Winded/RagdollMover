@@ -1076,7 +1076,13 @@ do
 	end
 
 	function ball:TestCollision(pl)
-		if GetConVar("ragdollmover_drawsphere"):GetInt() <= 0 then return end 
+		if CLIENT then
+			if GetConVar("ragdollmover_drawsphere"):GetInt() <= 0 then return end 
+		else
+			local tool = self.Parent.Owner:GetTool("ragdollmover")
+			if not tool then return end
+			if tool:GetClientNumber("drawsphere") <= 0 then return end
+		end
 
 		local plTable = RAGDOLLMOVER[pl]
 		local plviewent = plTable.always_use_pl_view == 1 and pl or (plTable.PlViewEnt ~= 0 and Entity(plTable.PlViewEnt) or nil)

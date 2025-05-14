@@ -71,7 +71,14 @@ function ENT:Initialize()
 		self.swidth = width
 	end
 
-	self.scale = GetConVar("ragdollmover_scale"):GetInt() or 10
+	if CLIENT then
+		self.scale = GetConVar("ragdollmover_scale"):GetInt() or 10
+	else
+		local tool = self.Owner:GetTool("ragdollmover")
+		if tool then
+			self.scale = tool:GetClientNumber("scale", 10)
+		end
+	end
 	self:CalculateGizmo()
 
 	if CLIENT then

@@ -50,7 +50,7 @@ local function parseHTMLForChangelog(htmlBody)
     local changelogBounds = string.Split(string.sub(htmlBody, startPosition, endPosition), "\n")
     for i = 2, #changelogBounds - 1 do
         -- Trim trailing lines and remove html tags
-        local line = changelogBounds[i]:Trim():gsub("%b<>", "")
+        local line = changelogBounds[i]:Trim():gsub("<br>", "\n"):gsub("%b<>", "")
         if string.find(line, DISCUSS_FILTER, 1, true) then
             continue
         end
