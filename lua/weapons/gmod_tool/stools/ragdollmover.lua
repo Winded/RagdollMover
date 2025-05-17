@@ -1167,6 +1167,12 @@ local NETFUNC = {
 				end
 			net.Send(pl)
 		end
+
+		NetStarter.rgmSelectBoneResponse()
+			net.WriteBool(plTable.IsPhysBone)
+			net.WriteEntity(plTable.Entity)
+			net.WriteUInt(plTable.Bone, 10)
+		net.Send(pl)
 	end,
 
 	function(len, pl) --				12 - rgmSendBonePos
@@ -2706,6 +2712,9 @@ local function rgmSendBonePos(pl, ent, boneid)
 		pos = matrix:GetTranslation()
 		ang = matrix:GetAngles()
 
+		gizmopos = pos
+		gizmoang = ang
+
 		if ent:GetClass() == "ent_advbonemerge" and ent.AdvBone_BoneInfo then -- an exception for advanced bonemerged stuff
 			local advbones = ent.AdvBone_BoneInfo
 			local parent = ent:GetParent()
@@ -2713,6 +2722,14 @@ local function rgmSendBonePos(pl, ent, boneid)
 			if IsValid(parent) and advbones[boneid].parent and advbones[boneid].parent ~= "" then
 				gizmoppos = pos
 				gizmopang = ang
+				local manang = ent:GetManipulateBoneAngles(boneid)*1
+				_, gizmopang = LocalToWorld(vector_origin, Angle(0, 0, -manang[3]), vector_origin, gizmopang)
+				_, gizmopang = LocalToWorld(vector_origin, Angle(-manang[1], 0, 0), vector_origin, gizmopang)
+				_, gizmopang = LocalToWorld(vector_origin, Angle(0, -manang[2], 0), vector_origin, gizmopang)
+
+				_, gizmoang = LocalToWorld(vector_origin, Angle(0, 0, -manang[3]), vector_origin, gizmoang)
+				_, gizmoang = LocalToWorld(vector_origin, Angle(-manang[1], 0, 0), vector_origin, gizmoang)
+				_, gizmoang = LocalToWorld(vector_origin, Angle(0, -manang[2], 0), vector_origin, gizmoang)
 			else
 				if ent:GetBoneParent(boneid) ~= -1 then
 					local matrix = ent:GetBoneMatrix(ent:GetBoneParent(boneid))
@@ -2723,7 +2740,7 @@ local function rgmSendBonePos(pl, ent, boneid)
 					gizmopang = matrix:GetAngles()
 				else
 					gizmoppos = parent:GetPos()
-					gizmopang = ent:GetAngles()
+					gizmopang = parent:GetAngles()
 				end
 			end
 		elseif ent:GetBoneParent(boneid) ~= -1 then
@@ -2738,8 +2755,6 @@ local function rgmSendBonePos(pl, ent, boneid)
 			gizmopang = ent:GetAngles()
 		end
 
-		gizmopos = pos
-		gizmoang = ang
 	else
 		gizmopos = vector_origin
 		gizmoang = angle_zero
