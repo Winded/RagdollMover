@@ -1976,6 +1976,23 @@ local NETFUNC = {
 				plTable.snapamount = plTable.snapamount < 1 and 1 or plTable.snapamount
 			end
 		end
+	end,
+
+	function(len, pl) --				27 - rgmDedicatedResetRoot
+		local plTable = RAGDOLLMOVER[pl]
+		if not plTable or not IsValid(plTable.Entity) then return end
+		local bone = plTable.Bone
+
+		rgmGetBone(pl, plTable.Entity, plTable.BoneToResetTo)
+		plTable.BoneToResetTo = bone
+
+		RAGDOLLMOVER.Sync(pl, "Bone", "IsPhysBone")
+
+		NetStarter.rgmSelectBoneResponse()
+			net.WriteBool(plTable.IsPhysBone)
+			net.WriteEntity(plTable.Entity)
+			net.WriteUInt(plTable.Bone, 10)
+		net.Send(pl)
 	end
 }
 
@@ -1998,27 +2015,32 @@ end)
 end
 
 concommand.Add("ragdollmover_resetroot", function(pl)
-	local plTable = RAGDOLLMOVER[pl]
-	if not plTable or not IsValid(plTable.Entity) then return end
-	local bone = plTable.Bone
+	if CLIENT then
+		NetStarter.rgmDedicatedResetRoot() -- note that this is clientside netstarter
+		net.SendToServer()
+	else
+		local plTable = RAGDOLLMOVER[pl]
+		if not plTable or not IsValid(plTable.Entity) then return end
+		local bone = plTable.Bone
 
-	rgmGetBone(pl, plTable.Entity, plTable.BoneToResetTo)
-	plTable.BoneToResetTo = bone
+		rgmGetBone(pl, plTable.Entity, plTable.BoneToResetTo)
+		plTable.BoneToResetTo = bone
 
-	RAGDOLLMOVER.Sync(pl, "Bone", "IsPhysBone")
+		RAGDOLLMOVER.Sync(pl, "Bone", "IsPhysBone")
 
-	NetStarter.rgmSelectBoneResponse()
-		net.WriteBool(plTable.IsPhysBone)
-		net.WriteEntity(plTable.Entity)
-		net.WriteUInt(plTable.Bone, 10)
-	net.Send(pl)
+		NetStarter.rgmSelectBoneResponse()
+			net.WriteBool(plTable.IsPhysBone)
+			net.WriteEntity(plTable.Entity)
+			net.WriteUInt(plTable.Bone, 10)
+		net.Send(pl)
+	end
 end, nil, "Toggles selection between the root physics bone and the last selected bone")
 
 local function spawnAxis(pl, tool, plTable)
 	local axis = ents.Create("rgm_axis")
 	axis:SetPos(pl:EyePos())
-	axis:Spawn()
 	axis.Owner = pl
+	axis:Spawn()
 	axis.localpos = tool:GetClientNumber("localpos", 0) ~= 0
 	axis.localang = tool:GetClientNumber("localang", 1) ~= 0
 	axis.localoffset = tool:GetClientNumber("localoffset", 1) ~= 0
@@ -2038,7 +2060,8 @@ local function spawnAxis(pl, tool, plTable)
 	RAGDOLLMOVER.Sync(pl, "Axis", "always_use_pl_view")
 end
 
-concommand.Add("ragdollmover_resetgizmo", function(pl)
+concommand.Add("ragdollmover_resetgizmo", function(pl) -- This will not work on dedicated servers
+	if CLIENT then return end
 	local plTable = RAGDOLLMOVER[pl]
 	if not plTable or not IsValid(plTable.Axis) then return end
 
@@ -2420,7 +2443,7 @@ function TOOL:Reload()
 		return false
 	end
 
-	RunConsoleCommand("ragdollmover_resetroot")
+	self:GetOwner():ConCommand("ragdollmover_resetroot")
 	return false
 end
 
@@ -3653,6 +3676,11 @@ NetStarter = {
 	rgmUpdateCCVar = function() -- 26
 		net.Start("RAGDOLLMOVER")
 		net.WriteUInt(26, 5)
+	end,
+
+	rgmDedicatedResetRoot = function() -- 27
+		net.Start("RAGDOLLMOVER")
+		net.WriteUInt(27, 5)
 	end
 
 }

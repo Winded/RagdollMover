@@ -65,13 +65,20 @@ function ENT:Initialize()
 	end
 
 	if CLIENT then
-		local width = GetConVar("ragdollmover_width"):GetInt() or 0.5
+		local width = GetConVar("ragdollmover_width"):GetFloat() or 0.5
 		self.pwidth = width -- width var for each axis type, should take up less space than having width var for each gizmo part
 		self.rwidth = width
 		self.swidth = width
 	end
 
-	self.scale = GetConVar("ragdollmover_scale"):GetInt() or 10
+	if CLIENT then
+		self.scale = GetConVar("ragdollmover_scale"):GetFloat() or 10
+	else
+		local tool = self.Owner:GetTool("ragdollmover")
+		if tool then
+			self.scale = tool:GetClientNumber("scale", 10)
+		end
+	end
 	self:CalculateGizmo()
 
 	if CLIENT then

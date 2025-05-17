@@ -1065,6 +1065,7 @@ end
 local ball = table.Copy(basepart)
 
 do
+	local SphereEnable
 	ball.IsBall = true
 
 	function ball:GetGrabPos(eyepos, eyeang)
@@ -1076,7 +1077,16 @@ do
 	end
 
 	function ball:TestCollision(pl)
-		if GetConVar("ragdollmover_drawsphere"):GetInt() <= 0 then return end 
+		if CLIENT then
+			if not SphereEnable then
+				SphereEnable = GetConVar("ragdollmover_drawsphere")
+			end
+			if SphereEnable:GetInt() <= 0 then return end 
+		else
+			local tool = self.Parent.Owner:GetTool("ragdollmover")
+			if not tool then return end
+			if tool:GetClientNumber("drawsphere") <= 0 then return end
+		end
 
 		local plTable = RAGDOLLMOVER[pl]
 		local plviewent = plTable.always_use_pl_view == 1 and pl or (plTable.PlViewEnt ~= 0 and Entity(plTable.PlViewEnt) or nil)
@@ -1248,7 +1258,10 @@ do
 
 	if CLIENT then
 		function ball:DrawLines(yellow, scale)
-			if GetConVar("ragdollmover_drawsphere"):GetInt() <= 0 then return end 
+			if not SphereEnable then
+				SphereEnable = GetConVar("ragdollmover_drawsphere")
+			end
+			if SphereEnable:GetInt() <= 0 then return end 
 
 			local color = self:GetColor()
 			if yellow then
