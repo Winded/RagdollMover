@@ -75,7 +75,7 @@ function EyePosAng(pl, viewent)
 
 	if IsValid(viewent) and viewent ~= pl then
 		eyepos = viewent:GetPos()
-		if viewent:GetClass() == "hl_camera" then -- adding support for Advanced Camera's view offset https://steamcommunity.com/sharedfiles/filedetails/?id=881605937&searchtext=advanced+camera
+		if viewent:GetClass() == "hl_camera" and viewent.GetViewOffset then -- adding support for Advanced Camera's view offset https://steamcommunity.com/sharedfiles/filedetails/?id=881605937&searchtext=advanced+camera
 			eyepos = viewent:LocalToWorld(viewent:GetViewOffset())
 		end
 	end
