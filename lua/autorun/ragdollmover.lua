@@ -75,7 +75,7 @@ function EyePosAng(pl, viewent)
 
 	if IsValid(viewent) and viewent ~= pl then
 		eyepos = viewent:GetPos()
-		if viewent:GetClass() == "hl_camera" then -- adding support for Advanced Camera's view offset https://steamcommunity.com/sharedfiles/filedetails/?id=881605937&searchtext=advanced+camera
+		if viewent:GetClass() == "hl_camera" and viewent.GetViewOffset then -- adding support for Advanced Camera's view offset https://steamcommunity.com/sharedfiles/filedetails/?id=881605937&searchtext=advanced+camera
 			eyepos = viewent:LocalToWorld(viewent:GetViewOffset())
 		end
 	end
@@ -1104,7 +1104,7 @@ hook.Add("OnScreenSizeChanged", "RagdollMoverHUDUpdate", function(_, _, newWidth
 end)
 
 local VERSION_PATH = "rgm/version.txt"
-local RGM_VERSION = "3.0.2"
+local RGM_VERSION = "3.0.3"
 
 -- TODO: Do further testing in multiplayer for cases where the server has a different version of RGM compared to the client
 local function versionMatches(currentVersion, versionPath)
