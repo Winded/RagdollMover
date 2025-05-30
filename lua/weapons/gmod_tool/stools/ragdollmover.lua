@@ -782,6 +782,9 @@ local function rgmDupeLocks(pl, ent, data, fromtool)
 	duplicator.StoreEntityModifier(ent, RGM_LOCKS_DUPE_KEY, data)
 end
 
+-- Despite existing in the shared realm, this function is only defined in the server
+local resetLocksCommand
+
 if SERVER then
 
 util.AddNetworkString("RAGDOLLMOVER")
@@ -871,6 +874,53 @@ NetStarter = {
 	end,
 
 }
+
+function resetLocksCommand(pl, allLocks)
+	local plTable = RAGDOLLMOVER[pl]
+	if not plTable or not IsValid(plTable.Entity) then return end
+	local entity = plTable.Entity
+
+	if allLocks then
+		rgmResetAllLocks(plTable, entity)
+	else
+		rgmResetLocks(plTable, entity)
+	end
+	rgmDupeLocks(pl, entity, {}, true)
+	rgmSetLocks(plTable, entity)
+
+	local physchildren = rgmGetConstrainedEntities(entity)
+	rgmUpdateEntInfo(pl, entity, physchildren)
+
+	local sendents = {entity}
+	NetStarter.rgmAskForPhysbonesResponse()
+		net.WriteUInt(#sendents, 13)
+		for _, ent in ipairs(sendents) do
+			net.WriteEntity(ent)
+
+			local count = ent:GetPhysicsObjectCount() - 1
+			net.WriteUInt(count, 8)
+			for i = 0, count do
+				local bone = ent:TranslatePhysBoneToBone(i)
+				if bone == -1 then bone = 0 end
+				local poslock = plTable.rgmPosLocks[ent] and plTable.rgmPosLocks[ent][i] or nil
+				local anglock = plTable.rgmAngLocks[ent] and plTable.rgmAngLocks[ent][i] or nil
+				local bonelock = plTable.rgmBoneLocks[ent] and plTable.rgmBoneLocks[ent][i] or nil
+
+				net.WriteUInt(bone, 8)
+				net.WriteBool(poslock ~= nil)
+				net.WriteBool(anglock ~= nil)
+				net.WriteBool(bonelock ~= nil)
+			end
+		end
+	net.Send(pl)
+
+	for lockent, lockentinfo in pairs(plTable.rgmEntLocks[entity]) do
+		NetStarter.rgmLockConstrainedResponse()
+			net.WriteBool(false)
+			net.WriteEntity(lockent)
+		net.Send(pl)
+	end
+end
 
 local function RecursiveFindIfParent(ent, lockbone, locktobone)
 	local parent = ent:GetBoneParent(locktobone)
@@ -1999,6 +2049,11 @@ local NETFUNC = {
 			net.WriteEntity(plTable.Entity)
 			net.WriteUInt(plTable.Bone, 10)
 		net.Send(pl)
+	end,
+
+	function(len, pl) --				28 - rgmDedicatedResetLocks
+		local allLocks = net.ReadBool()
+		resetLocksCommand(pl, allLocks)
 	end
 }
 
@@ -2075,59 +2130,24 @@ concommand.Add("ragdollmover_resetgizmo", function(pl) -- This will not work on 
 	spawnAxis(pl, pl:GetTool(), plTable)
 end, nil, "Respawn the gizmo. Mostly used for development")
 
-local function resetLocksCommand(pl, allLocks)
-	local plTable = RAGDOLLMOVER[pl]
-	if not plTable or not IsValid(plTable.Entity) then return end
-	local entity = plTable.Entity
-
-	if allLocks then
-		rgmResetAllLocks(plTable, entity)
-	else
-		rgmResetLocks(plTable, entity)
-	end
-	rgmDupeLocks(pl, entity, {}, true)
-	rgmSetLocks(plTable, entity)
-
-	local physchildren = rgmGetConstrainedEntities(entity)
-	rgmUpdateEntInfo(pl, entity, physchildren)
-
-	local sendents = {entity}
-	NetStarter.rgmAskForPhysbonesResponse()
-		net.WriteUInt(#sendents, 13)
-		for _, ent in ipairs(sendents) do
-			net.WriteEntity(ent)
-
-			local count = ent:GetPhysicsObjectCount() - 1
-			net.WriteUInt(count, 8)
-			for i = 0, count do
-				local bone = ent:TranslatePhysBoneToBone(i)
-				if bone == -1 then bone = 0 end
-				local poslock = plTable.rgmPosLocks[ent] and plTable.rgmPosLocks[ent][i] or nil
-				local anglock = plTable.rgmAngLocks[ent] and plTable.rgmAngLocks[ent][i] or nil
-				local bonelock = plTable.rgmBoneLocks[ent] and plTable.rgmBoneLocks[ent][i] or nil
-
-				net.WriteUInt(bone, 8)
-				net.WriteBool(poslock ~= nil)
-				net.WriteBool(anglock ~= nil)
-				net.WriteBool(bonelock ~= nil)
-			end
-		end
-	net.Send(pl)
-
-	for lockent, lockentinfo in pairs(plTable.rgmEntLocks[entity]) do
-		NetStarter.rgmLockConstrainedResponse()
-			net.WriteBool(false)
-			net.WriteEntity(lockent)
-		net.Send(pl)
-	end
-end
-
 concommand.Add("ragdollmover_resetlocks", function (pl)
-	resetLocksCommand(pl)
+	if CLIENT then
+		NetStarter.rgmDedicatedResetLocks()
+			net.WriteBool(false)
+		net.Send(pl)
+	else
+		resetLocksCommand(pl, false)
+	end
 end, nil, "Reset locks for the selected entity")
 
 concommand.Add("ragdollmover_resetalllocks", function (pl)
-	resetLocksCommand(pl, true)
+	if CLIENT then
+		NetStarter.rgmDedicatedResetLocks()
+			net.WriteBool(true)
+		net.Send(pl)
+	else
+		resetLocksCommand(pl, true)
+	end
 end, nil, "Reset all locks for every entity")
 
 function TOOL:Deploy()
@@ -3696,7 +3716,12 @@ NetStarter = {
 	rgmDedicatedResetRoot = function() -- 27
 		net.Start("RAGDOLLMOVER")
 		net.WriteUInt(27, 5)
-	end
+	end,
+
+	rgmDedicatedResetLocks = function() -- 28
+		net.Start("RAGDOLLMOVER")
+		net.WriteUInt(28, 5)
+	end,
 
 }
 
