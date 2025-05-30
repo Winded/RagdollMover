@@ -1108,7 +1108,7 @@ hook.Add("OnScreenSizeChanged", "RagdollMoverHUDUpdate", function(_, _, newWidth
 end)
 
 local VERSION_PATH = "rgm/version.txt"
-local RGM_VERSION = "3.0.2"
+local RGM_VERSION = "3.1.0"
 
 -- TODO: Do further testing in multiplayer for cases where the server has a different version of RGM compared to the client
 local function versionMatches(currentVersion, versionPath)
