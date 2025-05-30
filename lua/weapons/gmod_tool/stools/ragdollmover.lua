@@ -4524,6 +4524,42 @@ local function RGMMakeBoneButtonPanel(col)
 	return parentpanel
 end
 
+local function RGMMakeResetLocksPanel(col)
+	local parentpanel = vgui.Create("Panel", col)
+	col:AddItem(parentpanel)
+
+	parentpanel.resetlocks = vgui.Create("DButton", parentpanel) 
+	parentpanel.resetlocks:SetText("#tool.ragdollmover.resetlocks")
+	parentpanel.resetlocks:SetTooltip("#tool.ragdollmover.resetlocks.tooltip")
+	function parentpanel.resetlocks:DoClick() 
+		NetStarter.rgmDedicatedResetLocks()
+			net.WriteBool(false)
+		net.SendToServer()
+	end
+
+	parentpanel.resetalllocks = vgui.Create("DButton", parentpanel) 
+	parentpanel.resetalllocks:SetText("#tool.ragdollmover.resetalllocks")
+	parentpanel.resetalllocks:SetTooltip("#tool.ragdollmover.resetalllocks.tooltip")
+
+	function parentpanel.resetalllocks:DoClick() 
+		NetStarter.rgmDedicatedResetLocks()
+			net.WriteBool(true)
+		net.SendToServer()
+	end
+
+	function parentpanel:PerformLayout(w, h)
+		-- parentpanel.resetlocks:Dock(LEFT)
+		-- parentpanel.resetalllocks:Dock(RIGHT)
+	
+		parentpanel.resetlocks:SetSize(w / 2 - 5, h)
+		parentpanel.resetalllocks:SetSize(w / 2 - 5, h)
+		parentpanel.resetalllocks:SetPos(w / 2 + 5, 0)
+
+	end
+	
+	return parentpanel
+end
+
 local function RGMMakeAngleSnap(col)
 	local parentpanel = vgui.Create("DPanelList", col)
 	parentpanel:EnableHorizontal(false)
@@ -4636,6 +4672,7 @@ function TOOL.BuildCPanel(CPanel)
 		local physmovecheck = CCheckBox(Col4, "#tool.ragdollmover.physmove", "ragdollmover_physmove")
 		physmovecheck:SetToolTip("#tool.ragdollmover.physmovetip")
 		RGMMakeAngleSnap(Col4)
+		RGMMakeResetLocksPanel(Col4) 
 		
 
 		local Col5 = CCol(Col4, "#tool.ragdollmover.scaleoptions", true) 
