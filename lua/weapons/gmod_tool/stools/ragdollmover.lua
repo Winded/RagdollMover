@@ -58,6 +58,8 @@ local VECTOR_FRONT = RGM_Constants.VECTOR_FRONT
 local VECTOR_LEFT = RGM_Constants.VECTOR_LEFT
 local VECTOR_SCALEDEF = RGM_Constants.VECTOR_ONE
 
+local RGM_LOCKS_DUPE_KEY = "Ragdoll Mover Lock Data"
+
 local function rgmGetBone(pl, ent, bone)
 	local plTable = RAGDOLLMOVER[pl]
 	--------------------------------------------------------- yeah this part is from locrotscale
@@ -543,6 +545,246 @@ local function rgmDoScale(pl, ent, axis, childbones, bone, sc, prevscale, physmo
 	end
 end
 
+local function rgmUpdateConstrainedEnts(pl, plTable, ent)
+	if not plTable.rgmEntLocks[ent] then return end
+
+	for lockent, _ in pairs(plTable.rgmEntLocks[ent]) do
+		NetStarter.rgmLockConstrainedResponse()
+			net.WriteBool(true)
+			net.WriteEntity(lockent)
+		net.Send(pl)
+	end
+end
+
+local function rgmUpdateLists(pl, ent, children, physchildren)
+	local plTable = RAGDOLLMOVER[pl]
+	NetStarter.rgmUpdateLists()
+		net.WriteBool(plTable.PropRagdoll)
+		if plTable.PropRagdoll then
+			local rgment = plTable.Entity
+			local count = #rgment.rgmPRidtoent + 1
+
+			net.WriteUInt(count, 13) -- technically entity limit is 4096, but doubtful single prop ragdoll would reach that, but still...
+
+			for id, entp in pairs(rgment.rgmPRidtoent) do
+				net.WriteEntity(entp)
+				net.WriteUInt(id, 13)
+
+				net.WriteBool(entp.rgmPRparent and true or false)
+				if entp.rgmPRparent then
+					net.WriteUInt(entp.rgmPRparent, 13)
+				end
+
+				if entp == ent then
+					net.WriteUInt(0, 13)
+					continue
+				end
+
+				local entchildren = rgmFindEntityChildren(entp)
+				net.WriteUInt(#entchildren, 13)
+
+				for k, v in ipairs(entchildren) do
+					net.WriteEntity(v)
+				end
+			end
+		end
+
+		net.WriteEntity(ent)
+
+		net.WriteUInt(#children, 13)
+		for k, v in ipairs(children) do
+			net.WriteEntity(v)
+		end
+
+		net.WriteUInt(#physchildren, 13)
+		for _, ent in ipairs(physchildren) do
+			net.WriteEntity(ent)
+		end
+	net.Send(pl)
+
+	rgmUpdateConstrainedEnts(pl, plTable, ent)
+end
+
+local function rgmUpdateEntInfo(pl, ent, physchildren)
+	NetStarter.rgmUpdateEntInfo()
+		net.WriteEntity(ent)
+
+		net.WriteUInt(#physchildren, 13)
+		for _, ent in ipairs(physchildren) do
+			net.WriteEntity(ent)
+		end
+	net.Send(pl)
+
+	rgmUpdateConstrainedEnts(pl, RAGDOLLMOVER[pl], ent)
+end
+
+local function rgmSetLocks(plTable, entity, data)
+	data = data or {}
+	plTable.rgmPosLocks = plTable.rgmPosLocks or {}
+	plTable.rgmAngLocks = plTable.rgmAngLocks or {}
+	plTable.rgmScaleLocks = plTable.rgmScaleLocks or {}
+	plTable.rgmBoneLocks = plTable.rgmBoneLocks or {}
+	plTable.rgmEntLocks = plTable.rgmEntLocks or {}
+
+	-- TODO: Figure out mechanism for cleaning up multiple entities for multiplayer
+	if entity.rgmPRidtoent then
+		for id, ent in pairs(entity.rgmPRidtoent) do
+			plTable.rgmPosLocks[ent] = plTable.rgmPosLocks[ent] or {}
+			plTable.rgmAngLocks[ent] = plTable.rgmAngLocks[ent] or {}
+			plTable.rgmScaleLocks[ent] = plTable.rgmScaleLocks[ent] or {}
+			plTable.rgmBoneLocks[ent] = plTable.rgmBoneLocks[ent] or {}
+		end
+	else  
+		plTable.rgmPosLocks[entity] = plTable.rgmPosLocks[entity] or data.rgmPosLocks or {}
+		plTable.rgmAngLocks[entity] = plTable.rgmAngLocks[entity] or data.rgmAngLocks or {}
+		plTable.rgmScaleLocks[entity] = plTable.rgmScaleLocks[entity] or data.rgmScaleLocks or {}
+		plTable.rgmBoneLocks[entity] = plTable.rgmBoneLocks[entity] or data.rgmBoneLocks or {}
+	end
+	
+	plTable.rgmEntLocks[entity] = plTable.rgmEntLocks[entity] or data.rgmEntLocks or {}
+
+	entity:CallOnRemove("rgmRemoveLocks", function(ent)
+		plTable.rgmPosLocks[ent] = nil
+		plTable.rgmAngLocks[ent] = nil
+		plTable.rgmScaleLocks[ent] = nil
+		plTable.rgmBoneLocks[ent] = nil
+		plTable.rgmEntLocks[ent] = nil
+	end)
+end
+
+local function rgmResetLocks(plTable, entity)
+	if entity.rgmPRidtoent then
+		for id, ent in pairs(entity.rgmPRidtoent) do
+			plTable.rgmPosLocks[ent] = {}
+			plTable.rgmAngLocks[ent] = {}
+			plTable.rgmScaleLocks[ent] = {}
+			plTable.rgmBoneLocks[ent] = {}
+		end
+	else
+		plTable.rgmPosLocks[entity] = {}
+		plTable.rgmAngLocks[entity] = {}
+		plTable.rgmScaleLocks[entity] = {}
+		plTable.rgmBoneLocks[entity] = {}
+	end
+
+	plTable.rgmEntLocks[entity] = {}
+end
+
+local function rgmResetAllLocks(plTable, entity)
+	plTable.rgmPosLocks = {}
+	plTable.rgmAngLocks = {}
+	plTable.rgmScaleLocks = {}
+	plTable.rgmBoneLocks = {}
+	plTable.rgmEntLocks = {}
+
+	rgmResetLocks(plTable, entity)
+
+end
+
+-- Duping will point to another entity's physbones, instead of their own
+local function deserializePhysBones(poseData, ent)
+	for physbone, _ in pairs(poseData) do
+		poseData[physbone] = ent:GetPhysicsObjectNum(physbone)
+	end
+end
+
+-- Generate a pose id of the `ent` with respect to the `parent`
+-- The pose id is a key that represents the pose of a constrained entity
+-- with respect to its parent. We use this to preserve constraint locks
+local function getPoseId(ent, parent)
+	local cm = ent:GetBoneMatrix(0)
+	local pm = parent:GetBoneMatrix(0)
+	local pos, ang = WorldToLocal(cm:GetTranslation(), cm:GetAngles(), pm:GetTranslation(), pm:GetAngles())
+	ang:Normalize()
+	return pos[1] + pos[2] + pos[3] + ang[1] + ang[2] + ang[3]
+end
+
+-- Check if the poseid for an `ent` and `parent` matches the `desiredposeid`
+local function guessEntFromPoseId(desiredposeid, poseid)
+	return math.IsNearlyEqual(desiredposeid, poseid, 1e-3)
+end
+
+-- Duping will point to another entity, instead of their own.
+local function deserializeConstraints(entLockData, entity)
+	local newLockData = {}
+	local found = {}
+	local poseids = {}
+	local children = rgmGetConstrainedEntities(entity)
+	for _, child in ipairs(children) do
+		poseids[child] = getPoseId(child, entity)
+	end
+
+	for _, lockinfo in pairs(entLockData) do
+		if not lockinfo.poseid then continue end
+
+		-- This approximates the position of constrained entities wrt the entity
+		for _, child in ipairs(children) do
+			if found[child] then continue end
+			local poseid = poseids[child]
+			if guessEntFromPoseId(lockinfo.poseid, poseid) then
+				newLockData[child] = {id = lockinfo.id, ent = entity, poseid = poseid}
+				found[child] = true
+				break
+			end
+		end
+	end
+	return newLockData
+end
+
+local function deserializeLockTo(boneLockData, entity)
+	for boneId, lockinfo in pairs(boneLockData) do
+		boneLockData[boneId] = {id = lockinfo.id, ent = entity}
+	end
+end
+
+local function serializeConstraints(entLockData)
+	local newLockData = {}
+	for lockent, lockinfo in pairs(entLockData) do
+		newLockData[lockent:EntIndex()] = lockinfo
+	end
+	return newLockData
+end
+
+local function serializePhysBones(poseData)
+	for physIndex, _ in pairs(poseData) do
+		poseData[physIndex] = physIndex
+	end
+end
+
+local function getDupeData(plTable, ent)
+	local data = {
+		rgmPosLocks = plTable.rgmPosLocks and table.Copy(plTable.rgmPosLocks[ent]) or {},
+		rgmAngLocks = plTable.rgmAngLocks and table.Copy(plTable.rgmAngLocks[ent]) or {},
+		rgmScaleLocks = plTable.rgmScaleLocks and table.Copy(plTable.rgmScaleLocks[ent]) or {},
+		rgmBoneLocks = plTable.rgmBoneLocks and table.Copy(plTable.rgmBoneLocks[ent]) or {},
+		rgmEntLocks = plTable.rgmEntLocks and table.Copy(plTable.rgmEntLocks[ent]) or {},
+	}
+	serializePhysBones(data.rgmPosLocks)
+	serializePhysBones(data.rgmAngLocks)
+	data.rgmEntLocks = serializeConstraints(data.rgmEntLocks)
+	return data
+end
+
+local function rgmDupeLocks(pl, ent, data, fromtool)
+	-- Duplicator only looks for first three parameters, so deserializing
+	-- happens for dupes only
+	if not fromtool then
+		timer.Simple(0, function()
+			deserializePhysBones(data.rgmPosLocks, ent)
+			deserializePhysBones(data.rgmAngLocks, ent)
+			deserializeLockTo(data.rgmBoneLocks, ent)
+			data.rgmEntLocks = deserializeConstraints(data.rgmEntLocks, ent)
+			rgmSetLocks(RAGDOLLMOVER[pl], ent, data)
+		end)
+	end
+
+	duplicator.ClearEntityModifier(ent, RGM_LOCKS_DUPE_KEY)
+	duplicator.StoreEntityModifier(ent, RGM_LOCKS_DUPE_KEY, data)
+end
+
+-- Despite existing in the shared realm, this function is only defined in the server
+local resetLocksCommand
+
 if SERVER then
 
 util.AddNetworkString("RAGDOLLMOVER")
@@ -551,6 +793,8 @@ ConstrainedAllowed = CreateConVar("sv_ragdollmover_allow_constrained_locking", 1
 
 local VECTOR_NEARZERO = RGM_Constants.VECTOR_NEARZERO
 local VECTOR_ONE = RGM_Constants.VECTOR_ONE
+
+duplicator.RegisterEntityModifier(RGM_LOCKS_DUPE_KEY, rgmDupeLocks)
 
 NetStarter = {
 
@@ -630,6 +874,53 @@ NetStarter = {
 	end,
 
 }
+
+function resetLocksCommand(pl, allLocks)
+	local plTable = RAGDOLLMOVER[pl]
+	if not plTable or not IsValid(plTable.Entity) then return end
+	local entity = plTable.Entity
+
+	if allLocks then
+		rgmResetAllLocks(plTable, entity)
+	else
+		rgmResetLocks(plTable, entity)
+	end
+	rgmDupeLocks(pl, entity, {}, true)
+	rgmSetLocks(plTable, entity)
+
+	local physchildren = rgmGetConstrainedEntities(entity)
+	rgmUpdateEntInfo(pl, entity, physchildren)
+
+	local sendents = {entity}
+	NetStarter.rgmAskForPhysbonesResponse()
+		net.WriteUInt(#sendents, 13)
+		for _, ent in ipairs(sendents) do
+			net.WriteEntity(ent)
+
+			local count = ent:GetPhysicsObjectCount() - 1
+			net.WriteUInt(count, 8)
+			for i = 0, count do
+				local bone = ent:TranslatePhysBoneToBone(i)
+				if bone == -1 then bone = 0 end
+				local poslock = plTable.rgmPosLocks[ent] and plTable.rgmPosLocks[ent][i] or nil
+				local anglock = plTable.rgmAngLocks[ent] and plTable.rgmAngLocks[ent][i] or nil
+				local bonelock = plTable.rgmBoneLocks[ent] and plTable.rgmBoneLocks[ent][i] or nil
+
+				net.WriteUInt(bone, 8)
+				net.WriteBool(poslock ~= nil)
+				net.WriteBool(anglock ~= nil)
+				net.WriteBool(bonelock ~= nil)
+			end
+		end
+	net.Send(pl)
+
+	for lockent, lockentinfo in pairs(plTable.rgmEntLocks[entity]) do
+		NetStarter.rgmLockConstrainedResponse()
+			net.WriteBool(false)
+			net.WriteEntity(lockent)
+		net.Send(pl)
+	end
+end
 
 local function RecursiveFindIfParent(ent, lockbone, locktobone)
 	local parent = ent:GetBoneParent(locktobone)
@@ -873,6 +1164,7 @@ local NETFUNC = {
 				plTable.rgmAngLocks[ent][boneid] = nil
 			end
 		end
+		rgmDupeLocks(pl, ent, getDupeData(plTable, ent), true)
 
 		local poslock, anglock, scllock = IsValid(plTable.rgmPosLocks[ent][boneid]), IsValid(plTable.rgmAngLocks[ent][boneid]), plTable.rgmScaleLocks[ent][bone]
 
@@ -952,6 +1244,7 @@ local NETFUNC = {
 				plTable.rgmBoneLocks[lockent][bone] = { id = lockorigin, ent = lockent }
 				plTable.rgmPosLocks[lockent][bone] = nil
 				plTable.rgmAngLocks[lockent][bone] = nil
+				rgmDupeLocks(pl, lockent, getDupeData(plTable, lockent), true)
 
 				NetStarter.rgmLockToBoneResponse()
 					net.WriteEntity(lockent)
@@ -967,6 +1260,7 @@ local NETFUNC = {
 				plTable.rgmBoneLocks[lockent][lockedbone] = { id = lockorigin, ent = originent }
 				plTable.rgmPosLocks[lockent][lockedbone] = nil
 				plTable.rgmAngLocks[lockent][lockedbone] = nil
+				rgmDupeLocks(pl, lockent, getDupeData(plTable, lockent), true)
 
 				NetStarter.rgmLockToBoneResponse()
 					net.WriteEntity(lockent)
@@ -990,8 +1284,10 @@ local NETFUNC = {
 		if ent.rgmPRenttoid then
 			bone = ent.rgmPRenttoid[ent]
 		end
+		local plTable = RAGDOLLMOVER[pl]
 
-		RAGDOLLMOVER[pl].rgmBoneLocks[ent][bone] = nil
+		plTable.rgmBoneLocks[ent][bone] = nil
+		rgmDupeLocks(pl, ent, getDupeData(plTable, ent), true)
 
 		NetStarter.rgmUnlockToBoneResponse()
 			net.WriteEntity(ent)
@@ -1016,6 +1312,8 @@ local NETFUNC = {
 
 		if not IsValid(ent) or not IsValid(lockent) then return end
 
+		local plTable = RAGDOLLMOVER[pl]
+
 		if net.ReadBool() then
 			local boneid = net.ReadUInt(8)
 
@@ -1033,21 +1331,28 @@ local NETFUNC = {
 			end
 		end
 
-		RAGDOLLMOVER[pl].rgmEntLocks[lockent] = {id = physbone, ent = ent}
+		plTable.rgmEntLocks[ent][lockent] = {id = physbone, ent = ent, poseid = getPoseId(lockent, ent)}
+		rgmDupeLocks(pl, ent, getDupeData(plTable, ent), true)
 
 		NetStarter.rgmLockConstrainedResponse()
 			net.WriteBool(true)
 			net.WriteEntity(lockent)
 		net.Send(pl)
+		NetStarter.rgmNotification()
+			net.WriteUInt(ENTLOCK_SUCCESS, 5)
+		net.Send(pl)
 	end,
 
 	function(len, pl) --		10 - rgmUnlockConstrained
+		local ent = net.ReadEntity()
 		local lockent = net.ReadEntity()
 
 		if not IsValid(lockent) then return end
 		if not rgmCanTool(lockent, pl) then return end
+		local plTable = RAGDOLLMOVER[pl]
 
-		RAGDOLLMOVER[pl].rgmEntLocks[lockent] = nil
+		plTable.rgmEntLocks[ent][lockent] = nil
+		rgmDupeLocks(pl, ent, getDupeData(plTable, ent), true)
 
 		NetStarter.rgmLockConstrainedResponse()
 			net.WriteBool(false)
@@ -1077,26 +1382,8 @@ local NETFUNC = {
 		plTable.Entity = ent
 		plTable.Axis.EntAdvMerged = false
 		plTable.BoneToResetTo = (ent:GetClass() == "prop_ragdoll") and ent:TranslatePhysBoneToBone(0) or 0
-		plTable.rgmPosLocks = {}
-		plTable.rgmAngLocks = {}
-		plTable.rgmScaleLocks = {}
-		plTable.rgmBoneLocks = {}
 
-		if ent.rgmPRidtoent then
-			for id, e in pairs(ent.rgmPRidtoent) do
-				plTable.rgmPosLocks[e] = {}
-				plTable.rgmAngLocks[e] = {}
-				plTable.rgmScaleLocks[e] = {}
-				plTable.rgmBoneLocks[e] = {}
-			end
-		else
-			plTable.rgmPosLocks[ent] = {}
-			plTable.rgmAngLocks[ent] = {}
-			plTable.rgmScaleLocks[ent] = {}
-			plTable.rgmBoneLocks[ent] = {}
-		end
-
-		plTable.rgmEntLocks = {}
+		rgmSetLocks(RAGDOLLMOVER[pl], ent)
 
 		if not ent.rgmbonecached then -- also taken from locrotscale. some hacky way to cache the bones?
 			local p = pl.rgmSwep:GetParent()
@@ -1111,61 +1398,12 @@ local NETFUNC = {
 		local physchildren = rgmGetConstrainedEntities(ent)
 
 		if not resetlists then
-			NetStarter.rgmUpdateEntInfo()
-				net.WriteEntity(ent)
-
-				net.WriteUInt(#physchildren, 13)
-				for _, ent in ipairs(physchildren) do
-					net.WriteEntity(ent)
-				end
-			net.Send(pl)
+			rgmUpdateEntInfo(pl, ent, physchildren)
 		else
 			local children = rgmFindEntityChildren(ent)
 			plTable.PropRagdoll = ent.rgmPRidtoent and true or false
 
-			NetStarter.rgmUpdateLists()
-				net.WriteBool(plTable.PropRagdoll)
-				if plTable.PropRagdoll then
-					local rgment = plTable.Entity
-					local count = #rgment.rgmPRidtoent + 1
-
-					net.WriteUInt(count, 13) -- technically entity limit is 4096, but doubtful single prop ragdoll would reach that, but still...
-
-					for id, entp in pairs(rgment.rgmPRidtoent) do
-						net.WriteEntity(entp)
-						net.WriteUInt(id, 13)
-
-						net.WriteBool(entp.rgmPRparent and true or false)
-						if entp.rgmPRparent then
-							net.WriteUInt(entp.rgmPRparent, 13)
-						end
-
-						if entp == ent then
-							net.WriteUInt(0, 13)
-							continue
-						end
-
-						local entchildren = rgmFindEntityChildren(entp)
-						net.WriteUInt(#entchildren, 13)
-
-						for k, v in ipairs(entchildren) do
-							net.WriteEntity(v)
-						end
-					end
-				end
-
-				net.WriteEntity(ent)
-
-				net.WriteUInt(#children, 13)
-				for k, v in ipairs(children) do
-					net.WriteEntity(v)
-				end
-
-				net.WriteUInt(#physchildren, 13)
-				for _, ent in ipairs(physchildren) do
-					net.WriteEntity(ent)
-				end
-			net.Send(pl)
+			rgmUpdateLists(pl, ent, children, physchildren)
 		end
 
 		NetStarter.rgmSelectBoneResponse()
@@ -1555,7 +1793,7 @@ local NETFUNC = {
 
 			local obj = ent:GetPhysicsObjectNum(plTable.PhysBone)
 			if obj then
-				plTable.rgmOffsetTable = rgm.GetOffsetTable(tool, ent, plTable.Rotate, plTable.rgmBoneLocks, plTable.rgmEntLocks)
+				plTable.rgmOffsetTable = rgm.GetOffsetTable(tool, ent, plTable.Rotate, plTable.rgmBoneLocks, plTable.rgmEntLocks[ent])
 			end
 		elseif plTable.NextPhysBone then
 			if _G["physundo"] and _G["physundo"].Create then
@@ -1564,7 +1802,7 @@ local NETFUNC = {
 
 			local obj = ent:GetPhysicsObjectNum(plTable.NextPhysBone)
 			if obj then
-				plTable.rgmOffsetTable = rgm.GetNPOffsetTable(tool, ent, plTable.Rotate, {p = plTable.NextPhysBone, pos = axis.GizmoPos, ang = axis.GizmoAng}, plTable.rgmPhysMove, plTable.rgmBoneLocks, plTable.rgmEntLocks)
+				plTable.rgmOffsetTable = rgm.GetNPOffsetTable(tool, ent, plTable.Rotate, {p = plTable.NextPhysBone, pos = axis.GizmoPos, ang = axis.GizmoAng}, plTable.rgmPhysMove, plTable.rgmBoneLocks, plTable.rgmEntLocks[ent])
 			end
 		end
 	end,
@@ -1811,6 +2049,11 @@ local NETFUNC = {
 			net.WriteEntity(plTable.Entity)
 			net.WriteUInt(plTable.Bone, 10)
 		net.Send(pl)
+	end,
+
+	function(len, pl) --				28 - rgmDedicatedResetLocks
+		local allLocks = net.ReadBool()
+		resetLocksCommand(pl, allLocks)
 	end
 }
 
@@ -1852,7 +2095,7 @@ concommand.Add("ragdollmover_resetroot", function(pl)
 			net.WriteUInt(plTable.Bone, 10)
 		net.Send(pl)
 	end
-end)
+end, nil, "Toggles selection between the root physics bone and the last selected bone")
 
 local function spawnAxis(pl, tool, plTable)
 	local axis = ents.Create("rgm_axis")
@@ -1885,15 +2128,54 @@ concommand.Add("ragdollmover_resetgizmo", function(pl) -- This will not work on 
 
 	plTable.Axis:Remove()
 	spawnAxis(pl, pl:GetTool(), plTable)
-end)
+end, nil, "Respawn the gizmo. Mostly used for development")
+
+concommand.Add("ragdollmover_resetlocks", function (pl)
+	if CLIENT then
+		NetStarter.rgmDedicatedResetLocks()
+			net.WriteBool(false)
+		net.Send(pl)
+	else
+		resetLocksCommand(pl, false)
+	end
+end, nil, "Reset locks for the selected entity")
+
+concommand.Add("ragdollmover_resetalllocks", function (pl)
+	if CLIENT then
+		NetStarter.rgmDedicatedResetLocks()
+			net.WriteBool(true)
+		net.Send(pl)
+	else
+		resetLocksCommand(pl, true)
+	end
+end, nil, "Reset all locks for every entity")
 
 function TOOL:Deploy()
 	if SERVER then
 		local pl = self:GetOwner()
 		local plTable = RAGDOLLMOVER[pl]
+		local entity = plTable.Entity
 		local axis = plTable.Axis
 		if not IsValid(axis) then
 			spawnAxis(pl, self, plTable)
+		end
+		if IsValid(entity) then
+			local physchildren = rgmGetConstrainedEntities(entity)
+			rgmUpdateEntInfo(pl, entity, physchildren)
+		end
+	end
+end
+
+function TOOL:Holster()
+	if SERVER then
+		local pl = self:GetOwner()
+		local plTable = RAGDOLLMOVER[pl]
+
+		for ent, entarray in pairs(plTable.rgmEntLocks) do
+			for lockent, lockinfo in pairs(entarray) do
+				lockinfo.poseid = getPoseId(lockent, ent)
+			end
+			rgmDupeLocks(pl, ent, getDupeData(plTable, ent), true)
 		end
 	end
 end
@@ -1993,13 +2275,13 @@ function TOOL:LeftClick()
 			local obj = ent:GetPhysicsObjectNum(plTable.PhysBone)
 			if obj then 
 				_, plTable.rgmOffsetAng = WorldToLocal(vector_origin, obj:GetAngles(), vector_origin, grabang)
-				plTable.rgmOffsetTable = rgm.GetOffsetTable(self, ent, plTable.Rotate, plTable.rgmBoneLocks, plTable.rgmEntLocks)
+				plTable.rgmOffsetTable = rgm.GetOffsetTable(self, ent, plTable.Rotate, plTable.rgmBoneLocks, plTable.rgmEntLocks[ent])
 			end
 		elseif plTable.NextPhysBone and plTable.physmove ~= 0 then
 			local obj = ent:GetPhysicsObjectNum(plTable.NextPhysBone)
 			if obj then 
 				_, plTable.rgmOffsetAng = WorldToLocal(vector_origin, obj:GetAngles(), vector_origin, grabang)
-				plTable.rgmOffsetTable = rgm.GetNPOffsetTable(self, ent, plTable.Rotate, {p = plTable.NextPhysBone, pos = axis.GizmoPos, ang = axis.GizmoAng}, plTable.rgmPhysMove, plTable.rgmBoneLocks, plTable.rgmEntLocks)
+				plTable.rgmOffsetTable = rgm.GetNPOffsetTable(self, ent, plTable.Rotate, {p = plTable.NextPhysBone, pos = axis.GizmoPos, ang = axis.GizmoAng}, plTable.rgmPhysMove, plTable.rgmBoneLocks, plTable.rgmEntLocks[ent])
 			end
 		end
 		if IsValid(ent:GetParent()) and not (ent:GetClass() == "prop_ragdoll") then -- ragdolls don't seem to care about parenting
@@ -2043,7 +2325,7 @@ function TOOL:LeftClick()
 		end
 
 		if plTable.IsPhysBone or (plTable.NextPhysBone and plTable.physmove ~= 0) then
-			for lockent, data in pairs(plTable.rgmEntLocks) do
+			for lockent, data in pairs(plTable.rgmEntLocks[ent]) do
 				if FindRecursiveIfParent(data.id, plTable.PhysBone, ent) then continue end
 				ignore[#ignore + 1] = lockent
 			end
@@ -2090,70 +2372,11 @@ function TOOL:LeftClick()
 			local physchildren = rgmGetConstrainedEntities(entity)
 			plTable.PropRagdoll = entity.rgmPRidtoent and true or false
 
-			NetStarter.rgmUpdateLists()
-				net.WriteBool(plTable.PropRagdoll)
-				if plTable.PropRagdoll then
-					local rgment = plTable.Entity
-					local count = #rgment.rgmPRidtoent + 1
-
-					net.WriteUInt(count, 13) -- technically entity limit is 4096, but doubtful single prop ragdoll would reach that, but still...
-
-					for id, ent in pairs(rgment.rgmPRidtoent) do
-						net.WriteEntity(ent)
-						net.WriteUInt(id, 13)
-
-						net.WriteBool(ent.rgmPRparent and true or false)
-						if ent.rgmPRparent then
-							net.WriteUInt(ent.rgmPRparent, 13)
-						end
-
-						if ent == entity then
-							net.WriteUInt(0, 13)
-							continue
-						end
-
-						local entchildren = rgmFindEntityChildren(ent)
-						net.WriteUInt(#entchildren, 13)
-
-						for k, v in ipairs(entchildren) do
-							net.WriteEntity(v)
-						end
-					end
-				end
-
-				net.WriteEntity(entity)
-
-				net.WriteUInt(#children, 13)
-				for k, v in ipairs(children) do
-					net.WriteEntity(v)
-				end
-
-				net.WriteUInt(#physchildren, 13)
-				for _, ent in ipairs(physchildren) do
-					net.WriteEntity(ent)
-				end
-			net.Send(pl)
-
-			plTable.rgmPosLocks = {}
-			plTable.rgmAngLocks = {}
-			plTable.rgmScaleLocks = {}
-			plTable.rgmBoneLocks = {}
-
-			if entity.rgmPRidtoent then
-				for id, ent in pairs(entity.rgmPRidtoent) do
-					plTable.rgmPosLocks[ent] = {}
-					plTable.rgmAngLocks[ent] = {}
-					plTable.rgmScaleLocks[ent] = {}
-					plTable.rgmBoneLocks[ent] = {}
-				end
-			else
-				plTable.rgmPosLocks[entity] = {}
-				plTable.rgmAngLocks[entity] = {}
-				plTable.rgmScaleLocks[entity] = {}
-				plTable.rgmBoneLocks[entity] = {}
-			end
-
-			plTable.rgmEntLocks = {}
+			rgmUpdateLists(pl, entity, children, physchildren)
+			local data = getDupeData(plTable, entity)
+			rgmDupeLocks(pl, entity, data, true)
+			rgmSetLocks(RAGDOLLMOVER[pl], entity, data)
+	
 		end
 
 		RAGDOLLMOVER.Sync(pl, "Entity", "Bone", "IsPhysBone")
@@ -2297,6 +2520,13 @@ if SERVER then
 						end
 					end
 				end
+			end
+
+			for ent, entarray in pairs(plTable.rgmEntLocks) do
+				for lockent, lockinfo in pairs(entarray) do
+					lockinfo.poseid = getPoseId(lockent, ent)
+				end
+				rgmDupeLocks(pl, ent, getDupeData(plTable, ent), true)
 			end
 
 			rgmCalcGizmoPos(pl)
@@ -2489,7 +2719,6 @@ if SERVER then
 
 			rgmDoScale(pl, ent, axis, childbones, bone, sc, prevscale, physmove)
 		end
-
 	end
 
 	local tr = util.TraceLine({
@@ -2559,21 +2788,29 @@ local ClientBoneState = {
 	entity = NULL,
 	Scales = {},
 	UpdateBoneScales = function(self)
+		if not IsValid(self.entity) then return end
+		
 		for i = 0, self.entity:GetBoneCount() - 1 do
 			self.Scales[i] = self.entity:GetManipulateBoneScale(i)
 		end
 	end,
 	ResetBoneScales = function(self)
+		if not IsValid(self.entity) then return end
+
 		for i = 0, self.entity:GetBoneCount() - 1 do
 			self.Scales[i] = VECTOR_SCALEDEF
 		end
 	end,
 	SetBoneScales = function(self, scale)
+		if not IsValid(self.entity) then return end
+
 		for i = 0, self.entity:GetBoneCount() - 1 do
 			self.Scales[i] = scale
 		end
 	end,
 	SetBoneScale = function(self, bone, scale, recursive)
+		if not IsValid(self.entity) then return end
+
 		self.Scales[bone] = scale or self.entity:GetManipulateBoneScale(bone)
 
 		local childBones = self.entity:GetChildBones(bone)
@@ -3479,7 +3716,12 @@ NetStarter = {
 	rgmDedicatedResetRoot = function() -- 27
 		net.Start("RAGDOLLMOVER")
 		net.WriteUInt(27, 5)
-	end
+	end,
+
+	rgmDedicatedResetLocks = function() -- 28
+		net.Start("RAGDOLLMOVER")
+		net.WriteUInt(28, 5)
+	end,
 
 }
 
@@ -4172,6 +4414,7 @@ local function RGMBuildConstrainedEnts(parent, children, entpanel)
 		conentnodes[ent].DoClick = function()
 			if conentnodes[ent].Locked then
 				NetStarter.rgmUnlockConstrained()
+					net.WriteEntity(parent)	
 					net.WriteEntity(ent)
 				net.SendToServer()
 			else
@@ -4278,6 +4521,42 @@ local function RGMMakeBoneButtonPanel(col)
 		ShowOnlyNonPhysNodes(ent, BonePanel)
 	end
 
+	return parentpanel
+end
+
+local function RGMMakeResetLocksPanel(col)
+	local parentpanel = vgui.Create("Panel", col)
+	col:AddItem(parentpanel)
+
+	parentpanel.resetlocks = vgui.Create("DButton", parentpanel) 
+	parentpanel.resetlocks:SetText("#tool.ragdollmover.resetlocks")
+	parentpanel.resetlocks:SetTooltip("#tool.ragdollmover.resetlocks.tooltip")
+	function parentpanel.resetlocks:DoClick() 
+		NetStarter.rgmDedicatedResetLocks()
+			net.WriteBool(false)
+		net.SendToServer()
+	end
+
+	parentpanel.resetalllocks = vgui.Create("DButton", parentpanel) 
+	parentpanel.resetalllocks:SetText("#tool.ragdollmover.resetalllocks")
+	parentpanel.resetalllocks:SetTooltip("#tool.ragdollmover.resetalllocks.tooltip")
+
+	function parentpanel.resetalllocks:DoClick() 
+		NetStarter.rgmDedicatedResetLocks()
+			net.WriteBool(true)
+		net.SendToServer()
+	end
+
+	function parentpanel:PerformLayout(w, h)
+		-- parentpanel.resetlocks:Dock(LEFT)
+		-- parentpanel.resetalllocks:Dock(RIGHT)
+	
+		parentpanel.resetlocks:SetSize(w / 2 - 5, h)
+		parentpanel.resetalllocks:SetSize(w / 2 - 5, h)
+		parentpanel.resetalllocks:SetPos(w / 2 + 5, 0)
+
+	end
+	
 	return parentpanel
 end
 
@@ -4393,6 +4672,7 @@ function TOOL.BuildCPanel(CPanel)
 		local physmovecheck = CCheckBox(Col4, "#tool.ragdollmover.physmove", "ragdollmover_physmove")
 		physmovecheck:SetToolTip("#tool.ragdollmover.physmovetip")
 		RGMMakeAngleSnap(Col4)
+		RGMMakeResetLocksPanel(Col4) 
 		
 
 		local Col5 = CCol(Col4, "#tool.ragdollmover.scaleoptions", true) 
@@ -4716,7 +4996,6 @@ local NETFUNC = {
 			conentnodes[lockent].Locked = lock
 			if lock then
 				conentnodes[lockent]:SetIcon("icon16/lock.png")
-				rgmDoNotification(ENTLOCK_SUCCESS)
 			else
 				conentnodes[lockent]:SetIcon("icon16/brick_link.png")
 			end
