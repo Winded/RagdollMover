@@ -3996,7 +3996,10 @@ local function SetBoneNodes(bonepanel, sortedbones)
 
 			nodes[ent][v.id].DoRightClick = function()
 				local bonemenu = DermaMenu(false, bonepanel)
-				local resetmenu = bonemenu:AddSubMenu("#tool.ragdollmover.resetmenu")
+				local resetmenu = bonemenu:AddSubMenu("#tool.ragdollmover.resetmenu", function()
+					if not IsValid(ent) then return end
+					NodeFunctions[1](ent, v.id)
+				end)
 
 				local option = resetmenu:AddOption("#tool.ragdollmover.reset", function()
 					if not IsValid(ent) then return end
@@ -4046,7 +4049,10 @@ local function SetBoneNodes(bonepanel, sortedbones)
 				end)
 				option:SetIcon("icon16/bricks.png")
 
-				local scalezeromenu = bonemenu:AddSubMenu("#tool.ragdollmover.scalezero")
+				local scalezeromenu = bonemenu:AddSubMenu("#tool.ragdollmover.scalezero", function()
+					if not IsValid(ent) then return end
+					NodeFunctions[9](ent, v.id)
+				end)
 
 				option = scalezeromenu:AddOption("#tool.ragdollmover.bone", function()
 					if not IsValid(ent) then return end

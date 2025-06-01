@@ -185,6 +185,19 @@ end)
 
 elseif CLIENT then
 
+local assigner = coroutine.create(function()
+	local tab = {}
+	local k, v = coroutine.yield()
+
+	while true do
+		if k == "stop" then break end
+		if k and v then tab[k] = v end
+		k, v = coroutine.yield()
+	end
+	coroutine.yield(tab)
+end)
+coroutine.resume(assigner)
+
 net.Receive("RAGDOLLMOVER_META", function(len) -- rgmSync
 	local pl = LocalPlayer()
 
@@ -213,22 +226,34 @@ net.Receive("RAGDOLLMOVER_META", function(len) -- rgmSync
 
 		-- Sometimes, entities are not available during startup in multiplayer.   
 		if type == TYPE_ENTITY then
-			timer.Create("RAGDOLLMOVER_VALIDATE_ENTITY", 0.1, 10, function()
 				-- Edge case: If ragdollmover is already deployed on the player in the server, then the net.Receive callback calls,
 				-- but the local player is not initialized. We can initialize pl here and also set the RAGDOLLMOVER[pl]
 				-- table
-				pl = LocalPlayer()
-				if not RAGDOLLMOVER[pl] then RAGDOLLMOVER[pl] = {} end
 
-				if IsValid(Entity(value)) and IsValid(pl) then
-					RAGDOLLMOVER[pl][name] = Entity(value)
-					timer.Remove("RAGDOLLMOVER_VALIDATE_ENTITY")
-				end
-			end)
+			coroutine.resume(assigner, name, value)
 		else
 			RAGDOLLMOVER[pl][name] = value
 		end
 	end
+end)
+
+hook.Add("InitPostEntity", "rgmCoroutineAssignRemove", function()
+	timer.Simple(0.5, function()
+		local pl = LocalPlayer()
+		if not RAGDOLLMOVER[pl] then RAGDOLLMOVER[pl] = {} end
+		local _, tab = coroutine.resume(assigner, "stop")
+		assert(istable(tab), "Expected table, got an error. Epic fail!")
+print(IsValid(pl))
+		if IsValid(pl) then
+			for name, value in pairs(tab) do
+print(IsValid(Entity(value)), name, value)
+				if IsValid(Entity(value)) then 
+					RAGDOLLMOVER[pl][name] = Entity(value)
+				end
+			end
+		end 
+		coroutine.resume(assigner)
+	end)
 end)
 
 end
