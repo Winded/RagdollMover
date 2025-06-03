@@ -11,7 +11,7 @@ local TYPE_VECTOR	 = 3
 local TYPE_ANGLE	 = 4
 local TYPE_BOOL		 = 5
 
-RAGDOLLMOVER = {}
+RAGDOLLMOVER = RAGDOLLMOVER or {}
 
 local shouldCallHook = false
 hook.Add("EntityKeyValue", "RGMAllowTool", function(ent, key, val)
@@ -185,25 +185,9 @@ end)
 
 elseif CLIENT then
 
-local assigner = coroutine.create(function()
-	local tab = {}
-	local k, v = coroutine.yield()
-
-	while true do
-		if k == "stop" then break end
-		if k and v then tab[k] = v end
-		k, v = coroutine.yield()
-	end
-	coroutine.yield(tab)
-end)
-coroutine.resume(assigner)
+local buffer = {}
 
 net.Receive("RAGDOLLMOVER_META", function(len) -- rgmSync
-	local pl = LocalPlayer()
-
-	-- See edge case explanation below
-	if IsValid(pl) and not RAGDOLLMOVER[pl] then RAGDOLLMOVER[pl] = {} end
-
 	local count = net.ReadInt(4)
 
 	for i = 1, count do
@@ -212,8 +196,7 @@ net.Receive("RAGDOLLMOVER_META", function(len) -- rgmSync
 		local type = net.ReadUInt(3)
 		local value = nil
 		if type == TYPE_ENTITY then
-			-- Read the entity index instead of the entity itself, so we can do our own validation step later
-			value = net.ReadUInt(MAX_EDICT_BITS)
+			value = {net.ReadUInt(MAX_EDICT_BITS)}
 		elseif type == TYPE_NUMBER then
 			value = net.ReadFloat()
 		elseif type == TYPE_VECTOR then
@@ -224,35 +207,31 @@ net.Receive("RAGDOLLMOVER_META", function(len) -- rgmSync
 			value = net.ReadBit() == 1
 		end
 
-		-- Sometimes, entities are not available during startup in multiplayer.   
-		if type == TYPE_ENTITY then
-				-- Edge case: If ragdollmover is already deployed on the player in the server, then the net.Receive callback calls,
-				-- but the local player is not initialized. We can initialize pl here and also set the RAGDOLLMOVER[pl]
-				-- table
-
-			coroutine.resume(assigner, name, value)
-		else
-			RAGDOLLMOVER[pl][name] = value
-		end
+		buffer[name] = value
 	end
 end)
 
-hook.Add("InitPostEntity", "rgmCoroutineAssignRemove", function()
-	timer.Simple(0.5, function()
-		local pl = LocalPlayer()
-		if not RAGDOLLMOVER[pl] then RAGDOLLMOVER[pl] = {} end
-		local _, tab = coroutine.resume(assigner, "stop")
-		assert(istable(tab), "Expected table, got an error. Epic fail!")
-print(IsValid(pl))
-		if IsValid(pl) then
-			for name, value in pairs(tab) do
-print(IsValid(Entity(value)), name, value)
-				if IsValid(Entity(value)) then 
-					RAGDOLLMOVER[pl][name] = Entity(value)
+local pl = LocalPlayer()
+
+hook.Remove("Think", "rgmClientBuffer") -- for hotloading
+
+hook.Add("InitPostEntity", "rgmMetaInitPlayer", function()
+	pl = LocalPlayer()
+	if not RAGDOLLMOVER[pl] then RAGDOLLMOVER[pl] = {} end
+
+	hook.Add("Think", "rgmClientBuffer", function()
+		if IsValid(pl) and not RAGDOLLMOVER[pl] then RAGDOLLMOVER[pl] = {} end
+
+		if next(buffer) then
+			for name, value in pairs(buffer) do
+				if not istable(value) then
+					RAGDOLLMOVER[pl][name] = value
+				else
+					RAGDOLLMOVER[pl][name] = (Entity(value[1]))
 				end
 			end
-		end 
-		coroutine.resume(assigner)
+			buffer = {}
+		end
 	end)
 end)
 
