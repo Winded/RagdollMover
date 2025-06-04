@@ -11,7 +11,7 @@ local TYPE_VECTOR	 = 3
 local TYPE_ANGLE	 = 4
 local TYPE_BOOL		 = 5
 
-RAGDOLLMOVER = {}
+RAGDOLLMOVER = RAGDOLLMOVER or {}
 
 local shouldCallHook = false
 hook.Add("EntityKeyValue", "RGMAllowTool", function(ent, key, val)
@@ -154,7 +154,9 @@ numpad.Register("rgmAxisChangeStateRot", function(pl)
 	if not rgmMode[pl] then rgmMode[pl] = 1 end
 
 	if not pl:GetTool() or RAGDOLLMOVER[pl].Moving then return end
-	if pl:GetTool().Mode ~= "ragdollmover" or pl:GetActiveWeapon():GetClass() ~= "gmod_tool" then return end
+
+	local plwep = pl:GetActiveWeapon()
+	if pl:GetTool().Mode ~= "ragdollmover" or not IsValid(plwep) or plwep:GetClass() ~= "gmod_tool" then return end
 	if RotKey[pl] == ScaleKey[pl] then
 		rgmMode[pl] = rgmMode[pl] + 1
 		if rgmMode[pl] > 3 then rgmMode[pl] = 1 end
@@ -174,7 +176,9 @@ numpad.Register("rgmAxisChangeStateScale", function(pl)
 	if not RAGDOLLMOVER[pl] then RAGDOLLMOVER[pl] = {} end
 
 	if not pl:GetTool() or RAGDOLLMOVER[pl].Moving then return end
-	if pl:GetTool().Mode ~= "ragdollmover" or pl:GetActiveWeapon():GetClass() ~= "gmod_tool" then return end
+
+	local plwep = pl:GetActiveWeapon()
+	if pl:GetTool().Mode ~= "ragdollmover" or not IsValid(plwep) or plwep:GetClass() ~= "gmod_tool" then return end
 	if RotKey[pl] == ScaleKey[pl] then return end
 	RAGDOLLMOVER[pl].Scale = not RAGDOLLMOVER[pl].Scale
 	RAGDOLLMOVER[pl].Rotate = false
@@ -185,12 +189,9 @@ end)
 
 elseif CLIENT then
 
+local buffer = {}
+
 net.Receive("RAGDOLLMOVER_META", function(len) -- rgmSync
-	local pl = LocalPlayer()
-
-	-- See edge case explanation below
-	if IsValid(pl) and not RAGDOLLMOVER[pl] then RAGDOLLMOVER[pl] = {} end
-
 	local count = net.ReadInt(4)
 
 	for i = 1, count do
@@ -199,8 +200,7 @@ net.Receive("RAGDOLLMOVER_META", function(len) -- rgmSync
 		local type = net.ReadUInt(3)
 		local value = nil
 		if type == TYPE_ENTITY then
-			-- Read the entity index instead of the entity itself, so we can do our own validation step later
-			value = net.ReadUInt(MAX_EDICT_BITS)
+			value = {net.ReadUInt(MAX_EDICT_BITS)}
 		elseif type == TYPE_NUMBER then
 			value = net.ReadFloat()
 		elseif type == TYPE_VECTOR then
@@ -211,24 +211,32 @@ net.Receive("RAGDOLLMOVER_META", function(len) -- rgmSync
 			value = net.ReadBit() == 1
 		end
 
-		-- Sometimes, entities are not available during startup in multiplayer.   
-		if type == TYPE_ENTITY then
-			timer.Create("RAGDOLLMOVER_VALIDATE_ENTITY", 0.1, 10, function()
-				-- Edge case: If ragdollmover is already deployed on the player in the server, then the net.Receive callback calls,
-				-- but the local player is not initialized. We can initialize pl here and also set the RAGDOLLMOVER[pl]
-				-- table
-				pl = LocalPlayer()
-				if not RAGDOLLMOVER[pl] then RAGDOLLMOVER[pl] = {} end
-
-				if IsValid(Entity(value)) and IsValid(pl) then
-					RAGDOLLMOVER[pl][name] = Entity(value)
-					timer.Remove("RAGDOLLMOVER_VALIDATE_ENTITY")
-				end
-			end)
-		else
-			RAGDOLLMOVER[pl][name] = value
-		end
+		buffer[name] = value
 	end
+end)
+
+local pl = LocalPlayer()
+
+hook.Remove("Think", "rgmClientBuffer") -- for hotloading
+
+hook.Add("InitPostEntity", "rgmMetaInitPlayer", function()
+	pl = LocalPlayer()
+	if not RAGDOLLMOVER[pl] then RAGDOLLMOVER[pl] = {} end
+
+	hook.Add("Think", "rgmClientBuffer", function()
+		if IsValid(pl) and not RAGDOLLMOVER[pl] then RAGDOLLMOVER[pl] = {} end
+
+		if next(buffer) then
+			for name, value in pairs(buffer) do
+				if not istable(value) then
+					RAGDOLLMOVER[pl][name] = value
+				else
+					RAGDOLLMOVER[pl][name] = (Entity(value[1]))
+				end
+			end
+			buffer = {}
+		end
+	end)
 end)
 
 end

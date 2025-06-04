@@ -2126,8 +2126,13 @@ concommand.Add("ragdollmover_resetgizmo", function(pl) -- This will not work on 
 	local plTable = RAGDOLLMOVER[pl]
 	if not plTable or not IsValid(plTable.Axis) then return end
 
-	plTable.Axis:Remove()
-	spawnAxis(pl, pl:GetTool(), plTable)
+	-- We set the delay to nonzero, so the gizmo resets while the game is running
+	-- Prevents an attempt to spawn an entity outside of client's PVS, as positions can't be
+	-- changed when the game is paused
+	timer.Simple(0.1, function()
+		plTable.Axis:Remove()
+		spawnAxis(pl, pl:GetTool(), plTable)
+	end)
 end, nil, "Respawn the gizmo. Mostly used for development")
 
 concommand.Add("ragdollmover_resetlocks", function (pl)
@@ -2771,8 +2776,10 @@ local RGM_NOTIFY = { -- table with info for messages, true for errors
 
 -- If we hotload this file, pl gets set to nil, which causes issues when tables attempt to index with this variable; initialize it here 
 local pl = LocalPlayer()
-if not RAGDOLLMOVER[pl] then RAGDOLLMOVER[pl] = {} end
-RAGDOLLMOVER[pl].PlViewEnt = 0
+if IsValid(pl) then
+	if not RAGDOLLMOVER[pl] then RAGDOLLMOVER[pl] = {} end
+	RAGDOLLMOVER[pl].PlViewEnt = 0
+end
 
 hook.Add("InitPostEntity", "rgmSetPlayer", function()
 	pl = LocalPlayer()
@@ -2856,6 +2863,7 @@ do
 				RAGDOLLMOVER[pl].Axis.scale = tonumber(new)
 				RAGDOLLMOVER[pl].Axis:CalculateGizmo()
 			elseif k == 14 then
+				if not IsValid(pl) or not RAGDOLLMOVER[pl] then return end
 				RAGDOLLMOVER[pl].always_use_pl_view = tonumber(new)
 			end
 		end)

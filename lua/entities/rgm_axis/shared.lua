@@ -18,6 +18,7 @@ function ENT:Initialize()
 	self:SetSolid(SOLID_VPHYSICS)
 	self:SetNotSolid(true)
 	self:SetRenderMode(RENDERMODE_TRANSCOLOR)
+	self:AddEFlags(EFL_FORCE_CHECK_TRANSMIT)
 
 	local CreateGizmo = RGMGIZMOS.GizmoFactory()
 
