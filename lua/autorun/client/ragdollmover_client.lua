@@ -1,5 +1,5 @@
 
-hook.Add("InitPostEntity", "rgmClientSetup", function()
+hook.Add("rgmInit", "rgmClientSetup", function()
 
 	if ConVarExists("ragdollmover_lockselected") then -- i should use some lua variable instead of console variable so it would reset properly
 		RunConsoleCommand("ragdollmover_lockselected", 0)

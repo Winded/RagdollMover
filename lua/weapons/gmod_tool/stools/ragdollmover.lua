@@ -2781,7 +2781,7 @@ if IsValid(pl) then
 	RAGDOLLMOVER[pl].PlViewEnt = 0
 end
 
-hook.Add("InitPostEntity", "rgmSetPlayer", function()
+hook.Add("rgmInit", "rgmSetPlayer", function()
 	pl = LocalPlayer()
 	if not RAGDOLLMOVER[pl] then RAGDOLLMOVER[pl] = {} end
 	RAGDOLLMOVER[pl].PlViewEnt = 0

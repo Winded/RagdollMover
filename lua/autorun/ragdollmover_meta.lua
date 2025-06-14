@@ -219,24 +219,31 @@ local pl = LocalPlayer()
 
 hook.Remove("Think", "rgmClientBuffer") -- for hotloading
 
-hook.Add("InitPostEntity", "rgmMetaInitPlayer", function()
+hook.Add("Think", "rgmMetaCheckIfInit", function()
 	pl = LocalPlayer()
-	if not RAGDOLLMOVER[pl] then RAGDOLLMOVER[pl] = {} end
 
-	hook.Add("Think", "rgmClientBuffer", function()
-		if IsValid(pl) and not RAGDOLLMOVER[pl] then RAGDOLLMOVER[pl] = {} end
+	if IsValid(pl) then
+		if not RAGDOLLMOVER[pl] then RAGDOLLMOVER[pl] = {} end
 
-		if next(buffer) then
-			for name, value in pairs(buffer) do
-				if not istable(value) then
-					RAGDOLLMOVER[pl][name] = value
-				else
-					RAGDOLLMOVER[pl][name] = (Entity(value[1]))
+		hook.Run("rgmInit") -- Using custom hook instead of InitPostEntity, as some addons may do what gmod wiki tells not to do, and return some value in a hook, breaking the whole thing in the process. Thanks, random gmod addons!
+
+		hook.Add("Think", "rgmClientBuffer", function()
+			if IsValid(pl) and not RAGDOLLMOVER[pl] then RAGDOLLMOVER[pl] = {} end
+
+			if next(buffer) then
+				for name, value in pairs(buffer) do
+					if not istable(value) then
+						RAGDOLLMOVER[pl][name] = value
+					else
+						RAGDOLLMOVER[pl][name] = (Entity(value[1]))
+					end
 				end
+				buffer = {}
 			end
-			buffer = {}
-		end
-	end)
+		end)
+
+		hook.Remove("Think", "rgmMetaCheckIfInit")
+	end
 end)
 
 end

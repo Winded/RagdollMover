@@ -1139,7 +1139,7 @@ local function showChangelog()
 end
 
 -- When localplayer is valid, check if we should notify the user
-hook.Add("InitPostEntity", "RagdollMoverNotifyOnStart", function()
+hook.Add("rgmInit", "RagdollMoverNotifyOnStart", function()
 	if not versionMatches(RGM_VERSION, VERSION_PATH) then
 		local notice1 = language.GetPhrase("ui.ragdollmover.notice1")
 		local notice2 = language.GetPhrase("ui.ragdollmover.notice2")
