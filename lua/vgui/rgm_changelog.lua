@@ -95,7 +95,8 @@ function PANEL:Init()
             self.changelogBody = parseHTMLForChangelog(body)
             self.changelogBodyIndex = 1
         end, function(err) 
-            self.changelogText:AppendText(language.GetPhrase("#ui.ragdollmover.notes.error1\n\n"))
+            self.changelogText:AppendText(language.GetPhrase("#ui.ragdollmover.notes.error1"))
+            self.changelogText:AppendText("\n\n")
             self.changelogText:AppendText(err)
         end)
     end
