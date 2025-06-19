@@ -546,13 +546,22 @@ local function rgmDoScale(pl, ent, axis, childbones, bone, sc, prevscale, physmo
 end
 
 local function rgmUpdateConstrainedEnts(pl, plTable, ent)
-	if not plTable.rgmEntLocks[ent] then return end
+	if not plTable.rgmEntLocks then return end
 
-	for lockent, _ in pairs(plTable.rgmEntLocks[ent]) do
-		NetStarter.rgmLockConstrainedResponse()
-			net.WriteBool(true)
-			net.WriteEntity(lockent)
-		net.Send(pl)
+	for lent, lockeddata in pairs(plTable.rgmEntLocks) do
+		if not lockeddata then continue end
+		if ent.rgmPRenttoid then
+			if not ent.rgmPRenttoid[lent] then continue end
+		else
+			if ent ~= lent then continue end
+		end
+
+		for lockent, _ in pairs(lockeddata) do
+			NetStarter.rgmLockConstrainedResponse()
+				net.WriteBool(true)
+				net.WriteEntity(lockent)
+			net.Send(pl)
+		end
 	end
 end
 
@@ -633,15 +642,15 @@ local function rgmSetLocks(plTable, entity, data)
 			plTable.rgmAngLocks[ent] = plTable.rgmAngLocks[ent] or {}
 			plTable.rgmScaleLocks[ent] = plTable.rgmScaleLocks[ent] or {}
 			plTable.rgmBoneLocks[ent] = plTable.rgmBoneLocks[ent] or {}
+			plTable.rgmEntLocks[ent] = plTable.rgmEntLocks[ent] or {}
 		end
 	else  
 		plTable.rgmPosLocks[entity] = plTable.rgmPosLocks[entity] or data.rgmPosLocks or {}
 		plTable.rgmAngLocks[entity] = plTable.rgmAngLocks[entity] or data.rgmAngLocks or {}
 		plTable.rgmScaleLocks[entity] = plTable.rgmScaleLocks[entity] or data.rgmScaleLocks or {}
 		plTable.rgmBoneLocks[entity] = plTable.rgmBoneLocks[entity] or data.rgmBoneLocks or {}
+		plTable.rgmEntLocks[entity] = plTable.rgmEntLocks[entity] or data.rgmEntLocks or {}
 	end
-	
-	plTable.rgmEntLocks[entity] = plTable.rgmEntLocks[entity] or data.rgmEntLocks or {}
 
 	entity:CallOnRemove("rgmRemoveLocks", function(ent)
 		plTable.rgmPosLocks[ent] = nil
@@ -659,15 +668,15 @@ local function rgmResetLocks(plTable, entity)
 			plTable.rgmAngLocks[ent] = {}
 			plTable.rgmScaleLocks[ent] = {}
 			plTable.rgmBoneLocks[ent] = {}
+			plTable.rgmEntLocks[ent] = {}
 		end
 	else
 		plTable.rgmPosLocks[entity] = {}
 		plTable.rgmAngLocks[entity] = {}
 		plTable.rgmScaleLocks[entity] = {}
 		plTable.rgmBoneLocks[entity] = {}
+		plTable.rgmEntLocks[entity] = {}
 	end
-
-	plTable.rgmEntLocks[entity] = {}
 end
 
 local function rgmResetAllLocks(plTable, entity)
@@ -914,11 +923,14 @@ function resetLocksCommand(pl, allLocks)
 		end
 	net.Send(pl)
 
-	for lockent, lockentinfo in pairs(plTable.rgmEntLocks[entity]) do
-		NetStarter.rgmLockConstrainedResponse()
-			net.WriteBool(false)
-			net.WriteEntity(lockent)
-		net.Send(pl)
+	for ent, lockeddata in pairs(plTable.rgmEntLocks[entity]) do
+		if not lockeddata then continue end
+		for lockent, lockentinfo in pairs(lockeddata) do
+			NetStarter.rgmLockConstrainedResponse()
+				net.WriteBool(false)
+				net.WriteEntity(lockent)
+			net.Send(pl)
+		end
 	end
 end
 
@@ -1793,7 +1805,7 @@ local NETFUNC = {
 
 			local obj = ent:GetPhysicsObjectNum(plTable.PhysBone)
 			if obj then
-				plTable.rgmOffsetTable = rgm.GetOffsetTable(tool, ent, plTable.Rotate, plTable.rgmBoneLocks, plTable.rgmEntLocks[ent])
+				plTable.rgmOffsetTable = rgm.GetOffsetTable(tool, ent, plTable.Rotate, plTable.rgmBoneLocks, plTable.rgmEntLocks)
 			end
 		elseif plTable.NextPhysBone then
 			if _G["physundo"] and _G["physundo"].Create then
@@ -1802,7 +1814,7 @@ local NETFUNC = {
 
 			local obj = ent:GetPhysicsObjectNum(plTable.NextPhysBone)
 			if obj then
-				plTable.rgmOffsetTable = rgm.GetNPOffsetTable(tool, ent, plTable.Rotate, {p = plTable.NextPhysBone, pos = axis.GizmoPos, ang = axis.GizmoAng}, plTable.rgmPhysMove, plTable.rgmBoneLocks, plTable.rgmEntLocks[ent])
+				plTable.rgmOffsetTable = rgm.GetNPOffsetTable(tool, ent, plTable.Rotate, {p = plTable.NextPhysBone, pos = axis.GizmoPos, ang = axis.GizmoAng}, plTable.rgmPhysMove, plTable.rgmBoneLocks, plTable.rgmEntLocks)
 			end
 		end
 	end,
@@ -2176,8 +2188,8 @@ function TOOL:Holster()
 		local pl = self:GetOwner()
 		local plTable = RAGDOLLMOVER[pl]
 
-		for ent, entarray in pairs(plTable.rgmEntLocks) do
-			for lockent, lockinfo in pairs(entarray) do
+		for ent, lockeddata in pairs(plTable.rgmEntLocks) do
+			for lockent, lockinfo in pairs(lockeddata) do
 				lockinfo.poseid = getPoseId(lockent, ent)
 			end
 			rgmDupeLocks(pl, ent, getDupeData(plTable, ent), true)
@@ -2280,13 +2292,13 @@ function TOOL:LeftClick()
 			local obj = ent:GetPhysicsObjectNum(plTable.PhysBone)
 			if obj then 
 				_, plTable.rgmOffsetAng = WorldToLocal(vector_origin, obj:GetAngles(), vector_origin, grabang)
-				plTable.rgmOffsetTable = rgm.GetOffsetTable(self, ent, plTable.Rotate, plTable.rgmBoneLocks, plTable.rgmEntLocks[ent])
+				plTable.rgmOffsetTable = rgm.GetOffsetTable(self, ent, plTable.Rotate, plTable.rgmBoneLocks, plTable.rgmEntLocks)
 			end
 		elseif plTable.NextPhysBone and plTable.physmove ~= 0 then
 			local obj = ent:GetPhysicsObjectNum(plTable.NextPhysBone)
 			if obj then 
 				_, plTable.rgmOffsetAng = WorldToLocal(vector_origin, obj:GetAngles(), vector_origin, grabang)
-				plTable.rgmOffsetTable = rgm.GetNPOffsetTable(self, ent, plTable.Rotate, {p = plTable.NextPhysBone, pos = axis.GizmoPos, ang = axis.GizmoAng}, plTable.rgmPhysMove, plTable.rgmBoneLocks, plTable.rgmEntLocks[ent])
+				plTable.rgmOffsetTable = rgm.GetNPOffsetTable(self, ent, plTable.Rotate, {p = plTable.NextPhysBone, pos = axis.GizmoPos, ang = axis.GizmoAng}, plTable.rgmPhysMove, plTable.rgmBoneLocks, plTable.rgmEntLocks)
 			end
 		end
 		if IsValid(ent:GetParent()) and not (ent:GetClass() == "prop_ragdoll") then -- ragdolls don't seem to care about parenting
@@ -2330,9 +2342,12 @@ function TOOL:LeftClick()
 		end
 
 		if plTable.IsPhysBone or (plTable.NextPhysBone and plTable.physmove ~= 0) then
-			for lockent, data in pairs(plTable.rgmEntLocks[ent]) do
-				if FindRecursiveIfParent(data.id, plTable.PhysBone, ent) then continue end
-				ignore[#ignore + 1] = lockent
+			for ent, lockeddata in pairs(plTable.rgmEntLocks) do
+				if not lockeddata then continue end
+				for lockent, data in pairs(lockeddata) do
+					if FindRecursiveIfParent(data.id, plTable.PhysBone, ent) then continue end
+					ignore[#ignore + 1] = lockent
+				end
 			end
 		end
 
@@ -2527,8 +2542,8 @@ if SERVER then
 				end
 			end
 
-			for ent, entarray in pairs(plTable.rgmEntLocks) do
-				for lockent, lockinfo in pairs(entarray) do
+			for ent, lockeddata in pairs(plTable.rgmEntLocks) do
+				for lockent, lockinfo in pairs(lockeddata) do
 					lockinfo.poseid = getPoseId(lockent, ent)
 				end
 				rgmDupeLocks(pl, ent, getDupeData(plTable, ent), true)
@@ -5362,12 +5377,13 @@ function TOOL:DrawHUD()
 	if nodes and self:GetOperation() == 2 and IsValid(ent) then
 		local timecheck = (thinktime - LastSelectThink) > 0.1
 		local calc = ( not LastEnt or LastEnt ~= ent ) or timecheck or RecalculateColors
+		local selbones = plTable.SelectedBones
 		RecalculateColors = false
 
 		if self:GetStage() == 0 then
 			BoneColors, BoneScaleGroup, id = rgm.AdvBoneSelectRender(ent, nodes, BoneColors, calc, eyepos, viewvec, fov)
-		else
-			BoneScaleGroup, id = rgm.AdvBoneSelectRadialRender(ent, plTable.SelectedBones, nodes, ResetMode)
+		elseif selbones then
+			BoneScaleGroup, id = rgm.AdvBoneSelectRadialRender(ent, selbones, nodes, ResetMode)
 		end
 		
 		LastEnt = ent
