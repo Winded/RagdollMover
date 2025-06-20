@@ -556,12 +556,18 @@ local function rgmUpdateConstrainedEnts(pl, plTable, ent)
 			if ent ~= lent then continue end
 		end
 
+		local lockents = {}
 		for lockent, _ in pairs(lockeddata) do
-			NetStarter.rgmLockConstrainedResponse()
-				net.WriteBool(true)
-				net.WriteEntity(lockent)
-			net.Send(pl)
+			table.insert(lockents, lockent)
 		end
+
+		NetStarter.rgmLockConstrainedResponse()
+			net.WriteBool(true)
+			net.WriteUInt(#lockents, 14)
+			for _, lockent in ipairs(lockents) do
+				net.WriteEntity(lockent)
+			end
+		net.Send(pl)
 	end
 end
 
@@ -638,11 +644,11 @@ local function rgmSetLocks(plTable, entity, data)
 	-- TODO: Figure out mechanism for cleaning up multiple entities for multiplayer
 	if entity.rgmPRidtoent then
 		for id, ent in pairs(entity.rgmPRidtoent) do
-			plTable.rgmPosLocks[ent] = plTable.rgmPosLocks[ent] or {}
-			plTable.rgmAngLocks[ent] = plTable.rgmAngLocks[ent] or {}
-			plTable.rgmScaleLocks[ent] = plTable.rgmScaleLocks[ent] or {}
-			plTable.rgmBoneLocks[ent] = plTable.rgmBoneLocks[ent] or {}
-			plTable.rgmEntLocks[ent] = plTable.rgmEntLocks[ent] or {}
+			plTable.rgmPosLocks[ent] = plTable.rgmPosLocks[ent] or ((entity == ent) and data.rgmPosLocks) or {}
+			plTable.rgmAngLocks[ent] = plTable.rgmAngLocks[ent] or  ((entity == ent) and data.rgmAngLocks) or {}
+			plTable.rgmScaleLocks[ent] = plTable.rgmScaleLocks[ent] or  ((entity == ent) and data.rgmScaleLocks) or {}
+			plTable.rgmBoneLocks[ent] = plTable.rgmBoneLocks[ent] or  ((entity == ent) and data.rgmBoneLocks) or {}
+			plTable.rgmEntLocks[ent] = plTable.rgmEntLocks[ent] or  ((entity == ent) and data.rgmEntLocks) or {}
 		end
 	else  
 		plTable.rgmPosLocks[entity] = plTable.rgmPosLocks[entity] or data.rgmPosLocks or {}
@@ -925,12 +931,18 @@ function resetLocksCommand(pl, allLocks)
 
 	for ent, lockeddata in pairs(plTable.rgmEntLocks[entity]) do
 		if not lockeddata then continue end
+		local lockents = {}
 		for lockent, lockentinfo in pairs(lockeddata) do
-			NetStarter.rgmLockConstrainedResponse()
-				net.WriteBool(false)
-				net.WriteEntity(lockent)
-			net.Send(pl)
+			table.insert(lockents, lockent)
 		end
+
+		NetStarter.rgmLockConstrainedResponse()
+			net.WriteBool(false)
+			net.WriteUInt(#lockents, 14)
+			for _, lockent in ipairs(lockents) do
+				net.WriteEntity(lockent)
+			end
+		net.Send(pl)
 	end
 end
 
@@ -1348,6 +1360,7 @@ local NETFUNC = {
 
 		NetStarter.rgmLockConstrainedResponse()
 			net.WriteBool(true)
+			net.WriteUInt(1, 14)
 			net.WriteEntity(lockent)
 		net.Send(pl)
 		NetStarter.rgmNotification()
@@ -1368,6 +1381,7 @@ local NETFUNC = {
 
 		NetStarter.rgmLockConstrainedResponse()
 			net.WriteBool(false)
+			net.WriteUInt(1, 14)
 			net.WriteEntity(lockent)
 		net.Send(pl)
 	end,
@@ -2342,10 +2356,15 @@ function TOOL:LeftClick()
 		end
 
 		if plTable.IsPhysBone or (plTable.NextPhysBone and plTable.physmove ~= 0) then
-			for ent, lockeddata in pairs(plTable.rgmEntLocks) do
+			for lent, lockeddata in pairs(plTable.rgmEntLocks) do
 				if not lockeddata then continue end
+				if ent.rgmPRidtoent then
+					if not ent.rgmPRenttoid[lent] then continue end
+				else
+					if ent ~= lent then continue end
+				end
 				for lockent, data in pairs(lockeddata) do
-					if FindRecursiveIfParent(data.id, plTable.PhysBone, ent) then continue end
+					if FindRecursiveIfParent(data.id, plTable.PhysBone, lent) then continue end
 					ignore[#ignore + 1] = lockent
 				end
 			end
@@ -5019,14 +5038,18 @@ local NETFUNC = {
 
 	function(len) --			10 - rgmLockConstrainedResponse
 		local lock = net.ReadBool()
-		local lockent = net.ReadEntity()
+		local count = net.ReadUInt(14)
 
-		if conentnodes[lockent] then
-			conentnodes[lockent].Locked = lock
-			if lock then
-				conentnodes[lockent]:SetIcon("icon16/lock.png")
-			else
-				conentnodes[lockent]:SetIcon("icon16/brick_link.png")
+		for i = 1, count do
+			lockent = net.ReadEntity()
+
+			if conentnodes[lockent] then
+				conentnodes[lockent].Locked = lock
+				if lock then
+					conentnodes[lockent]:SetIcon("icon16/lock.png")
+				else
+					conentnodes[lockent]:SetIcon("icon16/brick_link.png")
+				end
 			end
 		end
 	end,
