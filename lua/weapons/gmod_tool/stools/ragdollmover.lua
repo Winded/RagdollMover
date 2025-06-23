@@ -642,21 +642,11 @@ local function rgmSetLocks(plTable, entity, data)
 	plTable.rgmEntLocks = plTable.rgmEntLocks or {}
 
 	-- TODO: Figure out mechanism for cleaning up multiple entities for multiplayer
-	if entity.rgmPRidtoent then
-		for id, ent in pairs(entity.rgmPRidtoent) do
-			plTable.rgmPosLocks[ent] = plTable.rgmPosLocks[ent] or ((entity == ent) and data.rgmPosLocks) or {}
-			plTable.rgmAngLocks[ent] = plTable.rgmAngLocks[ent] or  ((entity == ent) and data.rgmAngLocks) or {}
-			plTable.rgmScaleLocks[ent] = plTable.rgmScaleLocks[ent] or  ((entity == ent) and data.rgmScaleLocks) or {}
-			plTable.rgmBoneLocks[ent] = plTable.rgmBoneLocks[ent] or  ((entity == ent) and data.rgmBoneLocks) or {}
-			plTable.rgmEntLocks[ent] = plTable.rgmEntLocks[ent] or  ((entity == ent) and data.rgmEntLocks) or {}
-		end
-	else  
-		plTable.rgmPosLocks[entity] = plTable.rgmPosLocks[entity] or data.rgmPosLocks or {}
-		plTable.rgmAngLocks[entity] = plTable.rgmAngLocks[entity] or data.rgmAngLocks or {}
-		plTable.rgmScaleLocks[entity] = plTable.rgmScaleLocks[entity] or data.rgmScaleLocks or {}
-		plTable.rgmBoneLocks[entity] = plTable.rgmBoneLocks[entity] or data.rgmBoneLocks or {}
-		plTable.rgmEntLocks[entity] = plTable.rgmEntLocks[entity] or data.rgmEntLocks or {}
-	end
+	plTable.rgmPosLocks[entity] = plTable.rgmPosLocks[entity] or data.rgmPosLocks or {}
+	plTable.rgmAngLocks[entity] = plTable.rgmAngLocks[entity] or data.rgmAngLocks or {}
+	plTable.rgmScaleLocks[entity] = plTable.rgmScaleLocks[entity] or data.rgmScaleLocks or {}
+	plTable.rgmBoneLocks[entity] = plTable.rgmBoneLocks[entity] or data.rgmBoneLocks or {}
+	plTable.rgmEntLocks[entity] = plTable.rgmEntLocks[entity] or data.rgmEntLocks or {}
 
 	entity:CallOnRemove("rgmRemoveLocks", function(ent)
 		plTable.rgmPosLocks[ent] = nil
@@ -720,29 +710,19 @@ local function guessEntFromPoseId(desiredposeid, poseid)
 end
 
 -- Duping will point to another entity, instead of their own.
-local function deserializeConstraints(entLockData, entity)
+local function deserializeConstraints(entLockData, entity, newEnts)
 	local newLockData = {}
-	local found = {}
-	local poseids = {}
-	local children = rgmGetConstrainedEntities(entity)
-	for _, child in ipairs(children) do
-		poseids[child] = getPoseId(child, entity)
-	end
 
-	for _, lockinfo in pairs(entLockData) do
-		if not lockinfo.poseid then continue end
-
-		-- This approximates the position of constrained entities wrt the entity
-		for _, child in ipairs(children) do
-			if found[child] then continue end
-			local poseid = poseids[child]
-			if guessEntFromPoseId(lockinfo.poseid, poseid) then
-				newLockData[child] = {id = lockinfo.id, ent = entity, poseid = poseid}
-				found[child] = true
-				break
-			end
+	if not newEnts then
+		for lockent, lockinfo in pairs(entLockData) do
+			newLockData[Entity(lockent)] = {id = lockinfo.id, ent = Entity(lockinfo.ent), poseid = lockinfo.poseid}
+		end
+	else
+		for lockent, lockinfo in pairs(entLockData) do
+			newLockData[newEnts[lockent]] = {id = lockinfo.id, ent = newEnts[lockinfo.ent], poseid = lockinfo.poseid}
 		end
 	end
+
 	return newLockData
 end
 
@@ -755,7 +735,9 @@ end
 local function serializeConstraints(entLockData)
 	local newLockData = {}
 	for lockent, lockinfo in pairs(entLockData) do
-		newLockData[lockent:EntIndex()] = lockinfo
+		local index = lockent:EntIndex()
+		newLockData[index] = table.Copy(lockinfo)
+		newLockData[index].ent = newLockData[index].ent:EntIndex()
 	end
 	return newLockData
 end
@@ -784,17 +766,35 @@ local function rgmDupeLocks(pl, ent, data, fromtool)
 	-- Duplicator only looks for first three parameters, so deserializing
 	-- happens for dupes only
 	if not fromtool then
-		timer.Simple(0, function()
+		local rgmOldPostEntityPaste = ent.PostEntityPaste
+
+		ent.PostEntityPaste = function(self, pl, ent, crtEnts)
+			if rgmOldPostEntityPaste then
+				rgmOldPostEntityPaste(ent, pl, ent, crtEnts)
+			end
+
 			deserializePhysBones(data.rgmPosLocks, ent)
 			deserializePhysBones(data.rgmAngLocks, ent)
 			deserializeLockTo(data.rgmBoneLocks, ent)
-			data.rgmEntLocks = deserializeConstraints(data.rgmEntLocks, ent)
+			data.rgmEntLocks = deserializeConstraints(data.rgmEntLocks, ent, crtEnts)
 			rgmSetLocks(RAGDOLLMOVER[pl], ent, data)
-		end)
-	end
 
-	duplicator.ClearEntityModifier(ent, RGM_LOCKS_DUPE_KEY)
-	duplicator.StoreEntityModifier(ent, RGM_LOCKS_DUPE_KEY, data)
+			duplicator.ClearEntityModifier(ent, RGM_LOCKS_DUPE_KEY)
+			duplicator.StoreEntityModifier(ent, RGM_LOCKS_DUPE_KEY, data)
+		end
+	else
+		duplicator.ClearEntityModifier(ent, RGM_LOCKS_DUPE_KEY)
+		duplicator.StoreEntityModifier(ent, RGM_LOCKS_DUPE_KEY, data)
+	end
+end
+
+local function rgmDeserializeLocks(pl, ent, data)
+	data = table.Copy(data)
+	deserializePhysBones(data.rgmPosLocks, ent)
+	deserializePhysBones(data.rgmAngLocks, ent)
+	deserializeLockTo(data.rgmBoneLocks, ent)
+	data.rgmEntLocks = deserializeConstraints(data.rgmEntLocks, ent)
+	rgmSetLocks(RAGDOLLMOVER[pl], ent, data)
 end
 
 -- Despite existing in the shared realm, this function is only defined in the server
@@ -928,22 +928,6 @@ function resetLocksCommand(pl, allLocks)
 			end
 		end
 	net.Send(pl)
-
-	for ent, lockeddata in pairs(plTable.rgmEntLocks[entity]) do
-		if not lockeddata then continue end
-		local lockents = {}
-		for lockent, lockentinfo in pairs(lockeddata) do
-			table.insert(lockents, lockent)
-		end
-
-		NetStarter.rgmLockConstrainedResponse()
-			net.WriteBool(false)
-			net.WriteUInt(#lockents, 14)
-			for _, lockent in ipairs(lockents) do
-				net.WriteEntity(lockent)
-			end
-		net.Send(pl)
-	end
 end
 
 local function RecursiveFindIfParent(ent, lockbone, locktobone)
@@ -2412,9 +2396,18 @@ function TOOL:LeftClick()
 			plTable.PropRagdoll = entity.rgmPRidtoent and true or false
 
 			rgmUpdateLists(pl, entity, children, physchildren)
-			local data = getDupeData(plTable, entity)
-			rgmDupeLocks(pl, entity, data, true)
-			rgmSetLocks(RAGDOLLMOVER[pl], entity, data)
+
+			if plTable.PropRagdoll then
+				for prent, id in pairs(entity.rgmPRenttoid) do
+					local data = getDupeData(plTable, prent)
+					rgmDupeLocks(pl, prent, data, true)
+					rgmDeserializeLocks(pl, prent, data)
+				end
+			else
+				local data = getDupeData(plTable, entity)
+				rgmDupeLocks(pl, entity, data, true)
+				rgmDeserializeLocks(pl, entity, data)
+			end
 	
 		end
 

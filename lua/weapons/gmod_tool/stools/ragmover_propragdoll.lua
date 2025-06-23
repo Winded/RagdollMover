@@ -67,11 +67,11 @@ duplicator.RegisterEntityModifier("Ragdoll Mover Prop Ragdoll", function(pl, ent
 	ent.rgmPRoffset = data.offset
 	ent.rgmPRaoffset = data.aoffset -- a stands for angle
 
-	ent.rgmOldPostEntityPaste = ent.PostEntityPaste
+	local rgmOldPostEntityPaste = ent.PostEntityPaste
 
 	ent.PostEntityPaste = function(self, pl, ent, crtEnts)
-		if ent.rgmOldPostEntityPaste then
-			ent:rgmOldPostEntityPaste(pl, ent, crtEnts)
+		if rgmOldPostEntityPaste then
+			rgmOldPostEntityPaste(ent, pl, ent, crtEnts)
 		end
 
 		if not ent.rgmPRenttoid or not ent.rgmPRidtoent then return end
