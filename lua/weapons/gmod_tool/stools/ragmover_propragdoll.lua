@@ -10,7 +10,7 @@ local APPLY_FAILED = 3
 local APPLY_FAILED_LIMIT = 4
 local PROPRAGDOLL_CLEARED = 5
 
-local function ClearPropRagdoll(ent)
+local function ClearPropRagdoll(ent, keepmodifier)
 	if SERVER then
 		for id, pl in ipairs(player.GetAll()) do
 			if RAGDOLLMOVER[pl] and RAGDOLLMOVER[pl].Entity == ent then
@@ -27,12 +27,10 @@ local function ClearPropRagdoll(ent)
 	ent.rgmPRparent = nil
 	ent.rgmPRoffset = nil
 	ent.rgmIKChains = nil
-	if ent.rgmOldPostEntityPaste then
-		ent.PostEntityPaste = ent.rgmOldPostEntityPaste
-		ent.rgmOldPostEntityPaste = nil
-	end
 
-	duplicator.ClearEntityModifier(ent, "Ragdoll Mover Prop Ragdoll")
+	if not keepmodifier then
+		duplicator.ClearEntityModifier(ent, "Ragdoll Mover Prop Ragdoll")
+	end
 end
 
 local function rgmCanTool(ent, pl)
@@ -59,8 +57,7 @@ if SERVER then
 
 util.AddNetworkString("RAGDOLLMOVER_PROPRAGDOLL")
 
-duplicator.RegisterEntityModifier("Ragdoll Mover Prop Ragdoll", function(pl, ent, data)
-
+local function ApplyPropRagdoll(pl, ent, data)
 	ent.rgmPRenttoid = table.Copy(data.enttoid)
 	ent.rgmPRidtoent = table.Copy(data.idtoent)
 	ent.rgmPRparent = data.parent
@@ -100,23 +97,29 @@ duplicator.RegisterEntityModifier("Ragdoll Mover Prop Ragdoll", function(pl, ent
 		duplicator.StoreEntityModifier(ent, "Ragdoll Mover Prop Ragdoll", newdata)
 
 		if table.Count(ent.rgmPRenttoid) > CVMaxPRBones:GetInt() then
+			ent.PostEntityPaste = rgmOldPostEntityPaste
+			rgmOldPostEntityPaste = nil
 			ClearPropRagdoll(ent)
 		else
 			for e, id in pairs(ent.rgmPRenttoid) do
 				if type(e) ~= "Entity" or (type(e) == "Entity" and not IsValid(e)) then -- if some of those entities don't exist, then we gotta dissolve the "ragdoll"
+					ent.PostEntityPaste = rgmOldPostEntityPaste
+					rgmOldPostEntityPaste = nil
 					ClearPropRagdoll(ent)
 					break
 				end
 			end
 		end
 	end
-end)
+end
+
+duplicator.RegisterEntityModifier("Ragdoll Mover Prop Ragdoll", ApplyPropRagdoll)
 
 hook.Add("EntityRemoved", "rgmPropRagdollEntRemoved", function(ent)
 	if ent.rgmPRidtoent then
 		for id, ent in pairs(ent.rgmPRidtoent) do
 			if not IsValid(ent) then continue end
-			ClearPropRagdoll(ent)
+			ClearPropRagdoll(ent, true)
 		end
 	end
 end)
