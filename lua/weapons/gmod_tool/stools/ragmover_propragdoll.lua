@@ -13,11 +13,24 @@ local PROPRAGDOLL_CLEARED = 5
 local function ClearPropRagdoll(ent, keepmodifier)
 	if SERVER then
 		for id, pl in ipairs(player.GetAll()) do
-			if RAGDOLLMOVER[pl] and RAGDOLLMOVER[pl].Entity == ent then
-				RAGDOLLMOVER[pl].Entity = nil
-				net.Start("RAGDOLLMOVER")
-					net.WriteUInt(0, 4)
-				net.Send(pl)
+			plTable = RAGDOLLMOVER[pl]
+			if plTable then
+				if plTable.Entity == ent then
+					plTable.Entity = nil
+					net.Start("RAGDOLLMOVER")
+						net.WriteUInt(0, 4)
+					net.Send(pl)
+				end
+
+				plTable.rgmPosLocks[ent] = {}
+				plTable.rgmAngLocks[ent] = {}
+				plTable.rgmScaleLocks[ent] = {}
+				plTable.rgmBoneLocks[ent] = {}
+				if plTable.rgmEntLocks[ent] and next(plTable.rgmEntLocks[ent]) then
+					for lckent, locktable in pairs(plTable.rgmEntLocks[ent]) do
+						locktable.id = 0
+					end
+				end
 			end
 		end
 	end

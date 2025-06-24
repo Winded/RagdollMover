@@ -688,25 +688,16 @@ end
 
 -- Duping will point to another entity's physbones, instead of their own
 local function deserializePhysBones(poseData, ent)
-	for physbone, _ in pairs(poseData) do
-		poseData[physbone] = ent:GetPhysicsObjectNum(physbone)
+	if ent.rgmPRenttoid then
+		for physbone, _ in pairs(poseData) do
+			if ent.rgmPRenttoid[ent] ~= physbone then continue end
+			poseData[physbone] = ent:GetPhysicsObjectNum(0)
+		end
+	else
+		for physbone, _ in pairs(poseData) do
+			poseData[physbone] = ent:GetPhysicsObjectNum(physbone)
+		end
 	end
-end
-
--- Generate a pose id of the `ent` with respect to the `parent`
--- The pose id is a key that represents the pose of a constrained entity
--- with respect to its parent. We use this to preserve constraint locks
-local function getPoseId(ent, parent)
-	local cm = ent:GetBoneMatrix(0)
-	local pm = parent:GetBoneMatrix(0)
-	local pos, ang = WorldToLocal(cm:GetTranslation(), cm:GetAngles(), pm:GetTranslation(), pm:GetAngles())
-	ang:Normalize()
-	return pos[1] + pos[2] + pos[3] + ang[1] + ang[2] + ang[3]
-end
-
--- Check if the poseid for an `ent` and `parent` matches the `desiredposeid`
-local function guessEntFromPoseId(desiredposeid, poseid)
-	return math.IsNearlyEqual(desiredposeid, poseid, 1e-3)
 end
 
 -- Duping will point to another entity, instead of their own.
@@ -715,11 +706,11 @@ local function deserializeConstraints(entLockData, entity, newEnts)
 
 	if not newEnts then
 		for lockent, lockinfo in pairs(entLockData) do
-			newLockData[Entity(lockent)] = {id = lockinfo.id, ent = Entity(lockinfo.ent), poseid = lockinfo.poseid}
+			newLockData[Entity(lockent)] = {id = lockinfo.id, ent = Entity(lockinfo.ent)}
 		end
 	else
 		for lockent, lockinfo in pairs(entLockData) do
-			newLockData[newEnts[lockent]] = {id = lockinfo.id, ent = newEnts[lockinfo.ent], poseid = lockinfo.poseid}
+			newLockData[newEnts[lockent]] = {id = lockinfo.id, ent = newEnts[lockinfo.ent]}
 		end
 	end
 
@@ -1339,7 +1330,7 @@ local NETFUNC = {
 			end
 		end
 
-		plTable.rgmEntLocks[ent][lockent] = {id = physbone, ent = ent, poseid = getPoseId(lockent, ent)}
+		plTable.rgmEntLocks[ent][lockent] = {id = physbone, ent = ent}
 		rgmDupeLocks(pl, ent, getDupeData(plTable, ent), true)
 
 		NetStarter.rgmLockConstrainedResponse()
@@ -2187,9 +2178,6 @@ function TOOL:Holster()
 		local plTable = RAGDOLLMOVER[pl]
 
 		for ent, lockeddata in pairs(plTable.rgmEntLocks) do
-			for lockent, lockinfo in pairs(lockeddata) do
-				lockinfo.poseid = getPoseId(lockent, ent)
-			end
 			rgmDupeLocks(pl, ent, getDupeData(plTable, ent), true)
 		end
 	end
@@ -2555,9 +2543,6 @@ if SERVER then
 			end
 
 			for ent, lockeddata in pairs(plTable.rgmEntLocks) do
-				for lockent, lockinfo in pairs(lockeddata) do
-					lockinfo.poseid = getPoseId(lockent, ent)
-				end
 				rgmDupeLocks(pl, ent, getDupeData(plTable, ent), true)
 			end
 
