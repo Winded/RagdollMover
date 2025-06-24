@@ -579,7 +579,7 @@ local function rgmUpdateLists(pl, ent, children, physchildren)
 			local rgment = plTable.Entity
 			local count = #rgment.rgmPRidtoent + 1
 
-			net.WriteUInt(count, 13) -- technically entity limit is 4096, but doubtful single prop ragdoll would reach that, but still...
+			net.WriteUInt(count, 13) -- technically entity limit is 4096 (8192 now?), but doubtful single prop ragdoll would reach that, but still...
 
 			for id, entp in pairs(rgment.rgmPRidtoent) do
 				net.WriteEntity(entp)
@@ -903,16 +903,32 @@ function resetLocksCommand(pl, allLocks)
 		for _, ent in ipairs(sendents) do
 			net.WriteEntity(ent)
 
-			local count = ent:GetPhysicsObjectCount() - 1
-			net.WriteUInt(count, 8)
-			for i = 0, count do
-				local bone = ent:TranslatePhysBoneToBone(i)
-				if bone == -1 then bone = 0 end
-				local poslock = plTable.rgmPosLocks[ent] and plTable.rgmPosLocks[ent][i] or nil
-				local anglock = plTable.rgmAngLocks[ent] and plTable.rgmAngLocks[ent][i] or nil
-				local bonelock = plTable.rgmBoneLocks[ent] and plTable.rgmBoneLocks[ent][i] or nil
 
-				net.WriteUInt(bone, 8)
+			if not plTable.PropRagdoll then
+				local count = ent:GetPhysicsObjectCount() - 1
+				net.WriteUInt(count, 8)
+				for i = 0, count do
+					local bone = ent:TranslatePhysBoneToBone(i)
+					if bone == -1 then bone = 0 end
+					local poslock = plTable.rgmPosLocks[ent] and plTable.rgmPosLocks[ent][i] or nil
+					local anglock = plTable.rgmAngLocks[ent] and plTable.rgmAngLocks[ent][i] or nil
+					local bonelock = plTable.rgmBoneLocks[ent] and plTable.rgmBoneLocks[ent][i] or nil
+
+					net.WriteUInt(bone, 8)
+					net.WriteBool(poslock ~= nil)
+					net.WriteBool(anglock ~= nil)
+					net.WriteBool(bonelock ~= nil)
+				end
+			else
+				net.WriteUInt(0, 8)
+
+				local bone = ent.rgmPRenttoid[ent]
+				if bone == -1 then bone = 0 end
+				local poslock = plTable.rgmPosLocks[ent] and plTable.rgmPosLocks[ent][bone] or nil
+				local anglock = plTable.rgmAngLocks[ent] and plTable.rgmAngLocks[ent][bone] or nil
+				local bonelock = plTable.rgmBoneLocks[ent] and plTable.rgmBoneLocks[ent][bone] or nil
+
+				net.WriteUInt(0, 8)
 				net.WriteBool(poslock ~= nil)
 				net.WriteBool(anglock ~= nil)
 				net.WriteBool(bonelock ~= nil)
@@ -959,6 +975,7 @@ local NETFUNC = {
 	function(len, pl) --			1 - rgmAskForPhysbones
 		local entcount = net.ReadUInt(13)
 		local ents = {}
+		local plTable = RAGDOLLMOVER[pl]
 		local cancel
 
 		for i = 1, entcount do
@@ -984,16 +1001,31 @@ local NETFUNC = {
 			for _, ent in ipairs(sendents) do
 				net.WriteEntity(ent)
 
-				local count = ent:GetPhysicsObjectCount() - 1
-				net.WriteUInt(count, 8)
-				for i = 0, count do
-					local bone = ent:TranslatePhysBoneToBone(i)
-					if bone == -1 then bone = 0 end
-					local poslock = RAGDOLLMOVER[pl].rgmPosLocks[ent] and RAGDOLLMOVER[pl].rgmPosLocks[ent][i] or nil
-					local anglock = RAGDOLLMOVER[pl].rgmAngLocks[ent] and RAGDOLLMOVER[pl].rgmAngLocks[ent][i] or nil
-					local bonelock = RAGDOLLMOVER[pl].rgmBoneLocks[ent] and RAGDOLLMOVER[pl].rgmBoneLocks[ent][i] or nil
+				if not plTable.PropRagdoll then
+					local count = ent:GetPhysicsObjectCount() - 1
+					net.WriteUInt(count, 8)
+					for i = 0, count do
+						local bone = ent:TranslatePhysBoneToBone(i)
+						if bone == -1 then bone = 0 end
+						local poslock = plTable.rgmPosLocks[ent] and plTable.rgmPosLocks[ent][i] or nil
+						local anglock = plTable.rgmAngLocks[ent] and plTable.rgmAngLocks[ent][i] or nil
+						local bonelock = plTable.rgmBoneLocks[ent] and plTable.rgmBoneLocks[ent][i] or nil
 
-					net.WriteUInt(bone, 8)
+						net.WriteUInt(bone, 8)
+						net.WriteBool(poslock ~= nil)
+						net.WriteBool(anglock ~= nil)
+						net.WriteBool(bonelock ~= nil)
+					end
+				else
+					net.WriteUInt(0, 8)
+
+					local bone = ent.rgmPRenttoid[ent]
+					if bone == -1 then bone = 0 end
+					local poslock = plTable.rgmPosLocks[ent] and plTable.rgmPosLocks[ent][bone] or nil
+					local anglock = plTable.rgmAngLocks[ent] and plTable.rgmAngLocks[ent][bone] or nil
+					local bonelock = plTable.rgmBoneLocks[ent] and plTable.rgmBoneLocks[ent][bone] or nil
+
+					net.WriteUInt(0, 8)
 					net.WriteBool(poslock ~= nil)
 					net.WriteBool(anglock ~= nil)
 					net.WriteBool(bonelock ~= nil)
