@@ -28,6 +28,8 @@ local SAVE_SUCCESS = 5
 local SAVE_FAIL = 6
 local LOAD_SUCCESS = 7
 
+local RGM_IK_DUPE_KEY = "Ragdoll Mover IK Dupe Data"
+
 local function PrettifyMDLName(name)
 	local tablething = string.Explode("/", name)
 	name = tablething[#tablething]
@@ -121,6 +123,10 @@ if SERVER then
 
 util.AddNetworkString("RAGDOLLMOVER_IK")
 
+duplicator.RegisterEntityModifier(RGM_IK_DUPE_KEY, function(pl, ent, data)
+	ent.rgmIKChains = data
+end)
+
 local NETFUNC = {
 	function(len, pl) -- 	1 (0) - rgmikRequestSave
 		local tool = pl:GetTool("ragmover_ikchains")
@@ -201,8 +207,11 @@ local NETFUNC = {
 
 			for k, ik in ipairs(iktable) do
 				if ik.hip == 1023 or ik.knee == 1023 or ik.foot == 1023 then continue end
-				table.insert(ent.rgmIKChains, {hip = rgm.BoneToPhysBone(ent, ik.hip), knee = rgm.BoneToPhysBone(ent, ik.knee), foot = rgm.BoneToPhysBone(ent, ik.foot), type = ik.type})
+				ent.rgmIKChains[ik.type] = {hip = rgm.BoneToPhysBone(ent, ik.hip), knee = rgm.BoneToPhysBone(ent, ik.knee), foot = rgm.BoneToPhysBone(ent, ik.foot), type = ik.type}
 			end
+
+			duplicator.ClearEntityModifier(ent, RGM_IK_DUPE_KEY)
+			duplicator.StoreEntityModifier(ent, RGM_IK_DUPE_KEY, table.Copy(ent.rgmIKChains))
 		else
 			if not ent.rgmPRidtoent or not ent:GetClass() == "prop_physics" then return end
 
@@ -210,8 +219,11 @@ local NETFUNC = {
 				ent.rgmIKChains = {}
 
 				for k, ik in ipairs(iktable) do
-					table.insert(ent.rgmIKChains, {hip = ik.hip, knee = ik.knee, foot = ik.foot, type = ik.type})
+					ent.rgmIKChains[ik.type] = {hip = ik.hip, knee = ik.knee, foot = ik.foot, type = ik.type}
 				end
+
+				duplicator.ClearEntityModifier(ent, RGM_IK_DUPE_KEY)
+				duplicator.StoreEntityModifier(ent, RGM_IK_DUPE_KEY, table.Copy(ent.rgmIKChains))
 			end
 		end
 
@@ -267,11 +279,6 @@ function TOOL:LeftClick(tr)
 		end
 
 		if not self.IsPropRagdoll and RecursionBoneFind(self.SelectedHipEnt, tr.PhysicsBone, self.SelectedKnee) and RecursionBoneFind(self.SelectedHipEnt, self.SelectedKnee, self.SelectedHip) then
-			if SERVER then 
-				rgmSendNotif(SUCCESS, self:GetOwner())
-				rgmCallReset(self:GetOwner())
-			end
-
 			if not ent.rgmIKChains then ent.rgmIKChains = {} end
 			local Type = self:GetClientNumber("type", 1)
 			ent.rgmIKChains[Type] = {hip = self.SelectedHip, knee = self.SelectedKnee, foot = tr.PhysicsBone, type = Type}
@@ -281,18 +288,25 @@ function TOOL:LeftClick(tr)
 			self.SelectedHip = nil
 			self.SelectedKneeEnt = nil
 			self.SelectedKnee = nil
-			return true
-		elseif self.IsPropRagdoll and RecursionPropFind(ent, self.SelectedKneeEnt) and RecursionPropFind(self.SelectedKneeEnt, self.SelectedHipEnt) then
-			if SERVER then
+
+			if SERVER then 
 				rgmSendNotif(SUCCESS, self:GetOwner())
 				rgmCallReset(self:GetOwner())
+				duplicator.ClearEntityModifier(ent, RGM_IK_DUPE_KEY)
+				duplicator.StoreEntityModifier(ent, RGM_IK_DUPE_KEY, table.Copy(ent.rgmIKChains))
 			end
 
+			return true
+		elseif self.IsPropRagdoll and RecursionPropFind(ent, self.SelectedKneeEnt) and RecursionPropFind(self.SelectedKneeEnt, self.SelectedHipEnt) then
 			local Type = self:GetClientNumber("type", 1)
 			local IKTable = {hip = ent.rgmPRenttoid[self.SelectedHipEnt], knee = ent.rgmPRenttoid[self.SelectedKneeEnt], foot = ent.rgmPRenttoid[ent], type = Type}
 			for id, ent in pairs(ent.rgmPRidtoent) do
 				if not ent.rgmIKChains then ent.rgmIKChains = {} end
 				ent.rgmIKChains[Type] = IKTable
+				if SERVER then
+					duplicator.ClearEntityModifier(ent, RGM_IK_DUPE_KEY)
+					duplicator.StoreEntityModifier(ent, RGM_IK_DUPE_KEY, table.Copy(ent.rgmIKChains))
+				end
 			end
 
 			self:SetStage(0)
@@ -300,6 +314,12 @@ function TOOL:LeftClick(tr)
 			self.SelectedHip = nil
 			self.SelectedKneeEnt = nil
 			self.SelectedKnee = nil
+
+			if SERVER then
+				rgmSendNotif(SUCCESS, self:GetOwner())
+				rgmCallReset(self:GetOwner())
+			end
+
 			return true
 		else
 			if SERVER then 
@@ -341,9 +361,27 @@ end
 function TOOL:Reload(tr)
 	if self:GetStage() == 0 then
 		local Type = self:GetClientNumber("type", 1)
-		if tr.Entity.rgmIKChains and tr.Entity.rgmIKChains[Type] then
-			if SERVER then rgmSendNotif(CHAIN_CLEARED, self:GetOwner()) end
-			tr.Entity.rgmIKChains[Type] = nil
+		local ent = tr.Entity
+		if ent.rgmIKChains and ent.rgmIKChains[Type] then
+			if SERVER then
+				rgmSendNotif(CHAIN_CLEARED, self:GetOwner())
+			end
+
+			if ent.rgmPRenttoid then
+				for ent, _ in pairs(ent.rgmPRenttoid) do
+					ent.rgmIKChains[Type] = nil
+					if SERVER then
+						duplicator.ClearEntityModifier(ent, RGM_IK_DUPE_KEY)
+						duplicator.StoreEntityModifier(ent, RGM_IK_DUPE_KEY, table.Copy(ent.rgmIKChains))
+					end
+				end
+			else
+				ent.rgmIKChains[Type] = nil
+				if SERVER then
+					duplicator.ClearEntityModifier(ent, RGM_IK_DUPE_KEY)
+					duplicator.StoreEntityModifier(ent, RGM_IK_DUPE_KEY, table.Copy(ent.rgmIKChains))
+				end
+			end
 		end
 		return true
 	else

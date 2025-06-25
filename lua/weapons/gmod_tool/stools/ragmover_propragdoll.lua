@@ -43,6 +43,7 @@ local function ClearPropRagdoll(ent, keepmodifier)
 
 	if not keepmodifier then
 		duplicator.ClearEntityModifier(ent, "Ragdoll Mover Prop Ragdoll")
+		duplicator.ClearEntityModifier(ent, "Ragdoll Mover IK Dupe Data")
 	end
 end
 
