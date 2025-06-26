@@ -403,27 +403,57 @@ function GetOffsetTable(tool, ent, rotate, bonelocks, entlocks)
 
 	end
 
-	for lockent, pb in pairs(entlocks) do -- getting offsets from physical entities that are locked to our bones
-		if pb.ent ~= ent then continue end
+	if not propragdoll then
+		entlocks = entlocks[ent]
+		for lockent, pb in pairs(entlocks) do -- getting offsets from physical entities that are locked to our bones
+			if not RTable[pb.id].locked then
+				RTable[pb.id].locked = {}
+			end
 
-		if not RTable[pb.id].locked then
-			RTable[pb.id].locked = {}
+			local locktable = {}
+
+			for i=0, lockent:GetPhysicsObjectCount() - 1 do
+				local obj1 = lockent:GetPhysicsObjectNum(i)
+				local obj2 = pb.ent:GetPhysicsObjectNum(propragdoll and 0 or pb.id)
+				local pos1, ang1 = obj1:GetPos(), obj1:GetAngles()
+				local pos2, ang2 = obj2:GetPos(), obj2:GetAngles()
+				local pos3, ang3 = WorldToLocal(pos1, ang1, pos2, ang2)
+				local mov = obj1:IsMoveable()
+
+				locktable[i] = {pos = pos3, ang = ang3, moving = mov, parent = -1}
+			end
+
+			RTable[pb.id].locked[lockent] = locktable
 		end
+	else
+		for lent, lockeddata in pairs(entlocks) do
+			boneid = nil
+			for id, data in pairs(RTable) do
+				if lent == data.ent then boneid = id break end
+			end
 
-		local locktable = {}
+			if not boneid then continue end
+			for lockent, pb in pairs(lockeddata) do -- getting offsets from physical entities that are locked to our bones
+				if not RTable[boneid].locked then
+					RTable[boneid].locked = {}
+				end
 
-		for i=0, lockent:GetPhysicsObjectCount() - 1 do
-			local obj1 = lockent:GetPhysicsObjectNum(i)
-			local obj2 = pb.ent:GetPhysicsObjectNum(propragdoll and 0 or pb.id)
-			local pos1, ang1 = obj1:GetPos(), obj1:GetAngles()
-			local pos2, ang2 = obj2:GetPos(), obj2:GetAngles()
-			local pos3, ang3 = WorldToLocal(pos1, ang1, pos2, ang2)
-			local mov = obj1:IsMoveable()
+				local locktable = {}
 
-			locktable[i] = {pos = pos3, ang = ang3, moving = mov, parent = -1}
+				for i=0, lockent:GetPhysicsObjectCount() - 1 do
+					local obj1 = lockent:GetPhysicsObjectNum(i)
+					local obj2 = pb.ent:GetPhysicsObjectNum(propragdoll and 0 or boneid)
+					local pos1, ang1 = obj1:GetPos(), obj1:GetAngles()
+					local pos2, ang2 = obj2:GetPos(), obj2:GetAngles()
+					local pos3, ang3 = WorldToLocal(pos1, ang1, pos2, ang2)
+					local mov = obj1:IsMoveable()
+
+					locktable[i] = {pos = pos3, ang = ang3, moving = mov, parent = -1}
+				end
+
+				RTable[boneid].locked[lockent] = locktable
+			end
 		end
-
-		RTable[pb.id].locked[lockent] = locktable
 	end
 
 	return RTable
@@ -432,6 +462,7 @@ end
 function GetNPOffsetTable(tool, ent, rotate, nphysinfo, nphyschildren, bonelocks, entlocks)
 	local RTable = {}
 	local physcount = ent:GetPhysicsObjectCount() - 1
+	local entlocks = entlocks[ent]
 
 	if not ent.rgmIKChains then
 		CreateDefaultIKs(tool, ent)
@@ -1108,7 +1139,7 @@ hook.Add("OnScreenSizeChanged", "RagdollMoverHUDUpdate", function(_, _, newWidth
 end)
 
 local VERSION_PATH = "rgm/version.txt"
-local RGM_VERSION = "3.1.0"
+local RGM_VERSION = "3.1.1"
 
 -- TODO: Do further testing in multiplayer for cases where the server has a different version of RGM compared to the client
 local function versionMatches(currentVersion, versionPath)
@@ -1139,7 +1170,7 @@ local function showChangelog()
 end
 
 -- When localplayer is valid, check if we should notify the user
-hook.Add("InitPostEntity", "RagdollMoverNotifyOnStart", function()
+hook.Add("rgmInit", "RagdollMoverNotifyOnStart", function()
 	if not versionMatches(RGM_VERSION, VERSION_PATH) then
 		local notice1 = language.GetPhrase("ui.ragdollmover.notice1")
 		local notice2 = language.GetPhrase("ui.ragdollmover.notice2")

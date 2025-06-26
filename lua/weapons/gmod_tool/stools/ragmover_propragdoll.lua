@@ -10,14 +10,27 @@ local APPLY_FAILED = 3
 local APPLY_FAILED_LIMIT = 4
 local PROPRAGDOLL_CLEARED = 5
 
-local function ClearPropRagdoll(ent)
+local function ClearPropRagdoll(ent, keepmodifier)
 	if SERVER then
 		for id, pl in ipairs(player.GetAll()) do
-			if RAGDOLLMOVER[pl] and RAGDOLLMOVER[pl].Entity == ent then
-				RAGDOLLMOVER[pl].Entity = nil
-				net.Start("RAGDOLLMOVER")
-					net.WriteUInt(0, 4)
-				net.Send(pl)
+			plTable = RAGDOLLMOVER[pl]
+			if plTable then
+				if plTable.Entity == ent then
+					plTable.Entity = nil
+					net.Start("RAGDOLLMOVER")
+						net.WriteUInt(0, 4)
+					net.Send(pl)
+				end
+
+				plTable.rgmPosLocks[ent] = {}
+				plTable.rgmAngLocks[ent] = {}
+				plTable.rgmScaleLocks[ent] = {}
+				plTable.rgmBoneLocks[ent] = {}
+				if plTable.rgmEntLocks[ent] and next(plTable.rgmEntLocks[ent]) then
+					for lckent, locktable in pairs(plTable.rgmEntLocks[ent]) do
+						locktable.id = 0
+					end
+				end
 			end
 		end
 	end
@@ -27,12 +40,11 @@ local function ClearPropRagdoll(ent)
 	ent.rgmPRparent = nil
 	ent.rgmPRoffset = nil
 	ent.rgmIKChains = nil
-	if ent.rgmOldPostEntityPaste then
-		ent.PostEntityPaste = ent.rgmOldPostEntityPaste
-		ent.rgmOldPostEntityPaste = nil
-	end
 
-	duplicator.ClearEntityModifier(ent, "Ragdoll Mover Prop Ragdoll")
+	if not keepmodifier then
+		duplicator.ClearEntityModifier(ent, "Ragdoll Mover Prop Ragdoll")
+		duplicator.ClearEntityModifier(ent, "Ragdoll Mover IK Dupe Data")
+	end
 end
 
 local function rgmCanTool(ent, pl)
@@ -59,19 +71,18 @@ if SERVER then
 
 util.AddNetworkString("RAGDOLLMOVER_PROPRAGDOLL")
 
-duplicator.RegisterEntityModifier("Ragdoll Mover Prop Ragdoll", function(pl, ent, data)
-
+local function ApplyPropRagdoll(pl, ent, data)
 	ent.rgmPRenttoid = table.Copy(data.enttoid)
 	ent.rgmPRidtoent = table.Copy(data.idtoent)
 	ent.rgmPRparent = data.parent
 	ent.rgmPRoffset = data.offset
 	ent.rgmPRaoffset = data.aoffset -- a stands for angle
 
-	ent.rgmOldPostEntityPaste = ent.PostEntityPaste
+	local rgmOldPostEntityPaste = ent.PostEntityPaste
 
 	ent.PostEntityPaste = function(self, pl, ent, crtEnts)
-		if ent.rgmOldPostEntityPaste then
-			ent:rgmOldPostEntityPaste(pl, ent, crtEnts)
+		if rgmOldPostEntityPaste then
+			rgmOldPostEntityPaste(ent, pl, ent, crtEnts)
 		end
 
 		if not ent.rgmPRenttoid or not ent.rgmPRidtoent then return end
@@ -100,23 +111,29 @@ duplicator.RegisterEntityModifier("Ragdoll Mover Prop Ragdoll", function(pl, ent
 		duplicator.StoreEntityModifier(ent, "Ragdoll Mover Prop Ragdoll", newdata)
 
 		if table.Count(ent.rgmPRenttoid) > CVMaxPRBones:GetInt() then
+			ent.PostEntityPaste = rgmOldPostEntityPaste
+			rgmOldPostEntityPaste = nil
 			ClearPropRagdoll(ent)
 		else
 			for e, id in pairs(ent.rgmPRenttoid) do
 				if type(e) ~= "Entity" or (type(e) == "Entity" and not IsValid(e)) then -- if some of those entities don't exist, then we gotta dissolve the "ragdoll"
+					ent.PostEntityPaste = rgmOldPostEntityPaste
+					rgmOldPostEntityPaste = nil
 					ClearPropRagdoll(ent)
 					break
 				end
 			end
 		end
 	end
-end)
+end
+
+duplicator.RegisterEntityModifier("Ragdoll Mover Prop Ragdoll", ApplyPropRagdoll)
 
 hook.Add("EntityRemoved", "rgmPropRagdollEntRemoved", function(ent)
 	if ent.rgmPRidtoent then
 		for id, ent in pairs(ent.rgmPRidtoent) do
 			if not IsValid(ent) then continue end
-			ClearPropRagdoll(ent)
+			ClearPropRagdoll(ent, true)
 		end
 	end
 end)
