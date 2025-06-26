@@ -706,7 +706,7 @@ local function deserializeConstraints(entLockData, entity, newEnts)
 
 	if not newEnts then
 		for lockent, lockinfo in pairs(entLockData) do
-			local infoent = lockinfo.ent and newEnts[lockinfo.ent] or entity
+			local infoent = lockinfo.ent and lockinfo.ent or entity
 			newLockData[Entity(lockent)] = {id = lockinfo.id, ent = infoent}
 		end
 	else
