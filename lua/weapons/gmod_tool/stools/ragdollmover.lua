@@ -774,7 +774,15 @@ local function rgmDupeLocks(pl, ent, data, fromtool)
 			deserializePhysBones(data.rgmAngLocks, ent)
 			deserializeLockTo(data.rgmBoneLocks, ent)
 			data.rgmEntLocks = deserializeConstraints(data.rgmEntLocks, ent, crtEnts)
-			rgmSetLocks(RAGDOLLMOVER[pl], ent, data)
+			-- Hack: When loading a save from the main menu RAGDOLLMOVER[pl] does not 
+			-- initialize before InitPostEntity (when PostEntityPaste runs), so we'll 
+			-- wait a bit and then set the locks. Timer creation only happens here, so
+			-- it should be fine to do this
+			timer.Simple(0.1, function()
+				if RAGDOLLMOVER[pl] then
+					rgmSetLocks(RAGDOLLMOVER[pl], ent, data)
+				end
+			end)
 
 			duplicator.ClearEntityModifier(ent, RGM_LOCKS_DUPE_KEY)
 			duplicator.StoreEntityModifier(ent, RGM_LOCKS_DUPE_KEY, data)
