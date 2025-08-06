@@ -712,7 +712,11 @@ local function deserializeConstraints(entLockData, entity, newEnts)
 	else
 		for lockent, lockinfo in pairs(entLockData) do
 			local infoent = lockinfo.ent and newEnts[lockinfo.ent] or entity
-			newLockData[newEnts[lockent]] = {id = lockinfo.id, ent = infoent}
+			local key = lockent
+			if isentity(lockent) and IsValid(lockent) then
+				key = lockent:EntIndex()
+			end
+			newLockData[newEnts[key]] = {id = lockinfo.id, ent = infoent}
 		end
 	end
 
