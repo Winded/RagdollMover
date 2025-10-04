@@ -2845,6 +2845,7 @@ hook.Add("rgmInit", "rgmSetPlayer", function()
 	RAGDOLLMOVER[pl].PlViewEnt = 0
 end)
 
+local NodeFunctions
 local GizmoWidth, SkeletonDraw
 
 -- A singleton to track bone manipulate state, particularly scale. Useful if we want to use
@@ -3212,7 +3213,9 @@ local function CManipSlider(cpanel, text, mode, axis, min, max, dec, textentry)
 	return slider
 end
 local function CManipEntry(cpanel, mode)
-	local entry = vgui.Create("DTextEntry", cpanel, slider1, slider2, slider3)
+	local parent = vgui.Create("Panel", cpanel)
+	parent:SetTall(20)
+	local entry = vgui.Create("DTextEntry", parent)
 	entry:SetValue("0 0 0")
 	entry:SetUpdateOnType(true)
 	entry.OnValueChange = function(self, value)
@@ -3250,9 +3253,33 @@ local function CManipEntry(cpanel, mode)
 		RGMClearOffsets()
 	end
 
+	entry.SetVisible = function(self, state)
+		parent:SetVisible(state)
+	end
+
+	local butt = vgui.Create("DButton", parent)
+	butt:SetText("#tool.ragdollmover.resetmenu")
+
+	butt.DoClick = function()
+		if not RAGDOLLMOVER[pl] or not RAGDOLLMOVER[pl].Entity then return end
+		local ent, id = RAGDOLLMOVER[pl].Entity, RAGDOLLMOVER[pl].Bone
+
+		if not IsValid(ent) then return end
+		if mode == 3 then ClientBoneState:SetBoneScale(id, VECTOR_SCALEDEF) end
+		NodeFunctions[1 + mode](ent, id)
+	end
+
+	parent.PerformLayout = function(self)
+		entry:SetPos(0, 0)
+		entry:SetSize(parent:GetWide() *0.6, 20)
+
+		butt:SetPos(parent:GetWide() *0.6, 0)
+		butt:SetSize(parent:GetWide() *0.4, 20)
+	end
+
 	entry.Sliders = {}
-	cpanel:AddItem(entry)
-	return entry
+	cpanel:AddItem(parent)
+	return entry, butt
 end
 local function CGizmoSlider(cpanel, text, axis, min, max, dec)
 	local slider = vgui.Create("DNumSlider", cpanel)
@@ -3440,6 +3467,15 @@ local function RGMResetAllBones()
 	NetStarter.rgmResetAllBones()
 		net.WriteEntity(RAGDOLLMOVER[pl].Entity)
 	net.SendToServer()
+end
+
+local function RGMResetCurBone()
+	if not RAGDOLLMOVER[pl] or not RAGDOLLMOVER[pl].Entity then return end
+	local ent, id = RAGDOLLMOVER[pl].Entity, RAGDOLLMOVER[pl].Bone
+
+	if not IsValid(ent) then return end
+	ClientBoneState:SetBoneScale(id, VECTOR_SCALEDEF)
+	NodeFunctions[1](ent, id)
 end
 
 local function AddHBar(self) -- There is no horizontal scrollbars in gmod, so I guess we'll override vertical one from GMod - I think this is incorrect now, but I'll keep it
@@ -3791,7 +3827,7 @@ NetStarter = {
 
 }
 
-local NodeFunctions = {
+NodeFunctions = {
 
 	function(ent, id) -- 1 nodeReset
 		ClientBoneState:SetBoneScale(id, VECTOR_SCALEDEF)
@@ -4669,6 +4705,42 @@ local function rgmDoNotification(message)
 	end
 end
 
+local function rgmAddPreciseNonphys(col)
+	-- Position
+		Entry1 = CManipEntry(col, 1)
+		Pos1 = CManipSlider(col, "#tool.ragdollmover.pos1", 1, 1, -300, 300, 2, Entry1) --x
+		Pos2 = CManipSlider(col, "#tool.ragdollmover.pos2", 1, 2, -300, 300, 2, Entry1) --y
+		Pos3 = CManipSlider(col, "#tool.ragdollmover.pos3", 1, 3, -300, 300, 2, Entry1) --z
+		Entry1:SetVisible(false)
+		Pos1:SetVisible(false)
+		Pos2:SetVisible(false)
+		Pos3:SetVisible(false)
+		Entry1.Sliders = {Pos1, Pos2, Pos3}
+		-- Angles
+		Entry2 = CManipEntry(col, 2)
+		Rot1 = CManipSlider(col, "#tool.ragdollmover.rot1", 2, 1, -180, 180, 2, Entry2) --pitch
+		Rot2 = CManipSlider(col, "#tool.ragdollmover.rot2", 2, 2, -180, 180, 2, Entry2) --yaw
+		Rot3 = CManipSlider(col, "#tool.ragdollmover.rot3", 2, 3, -180, 180, 2, Entry2) --roll
+		Entry2:SetVisible(false)
+		Rot1:SetVisible(false)
+		Rot2:SetVisible(false)
+		Rot3:SetVisible(false)
+		Entry2.Sliders = {Rot1, Rot2, Rot3}
+		--Scale
+		Entry3 = CManipEntry(col, 3)
+		Scale1 = CManipSlider(col, "#tool.ragdollmover.scale1", 3, 1, -100, 100, 2, Entry3) --x
+		Scale2 = CManipSlider(col, "#tool.ragdollmover.scale2", 3, 2, -100, 100, 2, Entry3) --y
+		Scale3 = CManipSlider(col, "#tool.ragdollmover.scale3", 3, 3, -100, 100, 2, Entry3) --z
+		Entry3.Sliders = {Scale1, Scale2, Scale3}
+
+		local resetbutt = CButton(col, "#tool.ragdollmover.resetthisbone", RGMResetCurBone)
+		resetbutt.DoRightClick = function()
+			local dmenu = DermaMenu()
+			dmenu:AddOption("#tool.ragdollmover.resetallbones", RGMResetAllBones)
+			dmenu:Open()
+		end
+end
+
 function TOOL.BuildCPanel(CPanel)
 
 	local Col1 = CCol(CPanel, "#tool.ragdollmover.gizmopanel")
@@ -4712,34 +4784,7 @@ function TOOL.BuildCPanel(CPanel)
 	Col4 = CCol(CPanel, "#tool.ragdollmover.bonemanpanel")
 
 		local ColManip = CCol(Col4, "#tool.ragdollmover.bonemanip", true)
-			-- Position
-			Entry1 = CManipEntry(ColManip, 1)
-			Pos1 = CManipSlider(ColManip, "#tool.ragdollmover.pos1", 1, 1, -300, 300, 2, Entry1) --x
-			Pos2 = CManipSlider(ColManip, "#tool.ragdollmover.pos2", 1, 2, -300, 300, 2, Entry1) --y
-			Pos3 = CManipSlider(ColManip, "#tool.ragdollmover.pos3", 1, 3, -300, 300, 2, Entry1) --z
-			Entry1:SetVisible(false)
-			Pos1:SetVisible(false)
-			Pos2:SetVisible(false)
-			Pos3:SetVisible(false)
-			Entry1.Sliders = {Pos1, Pos2, Pos3}
-			-- Angles
-			Entry2 = CManipEntry(ColManip, 2)
-			Rot1 = CManipSlider(ColManip, "#tool.ragdollmover.rot1", 2, 1, -180, 180, 2, Entry2) --pitch
-			Rot2 = CManipSlider(ColManip, "#tool.ragdollmover.rot2", 2, 2, -180, 180, 2, Entry2) --yaw
-			Rot3 = CManipSlider(ColManip, "#tool.ragdollmover.rot3", 2, 3, -180, 180, 2, Entry2) --roll
-			Entry2:SetVisible(false)
-			Rot1:SetVisible(false)
-			Rot2:SetVisible(false)
-			Rot3:SetVisible(false)
-			Entry2.Sliders = {Rot1, Rot2, Rot3}
-			--Scale
-			Entry3 = CManipEntry(ColManip, 3)
-			Scale1 = CManipSlider(ColManip, "#tool.ragdollmover.scale1", 3, 1, -100, 100, 2, Entry3) --x
-			Scale2 = CManipSlider(ColManip, "#tool.ragdollmover.scale2", 3, 2, -100, 100, 2, Entry3) --y
-			Scale3 = CManipSlider(ColManip, "#tool.ragdollmover.scale3", 3, 3, -100, 100, 2, Entry3) --z
-			Entry3.Sliders = {Scale1, Scale2, Scale3}
-
-			CButton(ColManip, "#tool.ragdollmover.resetallbones", RGMResetAllBones)
+			rgmAddPreciseNonphys(ColManip)
 
 		local physmovecheck = CCheckBox(Col4, "#tool.ragdollmover.physmove", "ragdollmover_physmove")
 		physmovecheck:SetToolTip("#tool.ragdollmover.physmovetip")
