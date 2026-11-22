@@ -102,7 +102,7 @@ function RAGDOLLMOVER.Sync(pl, ...)
 		local val = RAGDOLLMOVER[pl][v]
 
 		local Type = string.lower(type(val))
-		if Type == "entity" or Type == "vehicle" then
+		if Type == "entity" or Type == "vehicle" or Type == "npc" or Type == "weapon" then
 			net.WriteUInt(TYPE_ENTITY, 3)
 			net.WriteUInt(val:EntIndex(), MAX_EDICT_BITS)
 		elseif Type == "number" then
@@ -218,6 +218,9 @@ end)
 local pl = LocalPlayer()
 
 hook.Remove("Think", "rgmClientBuffer") -- for hotloading
+-- Register "rgmInit" hook
+hook.Add("rgmInit", "rgmInit", function()
+end)
 
 hook.Add("Think", "rgmMetaCheckIfInit", function()
 	pl = LocalPlayer()

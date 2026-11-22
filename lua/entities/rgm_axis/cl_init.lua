@@ -133,7 +133,8 @@ function ENT:Think()
 	end
 
 	local plviewent = plTable.always_use_pl_view == 1 and pl or (plTable.PlViewEnt ~= 0 and Entity(plTable.PlViewEnt) or pl:GetViewEntity())
-	local pos, poseye = self:GetPos(), plviewent:EyePos()
+	local eyepos = rgm.EyePosAng(pl, plviewent)
+	local pos, poseye = self:GetPos(), eyepos
 
 	local ang = (pos - poseye):Angle()
 	ang = self:WorldToLocalAngles(ang)

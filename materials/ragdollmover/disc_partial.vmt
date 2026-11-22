@@ -1,0 +1,17 @@
+screenspace_general
+{
+    $vertexshader "rgm_disc_vs20"
+	$pixshader "rgm_disc_partial_ps20b"
+
+	$depthtest	1
+	$vertexalpha  	1
+	$vertexcolor  	1
+	$ignorez  		1
+    $cull 0
+	$vertextransform 		1
+
+	$c0_x 1
+	$c0_y 1
+	$c0_z 1
+	$c0_w 1
+}

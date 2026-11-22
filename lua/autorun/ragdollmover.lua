@@ -6,6 +6,14 @@ AddCSLuaFile("ragdollmover/constants.lua")
 include("ragdollmover/rgm_gizmos.lua")
 AddCSLuaFile("ragdollmover/rgm_gizmos.lua")
 
+-- load privileges
+include("ragdollmover/privileges.lua")
+AddCSLuaFile("ragdollmover/privileges.lua")
+
+-- load view
+include("ragdollmover/view.lua")
+AddCSLuaFile("ragdollmover/view.lua")
+
 -- create font for drawing functions that scales with screen size
 local RGMFontSize
 
@@ -67,10 +75,28 @@ end
 
 local VECTOR_ONE = RGM_Constants.VECTOR_ONE
 
+function GetEyePos(pl, viewent)
+	local inViewEnt = pl ~= pl:GetViewEntity()
+	local usePlView = RAGDOLLMOVER[pl] and RAGDOLLMOVER[pl].always_use_pl_view == 1
+	if SERVER then 
+		local viewTable = RAGDOLLMOVER_VIEWS[pl]
+		local inThirdPerson = viewTable and viewTable[#viewTable]
+		return 
+			not usePlView and not inViewEnt and inThirdPerson and viewTable[1] or pl:EyePos(),
+			not usePlView and not inViewEnt and inThirdPerson and viewTable[2] or pl:EyeAngles(),
+			viewTable[3]
+	else
+		return
+			not usePlView and not inViewEnt and MainEyePos() or pl:EyePos(), 
+			not usePlView and not inViewEnt and MainEyeAngles() or pl:EyeAngles(), 
+			vgui.CursorVisible()
+	end
+end
+
 --Receives player eye position and eye angles.
 --If cursor is visible, eye angles are based on cursor position.
 function EyePosAng(pl, viewent)
-	local eyepos = pl:EyePos()
+	local eyepos, eyeang, cursorvisible = GetEyePos(pl)
 	if not viewent then viewent = pl:GetViewEntity() end
 
 	if IsValid(viewent) and viewent ~= pl then
@@ -80,15 +106,18 @@ function EyePosAng(pl, viewent)
 		end
 	end
 	local cursorvec = pl:GetAimVector():Angle()
-	local _, lookAng = WorldToLocal(vector_origin, cursorvec, vector_origin, pl:EyeAngles())
-	-- If the cursor is visible
-	if not lookAng:IsEqualTol(angle_zero, 2) then
-		local cv, ca = WorldToLocal(vector_origin, cursorvec, vector_origin, pl:GetViewEntity():EyeAngles())
-		-- Rotate the cursor vector to the current view entity's eye angles
+	if cursorvisible then
+		local cv, ca = WorldToLocal(vector_origin, cursorvec, vector_origin, viewent:EyeAngles())
+		-- Rotate the cursor vector to the current view entity's eye angles 
 		_, cursorvec = LocalToWorld(cv, ca, vector_origin, viewent:EyeAngles())
 	end
-	--local cursorvec = pl:EyeAngles()
-	return eyepos, cursorvec
+	local lookang = cursorvisible and cursorvec or eyeang
+	if CLIENT then
+		debugoverlay.Line(eyepos, eyepos + lookang:Forward() * 100, 0.2, RGM_Constants.COLOR_RED, true)
+	else
+		debugoverlay.Line(eyepos, eyepos + lookang:Forward() * 100, 0.2, RGM_Constants.COLOR_GREEN, true)
+	end
+	return eyepos, lookang
 end
 
 function AbsVector(vec)
@@ -180,16 +209,64 @@ table.insert(DefaultIK,{
 --Bone Movement library (functions to make ragdoll bones move relatively to their parent bones, or with IK chains)
 -----
 
-function BoneToPhysBone(ent, bone)
-	for i = 0, ent:GetPhysicsObjectCount() - 1 do
-		local b = ent:TranslatePhysBoneToBone(i)
-		if bone == b then return i end
+local staticProps = {}
+local function isStaticProp(entity)
+	local model = entity:GetModel()
+	local result = staticProps[model]
+	if result ~= nil then
+		return result
 	end
-	return nil
+	local modelInfo = util.GetModelInfo(model)
+	result = modelInfo and modelInfo.StaticProp
+	staticProps[model] = result
+
+	return result
 end
 
+local boneToPhysMap = {}
+function BoneToPhysBone(ent, bone)
+	if not bone then return nil end
+	
+	local model = ent:GetModel()
+	if boneToPhysMap[model] and boneToPhysMap[model][bone] then
+		local phys = boneToPhysMap[model][bone]
+		if phys == -1 then
+			return nil
+		else
+			return phys
+		end
+	else
+		boneToPhysMap[model] = boneToPhysMap[model] or {}
+		if isStaticProp(ent) or ent:GetPhysicsObjectCount() == 1 then
+			boneToPhysMap[model][bone] = 0
+			return 0
+		end
+		for i = 0, ent:GetPhysicsObjectCount() - 1 do
+			local b = ent:TranslatePhysBoneToBone(i)
+			if bone == b then
+				boneToPhysMap[model][b] = i
+				return i
+			end
+		end
+		boneToPhysMap[model][bone] = -1
+		return nil
+	end
+end
+
+local physBoneParents = {}
 function GetPhysBoneParent(ent, bone)
 	if not bone then return nil end
+	local model = ent:GetModel()
+	if physBoneParents[model] and physBoneParents[model][bone] then
+		local parent = physBoneParents[model][bone]
+		if parent == -1 then
+			return nil 
+		else
+			return parent
+		end
+	end
+	physBoneParents[model] = physBoneParents[model] or {}
+
 	local b = ent:TranslatePhysBoneToBone(bone)
 	local cont = false
 	local i = 1
@@ -197,6 +274,7 @@ function GetPhysBoneParent(ent, bone)
 		b = ent:GetBoneParent(b)
 		local parent = BoneToPhysBone(ent, b)
 		if parent and parent ~= bone then
+			physBoneParents[model][bone] = parent
 			return parent
 		end
 		i = i + 1
@@ -204,6 +282,7 @@ function GetPhysBoneParent(ent, bone)
 			cont = true
 		end
 	end
+	physBoneParents[model][bone] = -1
 	return nil
 end
 
@@ -631,7 +710,7 @@ function SetOffsets(tool, ent, ostable, sbone, rlocks, plocks, nphysinfo)
 		end
 	end
 
-	if ent.rgmIKChains then
+	if ent.rgmIKChains and ent:GetClass() == "prop_ragdoll" then
 		for k, v in pairs(ent.rgmIKChains) do
 			if tool:GetClientNumber(DefIKnames[v.type]) ~= 0 then
 				if v.ikhipparent then
@@ -1031,6 +1110,163 @@ function IsIKBone(tool, ent, bone)
 	return false
 end
 
+-- Format: {[model]: {offsets from parent bone or origin}}
+local DefaultPhysPoses = {}
+--- {[model]: offset from physics bone to bone}
+local OffsetPose = {}
+
+-- Default pose functions, to help with resetting a physics bone to its default position and rotation with respect to its parent physics bone 
+function GetDefaultPhysPose(entity)
+	local model = entity:GetModel()
+	if DefaultPhysPoses[model] then return DefaultPhysPoses[model], OffsetPose[model] end
+
+	local pose = {}
+	local boneOffset = {}
+	local proportionOffsets = {}
+	local referencePhysPoses = {}
+
+	local referenceRagdoll = ents.Create("prop_ragdoll")
+	referenceRagdoll:SetModel(model)
+	referenceRagdoll:Spawn()
+
+	-- This is not impacted by proportion trick offsets
+	local referenceEntity = ents.Create("prop_dynamic")
+	referenceEntity:SetModel(entity:GetModel())
+	referenceEntity:Spawn()
+
+	-- Reference to proportion offset pass
+	for i = 0, referenceRagdoll:GetPhysicsObjectCount() - 1 do
+		local phys = referenceRagdoll:GetPhysicsObjectNum(i)
+		phys:EnableMotion(false)
+		phys:EnableCollisions(false)
+		phys:EnableGravity(false)
+		phys:Sleep()
+
+		local b = referenceRagdoll:TranslatePhysBoneToBone(i)
+		local m1 = referenceRagdoll:GetBoneMatrix(b)
+		local m2 = referenceEntity:GetBoneMatrix(b)
+		
+		local pos1, ang1 = phys:GetPos(), phys:GetAngles()
+		local pos2, ang2 = referenceEntity:GetBonePosition(b)
+
+		local bPos = m1 and m1:GetTranslation()
+		pos2 = m2 and m2:GetTranslation() or pos2
+
+		local bAng = m1 and m1:GetAngles()
+		ang2 = m2 and m2:GetAngles() or ang2
+
+		local offsetPos, offsetAng = WorldToLocal(pos2, ang2, bPos, bAng)
+		local pos, ang = WorldToLocal(pos1, ang1, pos2, ang2)
+		pos, ang = LocalToWorld(pos, ang, offsetPos, offsetAng)
+
+		proportionOffsets[i] = {pos, ang}
+		local referencePos, referenceAng = LocalToWorld(pos, ang, pos2, ang2)
+		referencePhysPoses[i] = {pos2, ang2}
+	end
+	referenceEntity:Remove()
+
+	for i = 0, referenceRagdoll:GetPhysicsObjectCount() - 1 do
+		local phys = referenceRagdoll:GetPhysicsObjectNum(i)
+
+		local b = referenceRagdoll:TranslatePhysBoneToBone(i)
+		local m = referenceRagdoll:GetBoneMatrix(b)
+
+		local pos, ang = referenceRagdoll:GetBonePosition(b)
+		local bPos, bAng = m and m:GetTranslation() or pos, m and m:GetAngles() or ang
+		if proportionOffsets[i] then
+			bPos, bAng = LocalToWorld(proportionOffsets[i][1], proportionOffsets[i][2], bPos, bAng)
+		end
+		local pos, ang = WorldToLocal(phys:GetPos(), phys:GetAngles(), bPos, bAng)
+		boneOffset[i] = { pos = pos, ang = ang }
+	end
+
+	for i = 0, referenceRagdoll:GetPhysicsObjectCount() - 1 do
+		local referencePose = referencePhysPoses[i]
+		local parent = GetPhysBoneParent(referenceRagdoll, i)
+		local parentPose = parent and referencePhysPoses[parent]
+		local basePos, baseAng
+		if parentPose then
+			basePos, baseAng = parentPose[1], parentPose[2]
+		else
+			basePos, baseAng = referenceRagdoll:GetPos(), referenceRagdoll:GetAngles()
+		end
+		local pos, ang = WorldToLocal(referencePose[1], referencePose[2], basePos, baseAng)
+		pose[i] = {pos = pos, ang = ang, parent = parent}
+	end
+	referenceRagdoll:Remove()
+
+	DefaultPhysPoses[model] = pose
+	OffsetPose[model] = boneOffset
+	return pose, boneOffset
+end
+
+--- Restore physics bones relative to their parent physics bones.
+--- @param ragdoll Entity
+local function parentRelativeUnstretch(ragdoll, bone, offsets)
+	if not IsValid(ragdoll) then
+		return
+	end
+
+	local applied = {}
+	local function applyPhysicsBone(i)
+		if applied[i] then
+			return
+		end
+		applied[i] = true
+
+		local offset = offsets[i]
+		if not offset then
+			return
+		end
+
+		local parent = offset.parent
+		if not parent then
+			return
+		end
+
+		local basePos, baseAng = ragdoll:GetPos(), ragdoll:GetAngles()
+		-- applyPhysicsBone(parent)
+		local parentPhys = ragdoll:GetPhysicsObjectNum(parent)
+		if IsValid(parentPhys) then
+			basePos, baseAng = parentPhys:GetPos(), parentPhys:GetAngles()
+		end
+
+		local phys = ragdoll:GetPhysicsObjectNum(i)
+		if IsValid(phys) then
+			local pos, ang = LocalToWorld(offset.pos, offset.ang, basePos, baseAng)
+			phys:EnableMotion(false)
+			phys:Wake()
+			phys:SetPos(pos)
+		end
+	end
+
+	local p = GetPhysBoneParent(ragdoll, bone)
+	if p then
+		applyPhysicsBone(bone)
+	end
+end
+
+local function relativeUnstretch(ragdoll, bone, offsets)
+	local offset = offsets[bone]
+	local b = ragdoll:TranslatePhysBoneToBone(bone)
+	if GetPhysBoneParent(ragdoll, bone) then
+		local bPos, bAng = ragdoll:GetBonePosition(b)
+		local pos, ang = LocalToWorld(offset.pos, offset.ang, bPos, bAng)
+		local phys = ragdoll:GetPhysicsObjectNum(bone)
+		phys:EnableMotion(false)
+		phys:Wake()
+		phys:SetPos(pos)
+		phys:SetAngles(ang)
+	end
+end
+
+--- @param ragdoll Entity
+--- @param bone integer
+function Unstretch(ragdoll, bone, parentOffsets, offsets)
+	parentRelativeUnstretch(ragdoll, bone, parentOffsets)
+	relativeUnstretch(ragdoll, bone, offsets)
+end
+
 if CLIENT then
 
 local COLOR_RGMGREEN = RGM_Constants.COLOR_GREEN
@@ -1358,8 +1594,11 @@ local FeaturesNPhys = {
 local FeaturesPhys = {
 	{ 1, (language.GetPhrase("tool.ragdollmover.resetmenu") .. " " .. language.GetPhrase("tool.ragdollmover.reset")), 1 }, -- 1
 	{ 5, (language.GetPhrase("tool.ragdollmover.resetmenu") .. " " .. language.GetPhrase("tool.ragdollmover.resetchildren")), 1 }, -- 5
+	{ 2, (language.GetPhrase("tool.ragdollmover.resetmenu") .. " " .. language.GetPhrase("tool.ragdollmover.resetpos")), 1 }, -- 2
 	{ 6, (language.GetPhrase("tool.ragdollmover.resetmenu") .. " " .. language.GetPhrase("tool.ragdollmover.resetposchildren")), 1 }, -- 6
+	{ 3, (language.GetPhrase("tool.ragdollmover.resetmenu") .. " " .. language.GetPhrase("tool.ragdollmover.resetrot")), 1 }, -- 3
 	{ 7, (language.GetPhrase("tool.ragdollmover.resetmenu") .. " " .. language.GetPhrase("tool.ragdollmover.resetrotchildren")), 1 }, -- 7
+	{ 4, (language.GetPhrase("tool.ragdollmover.resetmenu") .. " " .. language.GetPhrase("tool.ragdollmover.resetscale")), 1 }, -- 4
 	{ 8, (language.GetPhrase("tool.ragdollmover.resetmenu") .. " " .. language.GetPhrase("tool.ragdollmover.resetscalechildren")), 1 }, -- 8
 	{ 9, (language.GetPhrase("tool.ragdollmover.scalezero") .. " " .. language.GetPhrase("tool.ragdollmover.bone")), 2 }, -- 9
 	{ 10, (language.GetPhrase("tool.ragdollmover.scalezero") .. " " .. language.GetPhrase("tool.ragdollmover.bonechildren")), 2 }, -- 10
@@ -1617,6 +1856,15 @@ function DrawSkeleton(ent, bonenodes)
 
 end
 
+function DrawXRayEntity(ent)
+	cam.Start3D()
+	cam.IgnoreZ(true)
+	ent:DrawModel()
+	cam.IgnoreZ(false)
+
+	cam.End3D()
+end
+
 hook.Add("PopulateToolMenu", "RagdollMoverUtilities", function(form)
 	spawnmenu.AddToolMenuOption("Utilities", "Ragdoll Mover", "RGM_PatchNotes", "#ui.ragdollmover.notes", "", "", function(form)
 		---@cast form DForm
@@ -1626,4 +1874,8 @@ hook.Add("PopulateToolMenu", "RagdollMoverUtilities", function(form)
 	end)
 end)
 
+end
+
+function CheckPrivilege(pl, privilege)
+	return RAGDOLLMOVER_PRIVILEGES[pl][privilege]
 end

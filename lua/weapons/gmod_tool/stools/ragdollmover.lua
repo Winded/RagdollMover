@@ -21,6 +21,7 @@ TOOL.ClientConVar["drawskeleton"] = 0
 TOOL.ClientConVar["snapenable"] = 0
 TOOL.ClientConVar["snapamount"] = 30
 TOOL.ClientConVar["drawsphere"] = 0
+TOOL.ClientConVar["resetphys"] = 1
 
 TOOL.ClientConVar["ik_leg_L"] = 0
 TOOL.ClientConVar["ik_leg_R"] = 0
@@ -36,6 +37,10 @@ TOOL.ClientConVar["ik_chain_6"] = 0
 TOOL.ClientConVar["unfreeze"] = 0
 TOOL.ClientConVar["always_use_pl_view"] = 0
 TOOL.ClientConVar["updaterate"] = 0.01
+TOOL.ClientConVar["xray"] = 0
+TOOL.ClientConVar["xray_selection"] = 0
+TOOL.ClientConVar["disablebrushfilter"] = 0
+TOOL.ClientConVar["disablemovinggizmo"] = 0
 
 TOOL.ClientConVar["rotatebutton"] = MOUSE_MIDDLE
 TOOL.ClientConVar["scalebutton"] = MOUSE_RIGHT
@@ -60,24 +65,38 @@ local VECTOR_SCALEDEF = RGM_Constants.VECTOR_ONE
 
 local RGM_LOCKS_DUPE_KEY = "Ragdoll Mover Lock Data"
 
+local funcClasses = {
+	["func_door"] = true
+}
+
+local function CheckBrush(ent)
+	return ent:GetBrushPlaneCount() > 0 or funcClasses[ent:GetClass()]
+end
+
 local function rgmGetBone(pl, ent, bone)
 	local plTable = RAGDOLLMOVER[pl]
 	--------------------------------------------------------- yeah this part is from locrotscale
 	local phys, physobj
 	plTable.IsPhysBone = false
+	local isBrush = CheckBrush(ent)
 
 	local count = ent:GetPhysicsObjectCount()
 	local isragdoll = ent:GetClass() == "prop_ragdoll"
 	local physbones = {}
 
-	for i = 0, count - 1 do
-		local b = ent:TranslatePhysBoneToBone(i)
-		if bone == b then
-			phys = i
-			plTable.IsPhysBone = true
+	if isBrush then
+		bone = 0
+	else
+		for i = 0, count - 1 do
+			local b = ent:TranslatePhysBoneToBone(i)
+			if bone == b then
+				phys = i
+				plTable.IsPhysBone = true
+			end
+			physbones[b] = i
 		end
-		physbones[b] = i
 	end
+	plTable.IsBrush = isBrush
 
 	if count == 1 then
 		if not isragdoll and bone == 0 then
@@ -144,6 +163,72 @@ local function rgmCanTool(ent, pl)
 	end
 
 	return cantool
+end
+
+local WORLD_MINS, WORLD_MAXS = VECTOR_SCALEDEF * -16384, VECTOR_SCALEDEF * 16384
+
+local function setPosFromOffset(obj, offsetTable)
+	local p = obj:GetIndex()
+	local walk = offsetTable[p]
+	local pos, ang = walk.pos, walk.ang
+	repeat
+		walk = offsetTable[walk.parent]
+		if walk then
+			pos, ang = LocalToWorld(pos, ang, walk.pos, walk.ang)
+		end
+	until not walk
+	obj:SetPos(pos)
+	obj:SetAngles(ang)
+end
+
+-- Check if the position of the entity is beyond the map limits
+-- if so, 
+local function rgmValidatePosition(obj, offsetTable)
+	local objPos = obj:GetPos()
+	local set = false
+	for i = 1, 3 do
+		local minTest = WORLD_MINS[i]
+		local maxTest = WORLD_MAXS[i]
+		if objPos[i] < minTest then
+			set = true
+			objPos[i] = minTest
+		elseif objPos[i] > maxTest then
+			set = true
+			objPos[i] = maxTest
+		end
+	end
+	if set then
+		if offsetTable then
+			setPosFromOffset(obj, offsetTable)
+		else
+			obj:SetPos(objPos)
+		end
+	end
+end
+
+-- Use a helper SetPos function to both set positions and validate it
+-- To prevent ourselves from moving it beyond the map boundary
+local function rgmSetPos(objOrEntity, pos, plTable)
+	if plTable and plTable.IsBrush and objOrEntity.GetEntity then
+		-- We can only move the entity, not the physobj
+		-- that the brush contains
+		objOrEntity = objOrEntity:GetEntity()
+	end
+	if objOrEntity.SetPos then
+		objOrEntity:SetPos(pos)
+		rgmValidatePosition(objOrEntity, plTable and plTable.rgmOffsetTable)
+	end
+end
+
+local function rgmSetAngles(objOrEntity, ang, plTable)
+	if plTable and plTable.IsBrush and objOrEntity.GetEntity then
+		-- We can only move the entity, not the physobj
+		-- that the brush contains
+		objOrEntity = objOrEntity:GetEntity()
+	end
+	if objOrEntity.SetAngles then
+		objOrEntity:SetAngles(ang)
+	end
 end
 
 local function rgmFindEntityChildren(parent)
@@ -286,7 +371,7 @@ local function rgmDoScale(pl, ent, axis, childbones, bone, sc, prevscale, physmo
 							local obj = ent:GetPhysicsObjectNum(plTable.GizmoParentID)
 							obj:EnableMotion(true)
 							obj:Wake()
-							obj:SetPos(obj:GetPos() + newpos)
+							rgmSetPos(obj, obj:GetPos() + newpos)
 							obj:EnableMotion(false)
 							obj:Wake()
 
@@ -519,7 +604,7 @@ local function rgmDoScale(pl, ent, axis, childbones, bone, sc, prevscale, physmo
 
 				obj:EnableMotion(true)
 				obj:Wake()
-				obj:SetPos(postable[i].pos)
+				rgmSetPos(obj, postable[i].pos)
 				obj:SetAngles(postable[i].ang)
 				obj:EnableMotion(false)
 				obj:Wake()
@@ -533,8 +618,8 @@ local function rgmDoScale(pl, ent, axis, childbones, bone, sc, prevscale, physmo
 
 							obj:EnableMotion(true)
 							obj:Wake()
-							obj:SetPos(bones[j].pos)
-							obj:SetAngles(bones[j].ang)
+							rgmSetPos(obj, bones[j].pos, plTable)
+							rgmSetAngles(obj, bones[j].ang, plTable)
 							obj:EnableMotion(false)
 							obj:Wake()
 						end
@@ -716,7 +801,9 @@ local function deserializeConstraints(entLockData, entity, newEnts)
 			if isentity(lockent) and IsValid(lockent) then
 				key = lockent:EntIndex()
 			end
-			newLockData[newEnts[key]] = {id = lockinfo.id, ent = infoent}
+			if newEnts[key] then
+				newLockData[newEnts[key]] = {id = lockinfo.id, ent = infoent}
+			end
 		end
 	end
 
@@ -984,6 +1071,35 @@ local function RecursiveBoneFunc(bone, ent, func)
 	end
 end
 
+local function UnlockBone(pl, ent, unlockbone)
+	local bone = rgm.BoneToPhysBone(ent, unlockbone)
+
+	if ent.rgmPRenttoid then
+		bone = ent.rgmPRenttoid[ent]
+	end
+	local plTable = RAGDOLLMOVER[pl]
+
+	plTable.rgmBoneLocks[ent][bone] = nil
+	rgmDupeLocks(pl, ent, getDupeData(plTable, ent), true)
+
+	NetStarter.rgmUnlockToBoneResponse()
+		net.WriteEntity(ent)
+		net.WriteUInt(unlockbone, 10)
+	net.Send(pl)
+end
+
+local function UnlockEntity(pl, ent, unlockent) -- assume entity validity checks were done before calling this
+	local plTable = RAGDOLLMOVER[pl]
+
+	plTable.rgmEntLocks[ent][unlockent] = nil
+	rgmDupeLocks(pl, ent, getDupeData(plTable, ent), true)
+
+	NetStarter.rgmLockConstrainedResponse()
+		net.WriteBool(false)
+		net.WriteUInt(1, 14)
+		net.WriteEntity(unlockent)
+	net.Send(pl)
+end
 
 local NETFUNC = {
 	function(len, pl) --			1 - rgmAskForPhysbones
@@ -1020,7 +1136,7 @@ local NETFUNC = {
 					net.WriteUInt(count, 8)
 					for i = 0, count do
 						local bone = ent:TranslatePhysBoneToBone(i)
-						if bone == -1 then bone = 0 end
+						if not bone or bone == -1 then bone = 0 end
 						local poslock = plTable.rgmPosLocks[ent] and plTable.rgmPosLocks[ent][i] or nil
 						local anglock = plTable.rgmAngLocks[ent] and plTable.rgmAngLocks[ent][i] or nil
 						local bonelock = plTable.rgmBoneLocks[ent] and plTable.rgmBoneLocks[ent][i] or nil
@@ -1179,6 +1295,8 @@ local NETFUNC = {
 			boneid = physbone
 		elseif ent.rgmPRenttoid then
 			boneid = ent.rgmPRenttoid[ent]
+		else
+			boneid = 0
 		end
 
 		local plTable = RAGDOLLMOVER[pl]
@@ -1322,22 +1440,10 @@ local NETFUNC = {
 	function(len, pl) --				8 - rgmUnlockToBone
 		local ent = net.ReadEntity()
 		local unlockbone = net.ReadUInt(10)
-		local bone = rgm.BoneToPhysBone(ent, unlockbone)
 
 		if not rgmCanTool(ent, pl) then return end
 
-		if ent.rgmPRenttoid then
-			bone = ent.rgmPRenttoid[ent]
-		end
-		local plTable = RAGDOLLMOVER[pl]
-
-		plTable.rgmBoneLocks[ent][bone] = nil
-		rgmDupeLocks(pl, ent, getDupeData(plTable, ent), true)
-
-		NetStarter.rgmUnlockToBoneResponse()
-			net.WriteEntity(ent)
-			net.WriteUInt(unlockbone, 10)
-		net.Send(pl)
+		UnlockBone(pl, ent, unlockbone)
 	end,
 
 	function(len, pl) --			9 - rgmLockConstrained
@@ -1395,16 +1501,7 @@ local NETFUNC = {
 
 		if not IsValid(lockent) then return end
 		if not rgmCanTool(lockent, pl) then return end
-		local plTable = RAGDOLLMOVER[pl]
-
-		plTable.rgmEntLocks[ent][lockent] = nil
-		rgmDupeLocks(pl, ent, getDupeData(plTable, ent), true)
-
-		NetStarter.rgmLockConstrainedResponse()
-			net.WriteBool(false)
-			net.WriteUInt(1, 14)
-			net.WriteEntity(lockent)
-		net.Send(pl)
+		UnlockEntity(pl, ent, lockent)
 	end,
 
 	function(len, pl) --				11 - rgmSelectEntity
@@ -1496,9 +1593,10 @@ local NETFUNC = {
 		end
 
 		local physbones = {}
-
-		for i = 0, ent:GetPhysicsObjectCount() - 1 do
-			physbones[ent:TranslatePhysBoneToBone(i)] = i
+		if not plTable.IsBrush then
+			for i = 0, ent:GetPhysicsObjectCount() - 1 do
+				physbones[ent:TranslatePhysBoneToBone(i)] = i
+			end
 		end
 
 		local function FindPhysParentRecursive(ent, bone, physbones)
@@ -1660,8 +1758,37 @@ local NETFUNC = {
 		if not IsValid(ent) then return end
 		if not rgmCanTool(ent, pl) then return end
 
-		if children then
-			RecursiveBoneFunc(bone, ent, function(bon)
+		local posLocks = (RAGDOLLMOVER[pl] and RAGDOLLMOVER[pl].rgmPosLocks and RAGDOLLMOVER[pl].rgmPosLocks[ent]) or {}
+		local angLocks = (RAGDOLLMOVER[pl] and RAGDOLLMOVER[pl].rgmPosLocks and RAGDOLLMOVER[pl].rgmAngLocks[ent]) or {}
+		local resetPhys = tobool(pl:GetInfo("ragdollmover_resetphys"))
+
+		local parentOffset, boneOffset = rgm.GetDefaultPhysPose(ent)
+		local function resetAll(bon)
+			local p = rgm.BoneToPhysBone(ent, bon)
+			if resetPhys and p and (not posLocks[p] or not angLocks[p]) then
+				local defaultOffset = parentOffset[p]
+				local po = ent:GetPhysicsObjectNum(p)
+				local ppos, pang
+				if defaultOffset.parent then
+					local ppo = ent:GetPhysicsObjectNum(defaultOffset.parent)
+					ppos, pang = ppo:GetPos(), ppo:GetAngles()
+				else
+					ppos, pang = ent:GetPos(), ent:GetAngles()
+				end
+
+				rgm.Unstretch(ent, p, parentOffset, boneOffset)
+				local pos, ang = LocalToWorld(defaultOffset.pos, defaultOffset.ang, ppos, pang)
+				po:EnableMotion(true)
+				po:Wake()
+				if not posLocks[p] then
+					rgmSetPos(po, pos)
+				end
+				if not angLocks[p] and rgm.GetPhysBoneParent(ent, p) then
+					po:SetAngles(ang)
+				end
+				po:EnableMotion(false)
+				po:Wake()
+			else
 				local pos, ang, scale = ent:GetManipulateBonePosition(bon), ent:GetManipulateBoneAngles(bon), ent:GetManipulateBoneScale(bon)
 				pos:Set(vector_origin)
 				ang:Set(angle_zero)
@@ -1669,17 +1796,14 @@ local NETFUNC = {
 
 				ent:ManipulateBonePosition(bon, pos)
 				ent:ManipulateBoneAngles(bon, ang)
-				ent:ManipulateBoneScale(bon, scale)
-			end)
-		else
-			local pos, ang, scale = ent:GetManipulateBonePosition(bone), ent:GetManipulateBoneAngles(bone), ent:GetManipulateBoneScale(bone)
-			pos:Set(vector_origin)
-			ang:Set(angle_zero)
-			scale:Set(VECTOR_SCALEDEF)
+			end
+			ent:ManipulateBoneScale(bon, VECTOR_SCALEDEF)
+		end
 
-			ent:ManipulateBonePosition(bone, pos)
-			ent:ManipulateBoneAngles(bone, ang)
-			ent:ManipulateBoneScale(bone, scale)
+		if children then
+			RecursiveBoneFunc(bone, ent, resetAll)
+		else
+			resetAll(bone)
 		end
 
 		NetStarter.rgmUpdateSliders()
@@ -1699,18 +1823,41 @@ local NETFUNC = {
 		if not IsValid(ent) then return end
 		if not rgmCanTool(ent, pl) then return end
 
-		if children then
-			RecursiveBoneFunc(bone, ent, function(bon)
+		local resetPhys = tobool(pl:GetInfo("ragdollmover_resetphys"))
+		local lockTable = (RAGDOLLMOVER[pl] and RAGDOLLMOVER[pl].rgmPosLocks and RAGDOLLMOVER[pl].rgmPosLocks[ent]) or {}
+
+		local parentOffset, boneOffset = rgm.GetDefaultPhysPose(ent)
+		local function resetPos(bon)
+			local p = rgm.BoneToPhysBone(ent, bon)
+			if resetPhys and p and not lockTable[p] then
+				local defaultOffset = parentOffset[p]
+				local po = ent:GetPhysicsObjectNum(p)
+				local ppos, pang
+				if defaultOffset.parent then
+					local ppo = ent:GetPhysicsObjectNum(defaultOffset.parent)
+					ppos, pang = ppo:GetPos(), ppo:GetAngles()
+				else
+					ppos, pang = ent:GetPos(), ent:GetAngles()
+				end
+				rgm.Unstretch(ent, p, parentOffset, boneOffset)
+				local pos, ang = LocalToWorld(defaultOffset.pos, defaultOffset.ang, ppos, pang)
+				po:EnableMotion(true)
+				po:Wake()
+				rgmSetPos(po, pos)
+				po:EnableMotion(false)
+				po:Wake()
+			else
 				local pos = ent:GetManipulateBonePosition(bon)
 				pos:Set(vector_origin)
 
 				ent:ManipulateBonePosition(bon, pos)
-			end)
-		else
-			local pos = ent:GetManipulateBonePosition(bone)
-			pos:Set(vector_origin)
+			end
+		end
 
-			ent:ManipulateBonePosition(bone, pos)
+		if children then
+			RecursiveBoneFunc(bone, ent, resetPos)
+		else
+			resetPos(bone)
 		end
 
 		NetStarter.rgmUpdateSliders()
@@ -1729,18 +1876,42 @@ local NETFUNC = {
 
 		if not rgmCanTool(ent, pl) then return end
 
-		if children then
-			RecursiveBoneFunc(bone, ent, function(bon)
+		local lockTable = (RAGDOLLMOVER[pl] and RAGDOLLMOVER[pl].rgmPosLocks and RAGDOLLMOVER[pl].rgmAngLocks[ent]) or {}
+		local resetPhys = tobool(pl:GetInfo("ragdollmover_resetphys"))
+
+		local parentOffset, boneOffset = rgm.GetDefaultPhysPose(ent)
+		local function resetAng(bon)
+			local p = rgm.BoneToPhysBone(ent, bon)
+			-- Only reset angles if we are a child of a bone, i.e. we're not a root bone
+			-- Same logic applies for `rgmResetAll`
+			if resetPhys and p and not lockTable[p] and rgm.GetPhysBoneParent(ent, p) then
+				local offset = parentOffset[p]
+				local po = ent:GetPhysicsObjectNum(p)
+				local ppos, pang
+				if offset.parent then
+					local ppo = ent:GetPhysicsObjectNum(offset.parent)
+					ppos, pang = ppo:GetPos(), ppo:GetAngles()
+				else
+					ppos, pang = ent:GetPos(), ent:GetAngles()
+				end
+				local _, ang = LocalToWorld(offset.pos, offset.ang, ppos, pang)
+				po:EnableMotion(true)
+				po:Wake()
+				po:SetAngles(ang)
+				po:EnableMotion(false)
+				po:Wake()
+			else
 				local ang = ent:GetManipulateBoneAngles(bon)
 				ang:Set(angle_zero)
 
 				ent:ManipulateBoneAngles(bon, ang)
-			end)
-		else
-			local ang = ent:GetManipulateBoneAngles(bone)
-			ang:Set(angle_zero)
+			end
+		end
 
-			ent:ManipulateBoneAngles(bone, ang)
+		if children then
+			RecursiveBoneFunc(bone, ent, resetAng)
+		else
+			resetAng(bone)
 		end
 
 		NetStarter.rgmUpdateSliders()
@@ -1759,18 +1930,17 @@ local NETFUNC = {
 
 		if not rgmCanTool(ent, pl) then return end
 
-		if children then
-			RecursiveBoneFunc(bone, ent, function(bon)
-				local scale = ent:GetManipulateBoneScale(bon)
-				scale:Set(VECTOR_SCALEDEF)
-
-				ent:ManipulateBoneScale(bon, scale)
-			end)
-		else
-			local scale = ent:GetManipulateBoneScale(bone)
+		local function resetScale(bon)
+			local scale = ent:GetManipulateBoneScale(bon)
 			scale:Set(VECTOR_SCALEDEF)
 
-			ent:ManipulateBoneScale(bone, scale)
+			ent:ManipulateBoneScale(bon, scale)
+		end
+
+		if children then
+			RecursiveBoneFunc(bone, ent, resetScale)
+		else
+			resetScale(bone)
 		end
 
 		NetStarter.rgmUpdateSliders()
@@ -1789,18 +1959,17 @@ local NETFUNC = {
 
 		if not rgmCanTool(ent, pl) then return end
 
-		if children then
-			RecursiveBoneFunc(bone, ent, function(bon)
-				local scale = ent:GetManipulateBoneScale(bon)
-				scale:Set(VECTOR_NEARZERO)
-
-				ent:ManipulateBoneScale(bon, scale)
-			end)
-		else
-			local scale = ent:GetManipulateBoneScale(bone)
+		local function resetScale(bon)
+			local scale = ent:GetManipulateBoneScale(bon)
 			scale:Set(VECTOR_NEARZERO)
 
-			ent:ManipulateBoneScale(bone, scale)
+			ent:ManipulateBoneScale(bon, scale)
+		end
+
+		if children then
+			RecursiveBoneFunc(bone, ent, resetScale)
+		else
+			resetScale(bone)
 		end
 
 		NetStarter.rgmUpdateSliders()
@@ -1935,7 +2104,7 @@ local NETFUNC = {
 
 						obj:EnableMotion(true)
 						obj:Wake()
-						obj:SetPos(postable[i].pos)
+						rgmSetPos(obj, postable[i].pos, plTable)
 						obj:SetAngles(postable[i].ang)
 						obj:EnableMotion(false)
 						obj:Wake()
@@ -1949,8 +2118,8 @@ local NETFUNC = {
 
 									obj:EnableMotion(true)
 									obj:Wake()
-									obj:SetPos(bones[j].pos)
-									obj:SetAngles(bones[j].ang)
+									rgmSetPos(obj, bones[j].pos, plTable)
+									rgmSetAngles(obj, bones[j].ang, plTable)
 									obj:EnableMotion(false)
 									obj:Wake()
 								end
@@ -1991,7 +2160,7 @@ local NETFUNC = {
 
 						obj:EnableMotion(true)
 						obj:Wake()
-						obj:SetPos(postable[i].pos)
+						rgmSetPos(obj, postable[i].pos)
 						obj:SetAngles(postable[i].ang)
 						obj:EnableMotion(false)
 						obj:Wake()
@@ -2005,8 +2174,8 @@ local NETFUNC = {
 
 									obj:EnableMotion(true)
 									obj:Wake()
-									obj:SetPos(bones[j].pos)
-									obj:SetAngles(bones[j].ang)
+									rgmSetPos(obj, bones[j].pos, plTable)
+									rgmSetAngles(obj, bones[j].ang, plTable)
 									obj:EnableMotion(false)
 									obj:Wake()
 								end
@@ -2111,12 +2280,40 @@ end)
 hook.Add("EntityRemoved", "RGMDeselectEntity", function(ent)
 	for id, pl in ipairs(player.GetAll()) do
 		local plTable = RAGDOLLMOVER[pl]
-		if plTable and plTable.Entity == ent  then
-			plTable.Entity = nil
-			plTable.Axis.EntAdvMerged = false
-			NetStarter.rgmDeselectEntity()
-			net.Send(pl)
+		if plTable  then
+			selectent = plTable.Entity
+			if selectent == ent then
+				plTable.Entity = nil
+				plTable.Axis.EntAdvMerged = false
+				NetStarter.rgmDeselectEntity()
+				net.Send(pl)
+			elseif IsValid(selectent) and plTable.rgmEntLocks[selectent][ent] then
+				UnlockEntity(pl, selectent, ent)
+
+				local physchildren = rgmGetConstrainedEntities(selectent)
+				local children = rgmFindEntityChildren(selectent)
+				plTable.PropRagdoll = selectent.rgmPRidtoent and true or false
+
+				rgmUpdateLists(pl, selectent, children, physchildren)
+			end
 		end
+	end
+end)
+
+hook.Add("OnCrazyPhysics", "rgmRecoverEntity", function (ent, physobj)
+	for _, pl in ipairs(player.GetAll()) do
+		local plTable = RAGDOLLMOVER[pl]
+		local selectedent = plTable.Entity
+		if not IsValid(selectedent) or selectedent ~= ent then
+			continue
+		end
+		local dupe = plTable.InitialDupeState
+		if dupe then
+			duplicator.Paste(pl, dupe.Entities, dupe.Constraints)
+		end
+
+		pl:SendLua("notification.AddLegacy('Recovered entity from crazy physics!', NOTIFY_GENERIC, 5)")
+		return
 	end
 end)
 
@@ -2204,6 +2401,11 @@ end, nil, "Reset all locks for every entity")
 
 function TOOL:Deploy()
 	if SERVER then
+		self.rgm_oldOperationState = self:GetOperation()
+		self.rgm_oldStageState = self:GetStage()
+		self:SetOperation(0)
+		self:SetStage(0)
+
 		local pl = self:GetOwner()
 		local plTable = RAGDOLLMOVER[pl]
 		local entity = plTable.Entity
@@ -2221,6 +2423,11 @@ end
 -- KNOWN ISSUE: In Singleplayer, this is not called in CLIENT realm upon death (prediction behavior)
 function TOOL:Holster()
 	if SERVER then
+		if self.rgm_oldOperationState then
+			self:SetOperation(self.rgm_oldOperationState)
+			self:SetStage(self.rgm_oldStageState)
+		end
+
 		local pl = self:GetOwner()
 		local plTable = RAGDOLLMOVER[pl]
 
@@ -2233,8 +2440,32 @@ function TOOL:Holster()
     end
 end
 
+local ValidEntities = {
+	prop_ragdoll = true,
+	prop_physics = true,
+	prop_effect = true
+}
+
 local function EntityFilter(ent, tool)
-	return ent:GetBrushPlaneCount() == 0 and ((ent:GetClass() == "prop_ragdoll" or ent:GetClass() == "prop_physics" or ent:GetClass() == "prop_effect") or (tool:GetClientNumber("disablefilter") ~= 0 and not ent:IsWorld()))
+	local isBrush = CheckBrush(ent)
+	local isEntityFilterDisabled = tool:GetClientNumber("disablefilter") ~= 0
+	local isBrushFilterDisabled = tool:GetClientNumber("disablebrushfilter") ~= 0
+	local canSelectEntity = not isBrush and ((ValidEntities[ent:GetClass()]) or (isEntityFilterDisabled and not ent:IsWorld()))
+	local canSelectBrush = isBrushFilterDisabled and isBrush
+	return canSelectEntity or canSelectBrush
+end
+
+local function CanXRaySelect(tool, pl)
+	if not tool:GetClientBool("xray") then
+		return false
+	end
+	local hasAccess = true
+
+	if not game.SinglePlayer() then
+		hasAccess = rgm.CheckPrivilege(pl, "ragdollmover_xray")
+	end
+
+	return hasAccess
 end
 
 function TOOL:LeftClick()
@@ -2245,9 +2476,12 @@ function TOOL:LeftClick()
 	local op = self:GetOperation()
 	local tr = util.TraceLine({
 		start = eyepos,
-		endpos = eyepos + pl:GetAimVector() * 16384,
-		filter = { pl, pl:GetViewEntity() }
+		endpos = eyepos + eyeang:Forward() * 16384,
+		filter = { pl, pl:GetViewEntity() },
+		ignoreworld = CanXRaySelect(self, pl) and op ~= 1
 	})
+
+	plTable.FirstView = pl:GetViewEntity()
 
 	if op == 1 then
 
@@ -2342,6 +2576,7 @@ function TOOL:LeftClick()
 			_, plTable.rgmOffsetAng = WorldToLocal(apart:GetPos(), pang, apart:GetPos(), grabang)
 		end
 
+		plTable.InitialDupeState = duplicator.Copy(ent)
 		plTable.StartAngle = WorldToLocal(collision.hitpos, angle_zero, apart:GetPos(), apart:GetAngles())
 
 		plTable.NPhysBonePos = ent:GetManipulateBonePosition(plTable.Bone)
@@ -2472,7 +2707,7 @@ function TOOL:RightClick()
 		if SERVER then
 			local tr = util.TraceLine({
 				start = eyepos,
-				endpos = eyepos + pl:GetAimVector() * 16384,
+				endpos = eyepos + eyeang:Forward() * 16384,
 				filter = { pl, pl:GetViewEntity() }
 			})
 
@@ -2564,9 +2799,16 @@ if SERVER then
 	local physmove = plTable.physmove ~= 0
 	local plviewent = plTable.always_use_pl_view == 1 and pl or (plTable.PlViewEnt ~= 0 and Entity(plTable.PlViewEnt) or nil)
 
-	local eyepos, eyeang = rgm.EyePosAng(pl, plviewent)
+	local eyepos, eyeang = rgm.EyePosAng(pl, plTable.FirstView)
 
 	if moving then
+		-- If we're moving anything, but there isn't an entity to move in the first place,
+		-- don't continue the Think function any further
+		if not IsValid(ent) then
+			plTable.Moving = false
+			RAGDOLLMOVER.Sync(pl, "Moving")
+			return
+		end
 		if not pl:KeyDown(IN_ATTACK) or not rgmCanTool(ent, pl) then
 
 			if plTable.IsPhysBone or (physmove and plTable.NextPhysBone) then
@@ -2614,17 +2856,11 @@ if SERVER then
 		local apart = axis[RGMGIZMOS.GizmoTable[plTable.MoveAxis]]
 		local bone = plTable.PhysBone
 
-		if not IsValid(ent) then
-			plTable.Moving = false
-			RAGDOLLMOVER.Sync(pl, "Moving")
-			return
-		end
-
 		local tracepos = nil
 		if pl:KeyDown(IN_SPEED) then
 			local tr = util.TraceLine({
 				start = eyepos,
-				endpos = eyepos + pl:GetAimVector() * 16384,
+				endpos = eyepos + eyeang:Forward() * 16384,
 				filter = plTable.Ignore
 			})
 			tracepos = tr.HitPos
@@ -2646,6 +2882,7 @@ if SERVER then
 
 			elseif plTable.IsPhysBone then -- moving physbones
 				local isik, iknum = rgm.IsIKBone(self, ent, bone)
+				isik = isik and ent:GetClass() == "prop_ragdoll"
 				local pos, ang = apart:ProcessMovement(plTable.rgmOffsetPos, plTable.rgmOffsetAng, eyepos, eyeang, ent, bone, plTable.rgmISPos, plTable.rgmISDir, 1, snapamount, plTable.StartAngle, nil, nil, nil, tracepos)
 
 				local physcount = ent:GetPhysicsObjectCount() - 1
@@ -2658,8 +2895,8 @@ if SERVER then
 				if not isik or iknum == 3 or (rotate and (iknum == 1 or iknum == 2)) then
 					obj:EnableMotion(true)
 					obj:Wake()
-					obj:SetPos(pos)
-					obj:SetAngles(ang)
+					rgmSetPos(obj, pos, plTable)
+					rgmSetAngles(obj, ang, plTable)
 					obj:EnableMotion(false)
 					obj:Wake()
 				elseif iknum == 2 then
@@ -2698,8 +2935,8 @@ if SERVER then
 
 						obj:EnableMotion(true)
 						obj:Wake()
-						obj:SetPos(postable[i].pos)
-						obj:SetAngles(postable[i].ang)
+						rgmSetPos(obj, postable[i].pos, plTable)
+						rgmSetAngles(obj, postable[i].ang, plTable)
 						obj:EnableMotion(false)
 						obj:Wake()
 					end
@@ -2712,8 +2949,8 @@ if SERVER then
 
 									obj:EnableMotion(true)
 									obj:Wake()
-									obj:SetPos(bones[j].pos)
-									obj:SetAngles(bones[j].ang)
+									rgmSetPos(obj, bones[j].pos, plTable)
+									rgmSetAngles(obj, bones[j].ang, plTable)
 									obj:EnableMotion(false)
 									obj:Wake()
 								end
@@ -2749,8 +2986,8 @@ if SERVER then
 
 							obj:EnableMotion(true)
 							obj:Wake()
-							obj:SetPos(postable[i].pos)
-							obj:SetAngles(postable[i].ang)
+							rgmSetPos(obj, postable[i].pos, plTable)
+							rgmSetAngles(obj, postable[i].ang, plTable)
 							obj:EnableMotion(false)
 							obj:Wake()
 						end
@@ -2763,8 +3000,8 @@ if SERVER then
 
 										obj:EnableMotion(true)
 										obj:Wake()
-										obj:SetPos(bones[j].pos)
-										obj:SetAngles(bones[j].ang)
+										rgmSetPos(obj, bones[j].pos, plTable)
+										rgmSetAngles(obj, bones[j].ang, plTable)
 										obj:EnableMotion(false)
 										obj:Wake()
 									end
@@ -2775,31 +3012,39 @@ if SERVER then
 				end
 			end
 		else -- scaling
-			bone = plTable.Bone
-			local prevscale = ent:GetManipulateBoneScale(bone)
-			local sc, ang = apart:ProcessMovement(plTable.rgmOffsetPos, plTable.rgmOffsetAng, eyepos, eyeang, ent, bone, plTable.rgmISPos, plTable.rgmISDir, 2, snapamount, plTable.StartAngle, plTable.NPhysBonePos, plTable.NPhysBoneAng, plTable.NPhysBoneScale)
-			local childbones = plTable.rgmBoneChildren
-
-			if sc.x == 0 then sc.x = 0.01 end
-			if sc.y == 0 then sc.x = 0.01 end
-			if sc.z == 0 then sc.x = 0.01 end
-
-			rgmDoScale(pl, ent, axis, childbones, bone, sc, prevscale, physmove)
+			if not plTable.IsBrush then
+				bone = plTable.Bone
+				local prevscale = ent:GetManipulateBoneScale(bone)
+				local sc, ang = apart:ProcessMovement(plTable.rgmOffsetPos, plTable.rgmOffsetAng, eyepos, eyeang, ent, bone, plTable.rgmISPos, plTable.rgmISDir, 2, snapamount, plTable.StartAngle, plTable.NPhysBonePos, plTable.NPhysBoneAng, plTable.NPhysBoneScale)
+				local childbones = plTable.rgmBoneChildren
+	
+				if sc.x == 0 then sc.x = 0.01 end
+				if sc.y == 0 then sc.x = 0.01 end
+				if sc.z == 0 then sc.x = 0.01 end
+	
+				rgmDoScale(pl, ent, axis, childbones, bone, sc, prevscale, physmove)
+			end
 		end
 	end
 
 	local tr = util.TraceLine({
 		start = eyepos,
-		endpos = eyepos + pl:GetAimVector() * 16384,
-		filter = { pl, pl:GetViewEntity() }
+		endpos = eyepos + eyeang:Forward() * 16384,
+		filter = { pl, pl:GetViewEntity() },
+		ignoreworld = CanXRaySelect(self, pl)
 	})
+	local aimedEntity = tr.Entity
 
-	if IsValid(tr.Entity) and tr.Entity:GetClass() == "prop_ragdoll" then
-		local b = tr.Entity:TranslatePhysBoneToBone(tr.PhysicsBone)
+	if IsValid(aimedEntity) and aimedEntity:GetClass() == "prop_ragdoll" then
+		local b = aimedEntity:TranslatePhysBoneToBone(tr.PhysicsBone)
 		if plTable.AimedBone ~= b then
 			plTable.AimedBone = b
 			RAGDOLLMOVER.Sync(pl, "AimedBone")
 		end
+	end
+	if plTable.AimedEntity ~= aimedEntity then
+		plTable.AimedEntity = aimedEntity
+		RAGDOLLMOVER.Sync(pl, "AimedEntity")
 	end
 
 	self.LastThink = CurTime()
@@ -2843,14 +3088,23 @@ if IsValid(pl) then
 	RAGDOLLMOVER[pl].PlViewEnt = 0
 end
 
+local GizmoWidth = GetConVar("ragdollmover_width") and GetConVar("ragdollmover_width"):GetFloat()
+local SkeletonDraw = GetConVar("ragdollmover_drawskeleton") and GetConVar("ragdollmover_drawskeleton"):GetBool()
+local XRaySelect = GetConVar("ragdollmover_xray_selection") and GetConVar("ragdollmover_xray_selection"):GetBool()
+local DisableMoveGizmoDraw = GetConVar("ragdollmover_disablemovinggizmo") and GetConVar("ragdollmover_disablemovinggizmo"):GetBool()
+
 hook.Add("rgmInit", "rgmSetPlayer", function()
 	pl = LocalPlayer()
 	if not RAGDOLLMOVER[pl] then RAGDOLLMOVER[pl] = {} end
 	RAGDOLLMOVER[pl].PlViewEnt = 0
+
+	GizmoWidth = GetConVar("ragdollmover_width"):GetFloat()
+	SkeletonDraw = GetConVar("ragdollmover_drawskeleton"):GetBool()
+	XRaySelect = GetConVar("ragdollmover_xray_selection"):GetBool()
+	DisableMoveGizmoDraw = GetConVar("ragdollmover_disablemovinggizmo"):GetBool()
 end)
 
 local NodeFunctions
-local GizmoWidth, SkeletonDraw
 
 -- A singleton to track bone manipulate state, particularly scale. Useful if we want to use
 -- the bone manipulate state to indicate something (such as hovering over a bone in advanced bone select)
@@ -2943,6 +3197,15 @@ cvars.AddChangeCallback("ragdollmover_drawskeleton", function(convar, old, new)
 	SkeletonDraw = tonumber(new) ~= 0
 end)
 
+cvars.AddChangeCallback("ragdollmover_xray_selection", function(convar, old, new)
+	XRaySelect = tobool(new)
+end)
+
+cvars.AddChangeCallback("ragdollmover_disablemovinggizmo", function(convar, old, new)
+	DisableMoveGizmoDraw = tobool(new)
+end)
+
+
 cvars.AddChangeCallback("ragdollmover_fulldisc", function(convar, old, new)
 	if not pl or not RAGDOLLMOVER[pl] or not IsValid(RAGDOLLMOVER[pl].Axis) then return end
 	RAGDOLLMOVER[pl].Axis.fulldisc = tonumber(new) ~= 0
@@ -3007,10 +3270,11 @@ end
 local function rgmSendBonePos(pl, ent, boneid)
 	if not pl then pl = LocalPlayer() end
 	if not RAGDOLLMOVER[pl] then return end
+	local plTable = RAGDOLLMOVER[pl]
 
 	local gizmopos, gizmoang, gizmoppos, gizmopang
-	local axis = RAGDOLLMOVER[pl].Axis
-	if IsValid(ent) and IsValid(axis) and boneid then
+	local axis = plTable.Axis
+	if IsValid(ent) and IsValid(axis) and boneid and ent:GetBoneMatrix(boneid) then
 		local pos, ang
 
 		local matrix = ent:GetBoneMatrix(boneid)
@@ -3086,7 +3350,9 @@ local function rgmSendBonePos(pl, ent, boneid)
 		end
 	end
 
-	RecursiveGrabChildBones(boneid, childbones, ent)
+	if ent:GetChildBones(boneid) then
+		RecursiveGrabChildBones(boneid, childbones, ent)
+	end
 
 	NetStarter.rgmSendBonePos()
 		net.WriteVector(gizmopos)
@@ -3202,6 +3468,7 @@ local function CManipSlider(cpanel, text, mode, axis, min, max, dec, textentry)
 
 		if mode == 3 and value == 0 then value = 0.01 end
 
+		ClientBoneState:UpdateBoneScales()
 		NetStarter.rgmAdjustBone()
 			net.WriteInt(mode, 3)
 			net.WriteInt(axis, 3)
@@ -3216,6 +3483,20 @@ local function CManipSlider(cpanel, text, mode, axis, min, max, dec, textentry)
 
 	return slider
 end
+local function RGMResetCurBone(mode)
+	mode = mode or 0
+	if not RAGDOLLMOVER[pl] or not RAGDOLLMOVER[pl].Entity then return end
+	local ent, id = RAGDOLLMOVER[pl].Entity, RAGDOLLMOVER[pl].Bone
+
+	if not IsValid(ent) then return end
+	if mode == 3 then ClientBoneState:SetBoneScale(id, VECTOR_SCALEDEF) end
+	NodeFunctions[1 + mode](ent, id)
+end
+local modeToString = {
+	"tool.ragdollmover.resetpos",
+	"tool.ragdollmover.resetrot",
+	"tool.ragdollmover.resetscale",
+}
 local function CManipEntry(cpanel, mode)
 	local parent = vgui.Create("Panel", cpanel)
 	parent:SetTall(20)
@@ -3257,28 +3538,28 @@ local function CManipEntry(cpanel, mode)
 		RGMClearOffsets()
 	end
 
-	entry.SetVisible = function(self, state)
-		parent:SetVisible(state)
+	entry.Phys = false
+	entry.SetVisible = function(self, state, isPhys)
+		-- parent:SetVisible(state)
+		entry.Phys = isPhys
 	end
 
 	local butt = vgui.Create("DButton", parent)
-	butt:SetText("#tool.ragdollmover.resetmenu")
+	butt:SetText(Format("%s %s", language.GetPhrase("#tool.ragdollmover.resetmenu"), language.GetPhrase(modeToString[mode])))
 
 	butt.DoClick = function()
-		if not RAGDOLLMOVER[pl] or not RAGDOLLMOVER[pl].Entity then return end
-		local ent, id = RAGDOLLMOVER[pl].Entity, RAGDOLLMOVER[pl].Bone
-
-		if not IsValid(ent) then return end
-		if mode == 3 then ClientBoneState:SetBoneScale(id, VECTOR_SCALEDEF) end
-		NodeFunctions[1 + mode](ent, id)
+		RGMResetCurBone(mode)
 	end
 
 	parent.PerformLayout = function(self)
-		entry:SetPos(0, 0)
-		entry:SetSize(parent:GetWide() *0.6, 20)
 
-		butt:SetPos(parent:GetWide() *0.6, 0)
-		butt:SetSize(parent:GetWide() *0.4, 20)
+		local buttonWidth = entry.Phys and 0 or 0.6
+		
+		entry:SetPos(0, 0)
+		entry:SetSize(parent:GetWide() * buttonWidth, 20)
+
+		butt:SetPos(parent:GetWide() * buttonWidth, 0)
+		butt:SetSize(parent:GetWide() * (1 - buttonWidth), 20)
 	end
 
 	entry.Sliders = {}
@@ -3347,6 +3628,7 @@ local function CCol(cpanel, text, notexpanded)
 	end
 	cat:SetContents(col)
 	cat:SetExpanded(not notexpanded)
+	col:DockMargin(0, 4, 0, 0)
 	return col, cat
 end
 local function CBinder(cpanel)
@@ -3457,6 +3739,8 @@ local function RGMResetGizmo()
 	net.SendToServer()
 end
 
+concommand.Add("ragdollmover_resetoffset", RGMResetGizmo, nil, "Reset the gizmo offset")
+
 local function RGMGizmoMode()
 	if not RAGDOLLMOVER[pl] then return end
 	NetStarter.rgmOperationSwitch()
@@ -3471,15 +3755,6 @@ local function RGMResetAllBones()
 	NetStarter.rgmResetAllBones()
 		net.WriteEntity(RAGDOLLMOVER[pl].Entity)
 	net.SendToServer()
-end
-
-local function RGMResetCurBone()
-	if not RAGDOLLMOVER[pl] or not RAGDOLLMOVER[pl].Entity then return end
-	local ent, id = RAGDOLLMOVER[pl].Entity, RAGDOLLMOVER[pl].Bone
-
-	if not IsValid(ent) then return end
-	ClientBoneState:SetBoneScale(id, VECTOR_SCALEDEF)
-	NodeFunctions[1](ent, id)
 end
 
 local function AddHBar(self) -- There is no horizontal scrollbars in gmod, so I guess we'll override vertical one from GMod - I think this is incorrect now, but I'll keep it
@@ -4277,17 +4552,21 @@ local function RGMBuildBoneMenu(ents, selectedent, bonepanel)
 	for id, entdata in ipairs(sortedbones) do
 		local ent = entdata.ent
 		local num = ent:GetBoneCount() - 1 -- first we find all rootbones and their children
-		for v = 0, num do
-			if ent:GetBoneName(v) == "__INVALIDBONE__" then continue end
-
-			if ent:GetBoneParent(v) == -1 then
-				local bone = { id = v, Type = BONE_NONPHYSICAL, depth = 1 }
-				if ent:BoneHasFlag(v, 4) then -- BONE_ALWAYS_PROCEDURAL flag
-					bone.Type = BONE_PROCEDURAL
+		local isBrush = CheckBrush(ent)
+		if isBrush then
+			table.insert(entdata, {id = 0, Type = BONE_PHYSICAL, depth = 1})
+		else			
+			for v = 0, num do
+				if ent:GetBoneName(v) == "__INVALIDBONE__" then continue end
+				if ent:GetBoneParent(v) == -1 then
+					local bone = { id = v, Type = BONE_NONPHYSICAL, depth = 1 }
+					if ent:BoneHasFlag(v, 4) then -- BONE_ALWAYS_PROCEDURAL flag
+						bone.Type = BONE_PROCEDURAL
+					end
+	
+					table.insert(entdata, bone)
+					GetRecursiveBones(ent, v, entdata, bone.depth)
 				end
-
-				table.insert(entdata, bone)
-				GetRecursiveBones(ent, v, entdata, bone.depth)
 			end
 		end
 		count = count + 1
@@ -4371,21 +4650,26 @@ local function UpdateBoneNodes(bonepanel, physids, isphys)
 	for id, entdata in ipairs(sortedbones) do
 		local ent = entdata.ent
 
-		local num = ent:GetBoneCount() - 1
-		for v = 0, num do
-			if ent:GetBoneName(v) == "__INVALIDBONE__" then continue end
-
-			if ent:GetBoneParent(v) == -1 then
-				local bone = { id = v, Type = BONE_NONPHYSICAL, depth = 1 }
-				if ent:BoneHasFlag(v, 4) then
-					bone.Type = BONE_PROCEDURAL
+		local isBrush = CheckBrush(ent)
+		if isBrush then
+			table.insert(entdata, {id = 0, Type = BONE_PHYSICAL, depth = 1})
+		else
+			local num = ent:GetBoneCount() - 1
+			for v = 0, num do
+				if ent:GetBoneName(v) == "__INVALIDBONE__" then continue end
+	
+				if ent:GetBoneParent(v) == -1 then
+					local bone = { id = v, Type = BONE_NONPHYSICAL, depth = 1 }
+					if ent:BoneHasFlag(v, 4) then
+						bone.Type = BONE_PROCEDURAL
+					end
+					if physids[ent][v] then
+						bone.Type = BONE_PHYSICAL
+					end
+	
+					table.insert(entdata, bone)
+					GetRecursiveBonesExclusive(ent, v, v, entdata, physids[ent], isphys, bone.depth)
 				end
-				if physids[ent][v] then
-					bone.Type = BONE_PHYSICAL
-				end
-
-				table.insert(entdata, bone)
-				GetRecursiveBonesExclusive(ent, v, v, entdata, physids[ent], isphys, bone.depth)
 			end
 		end
 		count = count + 1
@@ -4699,6 +4983,17 @@ local function RGMMakeAngleSnap(col)
 	col:AddItem(parentpanel)
 end
 
+local function RGMMakeXRaySelect(col)
+	CAMI.PlayerHasAccess(LocalPlayer(), "ragdollmover_xray", function(hasAccess)
+		if hasAccess then
+			local XRay = CCheckBox(col, "#tool.ragdollmover.xray", "ragdollmover_xray")
+			XRay:SetTooltip("#tool.ragdollmover.xray.tooltip")
+			local XRaySelect = CCheckBox(col, "#tool.ragdollmover.xray_selection", "ragdollmover_xray_selection")
+			XRaySelect:SetTooltip("#tool.ragdollmover.xray_selection.tooltip")
+		end
+	end)
+end
+
 local function rgmDoNotification(message)
 	if RGM_NOTIFY[message] == true then
 		notification.AddLegacy("#tool.ragdollmover.message" .. message, NOTIFY_ERROR, 5)
@@ -4779,8 +5074,13 @@ function TOOL.BuildCPanel(CPanel)
 		local CB = CCheckBox(Col3, "#tool.ragdollmover.unfreeze", "ragdollmover_unfreeze")
 		CB:SetToolTip("#tool.ragdollmover.unfreezetip")
 		local DisFil = CCheckBox(Col3, "#tool.ragdollmover.disablefilter", "ragdollmover_disablefilter")
+		local DisBruFil = CCheckBox(Col3, "#tool.ragdollmover.disablebrushfilter", "ragdollmover_disablebrushfilter")
 		DisFil:SetToolTip("#tool.ragdollmover.disablefiltertip")
+		DisBruFil:SetToolTip("#tool.ragdollmover.disablebrushfiltertip")
 		CCheckBox(Col3, "#tool.ragdollmover.drawskeleton", "ragdollmover_drawskeleton")
+		local DisMoveGizmo = CCheckBox(Col3, "#tool.ragdollmover.disablemovinggizmo", "ragdollmover_disablemovinggizmo")
+		DisMoveGizmo:SetTooltip("#tool.ragdollmover.disablemovinggizmotip")
+		RGMMakeXRaySelect(Col3)
 		CNumSlider(Col3, "#tool.ragdollmover.updaterate", "ragdollmover_updaterate", 0.01, 1.0, 2)
 
 	CBinder(CPanel)
@@ -4792,6 +5092,8 @@ function TOOL.BuildCPanel(CPanel)
 
 		local physmovecheck = CCheckBox(Col4, "#tool.ragdollmover.physmove", "ragdollmover_physmove")
 		physmovecheck:SetToolTip("#tool.ragdollmover.physmovetip")
+		local resetphyscheck = CCheckBox(Col4, "#tool.ragdollmover.resetphys", "ragdollmover_resetphys")
+		resetphyscheck:SetToolTip("#tool.ragdollmover.resetphystip")
 		RGMMakeAngleSnap(Col4)
 		RGMMakeResetLocksPanel(Col4) 
 		
@@ -5134,11 +5436,11 @@ local NETFUNC = {
 			Pos1:SetVisible(inverted)
 			Pos2:SetVisible(inverted)
 			Pos3:SetVisible(inverted)
-			Entry1:SetVisible(inverted)
+			Entry1:SetVisible(inverted, bool)
 			Rot1:SetVisible(inverted)
 			Rot2:SetVisible(inverted)
 			Rot3:SetVisible(inverted)
-			Entry2:SetVisible(inverted)
+			Entry2:SetVisible(inverted, bool)
 		end
 
 		local isphys = net.ReadBool()
@@ -5438,6 +5740,11 @@ function TOOL:DrawHUD()
 	local viewvec = IsValid(plviewent) and plviewent:GetForward() or pl:GetViewEntity():GetForward()
 	local fov = pl:GetFOV()
 
+		if XRaySelect and IsValid(ent) then
+			rgm.DrawXRayEntity(ent)
+		end
+
+
 	if not (self:GetOperation() == 2) and IsValid(ent) and IsValid(axis) and bone then
 		local width = GizmoWidth or 0.5
 		local moveaxis = axis[RGMGIZMOS.GizmoTable[plTable.MoveAxis]]
@@ -5445,10 +5752,11 @@ function TOOL:DrawHUD()
 			cam.Start({type = "3D"})
 			render.SetMaterial(material)
 
-			moveaxis:DrawLines(true, axis.scale, width)
-
+			if not DisableMoveGizmoDraw then
+				moveaxis:DrawLines(true, axis.scale, width)
+			end
 			cam.End()
-
+			
 			if moveaxis.DrawText then moveaxis:DrawText(plTable, eyepos, eyeang) end
 		else
 			cam.Start({type = "3D"})
@@ -5459,12 +5767,12 @@ function TOOL:DrawHUD()
 		end
 	end
 
-	local tr = util.TraceLine({
-		start = eyepos,
-		endpos = eyepos + pl:GetAimVector() * 16384,
-		filter = { pl, pl:GetViewEntity() }
-	})
-	local aimedbone = IsValid(tr.Entity) and (tr.Entity:GetClass() == "prop_ragdoll" and plTable.AimedBone or 0) or 0
+	local aimedentity = plTable.AimedEntity
+	local aimedbone = IsValid(aimedentity) and (aimedentity:GetClass() == "prop_ragdoll" and plTable.AimedBone or 0) or 0
+	if XRaySelect and IsValid(aimedentity) and EntityFilter(aimedentity, self) and aimedentity ~= ent then
+		rgm.DrawXRayEntity(aimedentity)
+	end
+
 	if nodes and IsValid(ent) and EntityFilter(ent, self) and SkeletonDraw then
 		rgm.DrawSkeleton(ent, nodes)
 	end
@@ -5486,9 +5794,9 @@ function TOOL:DrawHUD()
 		if timecheck then
 			LastSelectThink = thinktime
 		end
-	elseif IsValid(tr.Entity) and EntityFilter(tr.Entity, self) and (not bone or aimedbone ~= bone or tr.Entity ~= ent) and not moving then
-		rgm.DrawBoneConnections(tr.Entity, aimedbone)
-		rgm.DrawBoneName(tr.Entity, aimedbone)
+	elseif IsValid(aimedentity) and EntityFilter(aimedentity, self) and (not bone or aimedbone ~= bone or aimedentity ~= ent) and not moving then
+		rgm.DrawBoneConnections(aimedentity, aimedbone)
+		rgm.DrawBoneName(aimedentity, aimedbone)
 	end
 
 	if IsValid(HoveredEntBone) and EntityFilter(HoveredEntBone, self) and HoveredBone then

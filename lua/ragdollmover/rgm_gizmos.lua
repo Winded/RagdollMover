@@ -687,6 +687,16 @@ end
 -- ROTATION DISC --
 -------------------
 local disc = table.Copy(basepart)
+local discMaterial
+local discMaterialPartial
+local ballMaterial
+if CLIENT then
+	local dxlevel = render.GetDXLevel()
+	local dx11 = dxlevel >= 110 and dxlevel <= 114
+	-- DX11 uses Shader Model 5.0, so we need to resort to a different material to allow discs to render
+	discMaterial = Material(dx11 and "ragdollmover/disc_dx11" or "ragdollmover/disc")
+	discMaterialPartial = Material(dx11 and "ragdollmover/disc_partial_dx11" or "ragdollmover/disc")
+end
 
 do
 
@@ -927,71 +937,71 @@ do
 
 		local ANG = Angle(0, 0, 11.25)
 
-		function disc:GetLinePositions(width)
-			local RTable = {}
-			local ang = ANG
-			local startposmin
-			local startposmax
-
-			if self.Parent.rwidth ~= width or not self.linepositions then
-				startposmin = Vector(0, 0,1 - 0.1 * width)
-				startposmax = Vector(0, 0,1 + 0.1 * width)
-
-				self.linepositions = {startposmin, startposmax}
-			else
-				startposmin = self.linepositions[1]
-				startposmax = self.linepositions[2]
+		function disc:GetLinePositions()
+			if not self.linepositions then
+				local unit = 1.5
+				self.linepositions = {
+					{
+						Vector(0, unit, unit),
+						Vector(0, -unit, unit),
+						Vector(0, -unit, -unit),
+						Vector(0, unit, -unit),
+					}
+				}	
 			end
+			return self.linepositions
+		end
 
-			for i = 1, 32 do
-				local pos1 = startposmin*1
-				local pos2 = startposmin*1
-				local pos3 = startposmax*1
-				local pos4 = startposmax*1
-				pos1:Rotate(ang * (i - 1))
-				pos2:Rotate(ang * (i))
-				pos3:Rotate(ang * (i))
-				pos4:Rotate(ang * (i - 1))
-				RTable[i] = {pos1, pos2, pos3, pos4}
-			end
-			return RTable
+		local dummy_model = ClientsideModel("models/shadertest/vertexlit.mdl")
+		dummy_model:SetModelScale(0)	-- make it invisible
+		local function sendVertexMetadata(x, y, z)
+			render.SuppressEngineLighting(true)	
+
+			render.SetModelLighting(0, x, y, z)
+
+			dummy_model:DrawModel()
+
+			render.SuppressEngineLighting(false)
 		end
 
 		function disc:DrawLines(yellow, scale, width)
 			local pl = LocalPlayer()
 			local parent = self.Parent
 			local toscreen = {}
-			local linetable = self:GetLinePositions(width)
-			local eyepos = pl:EyePos()
-
-			local viewent = pl:GetViewEntity()
-			if IsValid(viewent) and viewent ~= pl then
-				eyepos = viewent:GetPos()
-			end
+			local linetable = self:GetLinePositions()			
+			local eyepos = rgm.EyePosAng(pl, pl:GetViewEntity())
 
 			local largedisc = parent.DiscLarge
 			if not largedisc then return end
 
 			local borderpos = largedisc:GetPos()
 			local color = self:GetColor()
+			if yellow then
+				color = COLOR_BRIGHT_YELLOW
+			end
 
 			local moving = RAGDOLLMOVER[pl].Moving or false
 
+			local minDist, maxDist = math.huge, -math.huge
 			for i,v in ipairs(linetable) do
-				local points = self:PointsToWorld(v, scale)
-				local col = color
-				if yellow then
-					col = COLOR_BRIGHT_YELLOW
-				end
-				if parent.fulldisc or (moving or
-				(points[1]:DistToSqr(eyepos) <= borderpos:DistToSqr(eyepos) and points[2]:DistToSqr(eyepos) <= borderpos:DistToSqr(eyepos) and 
-				points[3]:DistToSqr(eyepos) <= borderpos:DistToSqr(eyepos) and points[4]:DistToSqr(eyepos) <= borderpos:DistToSqr(eyepos))) then
-					table.insert(toscreen, {points, col})
-				end
+				toscreen = self:PointsToWorld(v, scale)
 			end
-			for i,v in ipairs(toscreen) do
-				render.DrawQuad(v[1][1], v[1][2], v[1][3], v[1][4], v[2])
+
+			for _, point in ipairs(toscreen) do
+				minDist = math.min(minDist, eyepos:DistToSqr(point))
+				maxDist = math.max(maxDist, eyepos:DistToSqr(point))
 			end
+			minDist = math.sqrt(minDist) -- TODO: move square root operation to shader?
+			maxDist = math.sqrt(maxDist)
+
+			local mat = parent.fulldisc and discMaterial or discMaterialPartial
+			sendVertexMetadata(minDist, maxDist, 0)
+			mat:SetFloat("$c0_x", width)
+			mat:SetFloat("$c0_y", color.r / 255)
+			mat:SetFloat("$c0_z", color.g / 255)
+			mat:SetFloat("$c0_w", color.b / 255)
+			render.SetMaterial(mat)
+			render.DrawQuad(toscreen[1], toscreen[2], toscreen[3], toscreen[4])
 		end
 
 		function disc:DrawText(plTable, eyepos, eyeang)
@@ -1037,21 +1047,31 @@ do
 
 	if CLIENT then
 
+		local dxlevel = render.GetDXLevel()
+		local dx11 = dxlevel >= 110 and dxlevel <= 114
 		function disclarge:DrawLines(yellow, scale, width)
 			local toscreen = {}
 			local linetable = self:GetLinePositions(width)
 			local color = self:GetColor()
-
-			for i, v in ipairs(linetable) do
-				local col = color
-				if yellow then
-					col = COLOR_BRIGHT_YELLOW
-				end
-				local points = self:PointsToWorld(v, scale * 1.25)
-				table.insert(toscreen, {points, col})
+			if yellow then
+				color = COLOR_BRIGHT_YELLOW
 			end
+			for i, v in ipairs(linetable) do
+				local points = self:PointsToWorld(v, scale * 1.25)
+				table.insert(toscreen, {points})
+			end
+
+			-- For DX11, some material changes (disc coloring) don't immediately carry over
+			-- unless there's a projected texture rendering. Remove this comment if the
+			-- behavior is gone
+			discMaterial:SetFloat("$c0_x", width)
+			discMaterial:SetFloat("$c0_y", color.r / 255)
+			discMaterial:SetFloat("$c0_z", color.g / 255)
+			discMaterial:SetFloat("$c0_w", color.b / 255)
+			render.SetMaterial(discMaterial)
+
 			for i, v in ipairs(toscreen) do
-				render.DrawQuad(v[1][1], v[1][2], v[1][3], v[1][4], v[2])
+				render.DrawQuad(v[1][1], v[1][2], v[1][3], v[1][4])
 			end
 		end
 
@@ -1268,6 +1288,10 @@ do
 				color = COLOR_BRIGHT_YELLOW2
 			end
 
+			if not ballMaterial then
+				ballMaterial = Material("!rgmGizmoMaterial")
+			end
+			render.SetMaterial(ballMaterial)
 			render.DrawSphere(self:GetPos(), scale, 50, 50, color)
 		end
 	end
