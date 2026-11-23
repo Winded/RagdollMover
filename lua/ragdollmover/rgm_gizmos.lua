@@ -693,9 +693,19 @@ local ballMaterial
 if CLIENT then
 	local dxlevel = render.GetDXLevel()
 	local dx11 = dxlevel >= 110 and dxlevel <= 114
-	-- DX11 uses Shader Model 5.0, so we need to resort to a different material to allow discs to render
-	discMaterial = Material(dx11 and "ragdollmover/disc_dx11" or "ragdollmover/disc")
-	discMaterialPartial = Material(dx11 and "ragdollmover/disc_partial_dx11" or "ragdollmover/disc")
+	local dx12 = dxlevel >= 120
+	local discPath = "ragdollmover/disc"
+	local discPartialPath = discPath .. "_partial"
+	local dxPath = ""
+	-- Each shaderapi (DX11/12) uses a different shadermodel (5.0/6.4 respectively). 
+	-- So select the material based on the shader
+	if dx11 then
+		dxPath = "_dx11"
+	elseif dx12 then
+		dxPath = "_dx12"
+	end
+	discMaterial = Material(discPath .. dxPath)
+	discMaterialPartial = Material(discPartialPath .. dxPath)
 end
 
 do
