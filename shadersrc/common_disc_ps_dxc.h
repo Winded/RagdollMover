@@ -17,7 +17,7 @@ float bias(float t, float b) {
 
 float4 main( const PS_INPUT frag ) : SV_Target0
 {
-    float4 color = float4(WIDTHCOLOR.yzw, 1);
+    float4 color = float4(WIDTHCOLOR.yzw, 1.0);
 
     float midPoint = 0.5; 
     float gradient = smoothstep(0.0, 1.0, bias(frag.depth, midPoint));
