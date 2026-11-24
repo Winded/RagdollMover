@@ -9,6 +9,7 @@ screenspace_general
 	$ignorez  		1
     $cull 0
 	$vertextransform 		1
+	$alphablend	1
 
 	$c0_x 1
 	$c0_y 1

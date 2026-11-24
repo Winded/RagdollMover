@@ -693,9 +693,19 @@ local ballMaterial
 if CLIENT then
 	local dxlevel = render.GetDXLevel()
 	local dx11 = dxlevel >= 110 and dxlevel <= 114
-	-- DX11 uses Shader Model 5.0, so we need to resort to a different material to allow discs to render
-	discMaterial = Material(dx11 and "ragdollmover/disc_dx11" or "ragdollmover/disc")
-	discMaterialPartial = Material(dx11 and "ragdollmover/disc_partial_dx11" or "ragdollmover/disc")
+	local dx12 = dxlevel >= 120
+	local discPath = "ragdollmover/disc"
+	local discPartialPath = discPath .. "_partial"
+	local dxPath = ""
+	-- Each shaderapi (DX11/12) uses a different shadermodel (5.0/6.4 respectively). 
+	-- So select the material based on the shader
+	if dx11 then
+		dxPath = "_dx11"
+	elseif dx12 then
+		dxPath = "_dx12"
+	end
+	discMaterial = Material(discPath .. dxPath)
+	discMaterialPartial = Material(discPartialPath .. dxPath)
 end
 
 do
@@ -952,14 +962,33 @@ do
 			return self.linepositions
 		end
 
-		local dummy_model = ClientsideModel("models/shadertest/vertexlit.mdl")
-		dummy_model:SetModelScale(0)	-- make it invisible
+		local dummyCreationDelay = 5
+		local dummyLastTime = CurTime()
+		---@type CSEnt
+		local dummy_model
+		local function createDummy()
+			dummy_model = ClientsideModel("models/shadertest/vertexlit.mdl")
+			dummy_model:SetModelScale(0)	-- make it invisible
+			dummy_model:SetPos(MainEyePos())
+		end
+		createDummy()
+
 		local function sendVertexMetadata(x, y, z)
+			local now = CurTime()
 			render.SuppressEngineLighting(true)	
 
 			render.SetModelLighting(0, x, y, z)
 
-			dummy_model:DrawModel()
+			-- TODO: 11/23/2026 Why does this happen? Could this be related to PVS?
+			-- Tested this on x86-64 rp_rockford (possible source of error), but a NULL Entity
+			-- error didn't seem to trigger
+			if not IsValid(dummy_model) and now - dummyLastTime > dummyCreationDelay then
+				createDummy()
+				dummyLastTime = now
+			end
+			if IsValid(dummy_model) then
+				dummy_model:DrawModel()
+			end
 
 			render.SuppressEngineLighting(false)
 		end

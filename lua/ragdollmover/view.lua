@@ -1,28 +1,38 @@
 if CLIENT then
-    local function rgmSendView()
-        local pl = LocalPlayer()
-        if not IsValid(pl) then return end
+    -- For developers: If you're wondering about the increased net cost all of a sudden if you've installed Ragdoll Mover,
+    -- this is the cause. To preserve Ragdoll Mover's legacy systems without breaking anything, the view module is 
+    -- meant to replace the view state depending on if the player is in third person or not
+
+    local updateCVar = CreateConVar("ragdollmover_view_updateinterval", '0.01', {FCVAR_ARCHIVE, FCVAR_CHEAT}, "The window in seconds which a client equipped with Ragdoll Mover shall send its view", 0, 1)
+
+    local EPSILON = 1e-3
+    local lastCheck = CurTime()
+    local function calcView(pl, origin, angles, fov, znear, zfar)
+        local now = CurTime()
+        if now - lastCheck < updateCVar:GetFloat() then return end
+        lastCheck = now
+
         local weap = pl:GetActiveWeapon()
         local tool = pl:GetTool()
         local equipped = IsValid(weap) and weap:GetClass() == "gmod_tool" and tool and tool:GetMode() == "ragdollmover"
         if not equipped then return end
 
-        local eyePos = MainEyePos()
+        local mainEyePos = origin
+        local plEyePos = pl:EyePos()
+        local offset = plEyePos - mainEyePos
+        local offsetDiffers = offset:LengthSqr() >= EPSILON
 
         net.Start("rgmSendView", true)
-        net.WriteDouble(eyePos[1])
-        net.WriteDouble(eyePos[2])
-        net.WriteDouble(eyePos[3])
-        net.WriteAngle(MainEyeAngles())
+        net.WriteDouble(mainEyePos[1])
+        net.WriteDouble(mainEyePos[2])
+        net.WriteDouble(mainEyePos[3])
+        net.WriteAngle(angles)
         net.WriteBool(vgui.CursorVisible())
-        net.WriteBool(eyePos ~= pl:EyePos())
+        net.WriteBool(offsetDiffers)
         net.SendToServer()
     end
-    timer.Remove("rgmSendView")
-    timer.Create("rgmSendView", 0.1, 0, rgmSendView)
-    hook.Add("rgmInit", "rgmSendView", function ()        
-        timer.Create("rgmSendView", 0.1, 0, rgmSendView)
-    end)
+    hook.Remove("CalcView", "rgmSendView")
+    hook.Add("CalcView", "rgmSendView", calcView)
 else
     RAGDOLLMOVER_VIEWS = {}
 
