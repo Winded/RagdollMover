@@ -7,13 +7,25 @@ if CLIENT then
 
     local EPSILON = 1e-3
     local lastCheck = CurTime()
+    ---@param pl Player
+    ---@param mode string?
+    local function getTool(pl, mode)
+        local wep = pl:GetWeapon( "gmod_tool" )
+        if ( not IsValid( wep ) or not wep.GetToolObject ) then return nil end
+
+        local tool = wep:GetToolObject( mode )
+        if ( not tool ) then return nil end
+
+        return tool
+    end
+
     local function calcView(pl, origin, angles, fov, znear, zfar)
         local now = CurTime()
         if now - lastCheck < updateCVar:GetFloat() then return end
         lastCheck = now
 
         local weap = pl:GetActiveWeapon()
-        local tool = pl:GetTool()
+        local tool = getTool(pl)
         local equipped = IsValid(weap) and weap:GetClass() == "gmod_tool" and tool and tool:GetMode() == "ragdollmover"
         if not equipped then return end
 

@@ -28,6 +28,27 @@ local AxisType = RGMGIZMOS.AxisTypeEnum
 
 local Round = math.Round
 
+local oldDiscMethod
+local rgmGizmoMaterial
+if CLIENT then
+	timer.Simple(0, function()
+		rgmGizmoMaterial = Material("!rgmGizmoMaterial")
+	end)
+
+	oldDiscMethod = CreateClientConVar("ragdollmover_disc_old", "0", true, false, "Use the old disc rendering method from pre v3.4.5", 0, 1)
+	cvars.RemoveChangeCallback("ragdollmover_disc_old", "ragdollmover_disc_old_callback")
+	cvars.AddChangeCallback("ragdollmover_disc_old", function()
+		local pl = LocalPlayer()
+		local axis = RAGDOLLMOVER[pl] and RAGDOLLMOVER[pl].Axis
+		axis.Axises[8].linepositions = nil
+		axis.Axises[9].linepositions = nil
+		axis.Axises[10].linepositions = nil
+		axis.Axises[11].linepositions = nil
+		axis.Axises[12].linepositions = nil
+	end, "ragdollmover_disc_old_callback")
+
+end
+
 local function isnan(num)
 	return num == num
 end
@@ -944,9 +965,8 @@ do
 	end
 
 	if CLIENT then
-
 		local ANG = Angle(0, 0, 11.25)
-
+		
 		function disc:GetLinePositions()
 			if not self.linepositions then
 				local unit = 1.5
@@ -960,6 +980,74 @@ do
 				}	
 			end
 			return self.linepositions
+		end
+
+		function disc:OldGetLinePositions(width)
+			local RTable = {}
+			local ang = ANG
+			local startposmin
+			local startposmax
+
+			if self.Parent.rwidth ~= width or not self.linepositions then
+				startposmin = Vector(0, 0,1 - 0.1 * width)
+				startposmax = Vector(0, 0,1 + 0.1 * width)
+
+				self.linepositions = {startposmin, startposmax}
+			else
+				startposmin = self.linepositions[1]
+				startposmax = self.linepositions[2]
+			end
+
+			for i = 1, 32 do
+				local pos1 = startposmin*1
+				local pos2 = startposmin*1
+				local pos3 = startposmax*1
+				local pos4 = startposmax*1
+				pos1:Rotate(ang * (i - 1))
+				pos2:Rotate(ang * (i))
+				pos3:Rotate(ang * (i))
+				pos4:Rotate(ang * (i - 1))
+				RTable[i] = {pos1, pos2, pos3, pos4}
+			end
+			return RTable
+		end
+
+		function disc:OldDrawLines(yellow, scale, width)
+			local pl = LocalPlayer()
+			local parent = self.Parent
+			local toscreen = {}
+			local linetable = self:OldGetLinePositions(width)
+			local eyepos = pl:EyePos()
+
+			local viewent = pl:GetViewEntity()
+			if IsValid(viewent) and viewent ~= pl then
+				eyepos = viewent:GetPos()
+			end
+
+			local largedisc = parent.DiscLarge
+			if not largedisc then return end
+
+			local borderpos = largedisc:GetPos()
+			local color = self:GetColor()
+
+			local moving = RAGDOLLMOVER[pl].Moving or false
+
+			for i,v in ipairs(linetable) do
+				local points = self:PointsToWorld(v, scale)
+				local col = color
+				if yellow then
+					col = COLOR_BRIGHT_YELLOW
+				end
+				if parent.fulldisc or (moving or
+				(points[1]:DistToSqr(eyepos) <= borderpos:DistToSqr(eyepos) and points[2]:DistToSqr(eyepos) <= borderpos:DistToSqr(eyepos) and 
+				points[3]:DistToSqr(eyepos) <= borderpos:DistToSqr(eyepos) and points[4]:DistToSqr(eyepos) <= borderpos:DistToSqr(eyepos))) then
+					table.insert(toscreen, {points, col})
+				end
+			end
+			render.SetMaterial(rgmGizmoMaterial)
+			for i,v in ipairs(toscreen) do
+				render.DrawQuad(v[1][1], v[1][2], v[1][3], v[1][4], v[2])
+			end
 		end
 
 		local dummyCreationDelay = 5
@@ -994,6 +1082,11 @@ do
 		end
 
 		function disc:DrawLines(yellow, scale, width)
+
+			if oldDiscMethod:GetBool() then
+				return self:OldDrawLines(yellow, scale, width) -- change the width here and it'll trigger a line position rebuild
+			end
+
 			local pl = LocalPlayer()
 			local parent = self.Parent
 			local toscreen = {}
@@ -1078,7 +1171,31 @@ do
 
 		local dxlevel = render.GetDXLevel()
 		local dx11 = dxlevel >= 110 and dxlevel <= 114
+
+		function disclarge:OldDrawLines(yellow, scale, width)
+			local toscreen = {}
+			local linetable = self:OldGetLinePositions(width)
+			local color = self:GetColor()
+
+			for i, v in ipairs(linetable) do
+				local col = color
+				if yellow then
+					col = COLOR_BRIGHT_YELLOW
+				end
+				local points = self:PointsToWorld(v, scale * 1.25)
+				table.insert(toscreen, {points, col})
+			end
+			render.SetMaterial(rgmGizmoMaterial)
+			for i, v in ipairs(toscreen) do
+				render.DrawQuad(v[1][1], v[1][2], v[1][3], v[1][4], v[2])
+			end
+		end
+
 		function disclarge:DrawLines(yellow, scale, width)
+			if oldDiscMethod:GetBool() then
+				return self:OldDrawLines(yellow, scale, width)
+			end
+
 			local toscreen = {}
 			local linetable = self:GetLinePositions(width)
 			local color = self:GetColor()
