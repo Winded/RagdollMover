@@ -2353,6 +2353,7 @@ local function spawnAxis(pl, tool, plTable)
 	axis.scalechildren = tool:GetClientNumber("scalechildren", 0) ~= 0
 	axis.smovechildren = tool:GetClientNumber("smovechildren", 0) ~= 0
 	axis.scalerelativemove = tool:GetClientNumber("scalerelativemove", 0) ~= 0
+	axis.GizmoAng = angle_zero
 	plTable.Axis = axis
 
 	plTable.updaterate = tool:GetClientNumber("updaterate", 0.01)
