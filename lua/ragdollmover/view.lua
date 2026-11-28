@@ -19,7 +19,9 @@ if CLIENT then
         return tool
     end
 
-    local function calcView(pl, origin, angles, fov, znear, zfar)
+    local lastCursorState = false
+    local function calcView()
+        local pl = LocalPlayer()
         local now = CurTime()
         if now - lastCheck < updateCVar:GetFloat() then return end
         lastCheck = now
@@ -29,9 +31,12 @@ if CLIENT then
         local equipped = IsValid(weap) and weap:GetClass() == "gmod_tool" and tool and tool:GetMode() == "ragdollmover"
         if not equipped then return end
 
-        local mainEyePos = origin
+        local angles = MainEyeAngles()
+        local mainEyePos = MainEyePos()
         local plEyePos = pl:EyePos()
         local offset = plEyePos - mainEyePos
+        local cursorVisible = vgui.CursorVisible()
+        local cursorStateChanged = lastCursorState ~= cursorVisible
         local offsetDiffers = offset:LengthSqr() >= EPSILON
 
         net.Start("rgmSendView", true)
@@ -39,12 +44,16 @@ if CLIENT then
         net.WriteDouble(mainEyePos[2])
         net.WriteDouble(mainEyePos[3])
         net.WriteAngle(angles)
-        net.WriteBool(vgui.CursorVisible())
-        net.WriteBool(offsetDiffers)
+        net.WriteBool(cursorVisible)
+        net.WriteBool(offsetDiffers or cursorStateChanged)
         net.SendToServer()
+        lastCursorState = cursorVisible
     end
-    hook.Remove("CalcView", "rgmSendView")
-    hook.Add("CalcView", "rgmSendView", calcView)
+    -- This was originally Think (updates aren't fast enough), and then CalcView (doesn't function when another view is overriding)
+    -- now it is Tick (updates fast enough and accepts calcview overrides)
+    -- oh how the think ticks
+    hook.Remove("Tick", "rgmSendView")
+    hook.Add("Tick", "rgmSendView", calcView)
 else
     RAGDOLLMOVER_VIEWS = {}
 
